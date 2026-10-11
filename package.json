@@ -106,7 +106,7 @@
     "docker:down": "docker compose down",
     "clean-install": "yarn rm:node_modules && yarn install",
     "test:e2e:collab": "yarn --cwd ./mosaic-dashboard test:e2e:collab",
-    "build:editor": "yarn --cwd excalidraw-app build",
+    "build:editor": "node scripts/build-editor.mjs",
     "build:vercel-assets": "node scripts/copy-editor-to-dist.mjs",
     "db:migrate": "node db/migrate.mjs"
   },
