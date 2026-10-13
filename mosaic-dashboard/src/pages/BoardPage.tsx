@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { BRAND } from "@mosaic/brand";
@@ -11,6 +11,7 @@ import { storage } from "@/lib/storage";
 
 import { t } from "@/lib/i18n";
 import { useDashboardStore } from "@/state/useDashboardStore";
+import { useBoardBridge, type SaveState } from "@/hooks/useBoardBridge";
 
 /**
  * Board editor route (STEP 2 `/board/:id`, STEP 6 editor integration).
@@ -50,7 +51,34 @@ export const BoardPage = () => {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
+  const [savedAt, setSavedAt] = useState<number | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Persist the editor's scene through our storage adapter, and hydrate the
+  // editor with the stored scene when it reports ready.
+  const handleSaveState = useCallback(
+    (state: SaveState) => {
+      if (state.status === "saving") {
+        setSaveState("saving");
+        return;
+      }
+      setSaveState(state.status === "saved" ? "saved" : "idle");
+      if (state.status === "saved") {
+        setSavedAt(state.at);
+        void reload();
+        // Drop back to idle so the pill does not claim "Saved" forever.
+        window.setTimeout(() => setSaveState("idle"), 1600);
+      }
+    },
+    [reload],
+  );
+
+  useBoardBridge({
+    boardId: id ?? "",
+    iframeRef,
+    editorOrigin: window.location.origin,
+    onSaveState: handleSaveState,
+  });
 
   // Load the board and record the open in the activity log.
   useEffect(() => {
@@ -77,26 +105,23 @@ export const BoardPage = () => {
   }, [id, reload]);
 
   /**
-   * Listen for save-status messages from the editor iframe so the dashboard can
-   * show "Saved". The editor posts `{ type: "mosaic:saved", boardId }` after each
-   * autosave and on Ctrl+S.
+   * The editor's own `mosaic:saving` / `mosaic:saved` status messages are
+   * handled inside `useBoardBridge`, which reports them through `onSaveState`.
+   * It has to, because it also owns the parent→editor `mosaic:saved` ack: the
+   * two messages share a type name but travel in opposite directions, and a
+   * single listener here would mark the board saved the moment the editor asked,
+   * before anything was persisted.
    */
+
+  // Keeps "Saved 2s ago" honest without re-rendering the editor.
+  const [, forceTick] = useState(0);
   useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (event.data?.type === "mosaic:saved" && event.data.boardId === id) {
-        setSaveState("saved");
-        void reload();
-        setTimeout(() => setSaveState("idle"), 1600);
-      } else if (
-        event.data?.type === "mosaic:saving" &&
-        event.data.boardId === id
-      ) {
-        setSaveState("saving");
-      }
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [id, reload]);
+    if (saveState !== "saved") {
+      return;
+    }
+    const timer = window.setInterval(() => forceTick((n) => n + 1), 10_000);
+    return () => window.clearInterval(timer);
+  }, [saveState]);
 
   if (missing) {
     return (
@@ -134,12 +159,19 @@ export const BoardPage = () => {
           <span className={styles.name}>{board?.name ?? "…"}</span>
         </div>
         {saveState === "saving" ? (
-          <span className={styles.status} data-testid="save-status">
+          <span
+            className={`${styles.status} ${styles.status__saving}`}
+            data-testid="save-status"
+          >
             {t("editor.unsaved")}
           </span>
         ) : saveState === "saved" ? (
-          <span className={styles.status} data-testid="save-status">
+          <span
+            className={`${styles.status} ${styles.status__saved}`}
+            data-testid="save-status"
+          >
             {t("editor.saved")}
+            {savedAt ? ` ${relativeTime(savedAt)}` : ""}
           </span>
         ) : null}
       </div>
@@ -158,6 +190,22 @@ export const BoardPage = () => {
     </div>
   );
 };
+
+/**
+ * Renders a coarse "N ago" label for the save pill.
+ *
+ * Deliberately coarse: this is a reassurance that the work was not lost, not a
+ * timestamp worth reading precisely, and coarse units avoid re-rendering every
+ * few seconds for no visible benefit.
+ */
+function relativeTime(timestamp: number): string {
+  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+  if (seconds < 60) {
+    return "just now";
+  }
+  const minutes = Math.round(seconds / 60);
+  return minutes < 60 ? `${minutes}m ago` : `${Math.round(minutes / 60)}h ago`;
+}
 
 /**
  * Builds the editor URL.
