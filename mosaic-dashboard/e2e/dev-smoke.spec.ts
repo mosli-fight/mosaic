@@ -49,7 +49,12 @@ test("a board opens in the editor and shares IndexedDB", async ({ page }) => {
 
   await page.goto(DASHBOARD_GRID);
   await page.getByTestId("new-board").click();
-  await page.getByTestId("back-to-dashboard").click();
+  // The editor's own footer link; the board page's header link was removed in
+  // Task 1 because it duplicated this one.
+  await page
+    .frameLocator('[data-testid="editor-frame"]')
+    .getByTestId("back-to-dashboard")
+    .click();
   await expect(page.getByTestId("board-grid")).toBeVisible();
 
   await page.locator('[data-testid^="board-card-"]').first().click();

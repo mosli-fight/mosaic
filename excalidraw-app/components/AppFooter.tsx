@@ -26,6 +26,22 @@ export const AppFooter = React.memo(
           {boardId ? (
             <a
               href={dashboardUrl()}
+              // Without target="_top" this link navigates the *iframe* rather
+              // than the page, so the dashboard renders inside the editor frame
+              // and the user sees nothing happen. Observed:
+              //
+              //   URL_BEFORE: /board/586b898e-...
+              //   URL_AFTER:  /board/586b898e-...      unchanged
+              //   FRAME       http://localhost:3101/dashboard
+              //
+              // which leaves the board page stranded with a dashboard hidden in
+              // its own iframe. "_top" makes the navigation replace the top-level
+              // document, which is the whole point of the control.
+              target="_top"
+              // The dashboard is same-origin, so noopener buys nothing here, but
+              // it keeps the door closed if VITE_DASHBOARD_URL is ever pointed
+              // at another host.
+              rel="noopener"
               className="modal-drawer-link mosaic-back-link"
               data-testid="back-to-dashboard"
               style={{

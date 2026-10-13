@@ -95,7 +95,9 @@ test.describe("Mosaic dashboard", () => {
     });
 
     // ---- back to the dashboard: the thumbnail is now visible ------------
-    await page.getByTestId("back-to-dashboard").click();
+    // The board page's own header back-link was removed in Task 1 because the
+    // editor already renders one in its footer, so navigation goes through that.
+    await frame.getByTestId("back-to-dashboard").click();
     await waitForDashboard(page);
     await expect(page.getByTestId(`board-thumb-${boardId}`)).toBeVisible({
       timeout: 20_000,
