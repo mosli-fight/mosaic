@@ -141,6 +141,13 @@ export const writeBoardRecord = async (
 
 /** Records that the board was opened (drives the "recent" sort + activity). */
 export const markBoardOpened = async (boardId: string): Promise<void> => {
+  // Framed editor: the dashboard opened this board through storage, so the
+  // backend has already stamped `lastOpenedAt` (the API does it on the GET).
+  // Writing to IndexedDB here would touch a row that does not exist in the API
+  // deployment and silently do nothing.
+  if (window.parent !== window) {
+    return;
+  }
   await writeBoardRecord(boardId, { lastOpenedAt: Date.now() });
 };
 
@@ -255,8 +262,92 @@ export const captureThumbnail = (): string | null => {
   }
 };
 
+/** How long a framed editor waits for the dashboard to answer a scene request. */
+export const LOAD_REQUEST_TIMEOUT_MS = 10_000;
+
+/**
+ * Asks the parent dashboard for this board's stored scene.
+ *
+ * The parent replies with `mosaic:load-board`. It is the only party that knows
+ * which backend is in play, so a framed editor never guesses. Resolves to
+ * `undefined` on timeout or a message for a different board, which the caller
+ * treats exactly like "no stored scene" — an empty canvas is a valid state, and
+ * a slow dashboard must not leave the editor stuck on a loading screen.
+ */
+export const requestSceneFromParent = (
+  boardId: string,
+): Promise<string | undefined> =>
+  new Promise((resolve) => {
+    const targetOrigin = window.location.origin;
+    let settled = false;
+
+    const finish = (scene?: string) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("message", onMessage);
+      resolve(scene);
+    };
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== targetOrigin) {
+        return;
+      }
+      if (event.data?.type !== "mosaic:load-board") {
+        return;
+      }
+      if (event.data?.boardId !== boardId) {
+        return;
+      }
+      finish(event.data.scene ?? undefined);
+    };
+
+    const timer = window.setTimeout(
+      () => finish(undefined),
+      LOAD_REQUEST_TIMEOUT_MS,
+    );
+    window.addEventListener("message", onMessage);
+
+    try {
+      window.parent.postMessage(
+        { type: "mosaic:load-board-request", boardId },
+        targetOrigin,
+      );
+    } catch {
+      finish(undefined);
+    }
+  });
+
+/**
+ * Tells the dashboard the editor is mounted and able to receive a scene.
+ *
+ * Best-effort: a standalone editor has no parent to tell, and a failure here
+ * costs nothing because the dashboard also hydrates on iframe load.
+ */
+export const announceBoardReady = (boardId: string): void => {
+  if (window.parent === window) {
+    return;
+  }
+  try {
+    window.parent.postMessage({ type: "excalidraw/ready", boardId }, "*");
+  } catch {
+    // A strict CSP can refuse postMessage. The parent retries on iframe load.
+  }
+};
+
 /** Autosave cadence (matches AUTOSAVE_INTERVAL_MS in the dashboard schema). */
 export const AUTOSAVE_INTERVAL_MS = 10_000;
+
+/**
+ * How long a framed save waits for the dashboard to confirm the write.
+ *
+ * Generous on purpose: the production path is a network round trip to the API,
+ * and a premature timeout would let the next autosave tick start a second write
+ * while the first is still in flight.
+ */
+export const SAVE_ACK_TIMEOUT_MS = 15_000;
 
 /**
  * Wires autosave for one board: a periodic timer, a save on tab hide, a save on
@@ -277,8 +368,10 @@ export const startBoardAutosave = (
   let inFlight = false;
   let disposed = false;
 
+  const isFramed = () => window.parent !== window;
+
   const post = (type: "saving" | "saved", boardId: string) => {
-    if (window.parent === window) {
+    if (!isFramed()) {
       return;
     }
     try {
@@ -289,6 +382,65 @@ export const startBoardAutosave = (
     }
   };
 
+  // The scene version the dashboard had when it last told us what was stored.
+  // The parent owns the version now (it is the one calling storage.saveBoardScene,
+  // which bumps scene_version server-side), so we only mirror it for the ack.
+  let lastAckedVersion: number | undefined;
+
+  /**
+   * Hand the scene to the parent and wait for it to confirm the write.
+   *
+   * Waiting on the ack is what keeps the in-flight guard honest: the save is not
+   * finished until the dashboard has actually persisted it, so a slow round trip
+   * cannot be overtaken by the next autosave tick.
+   */
+  const saveViaParent = (
+    scene: string,
+    thumbnail: string | null,
+    reason: string,
+  ): Promise<void> =>
+    new Promise<void>((resolve, reject) => {
+      const targetOrigin = window.location.origin;
+      const timer = window.setTimeout(() => {
+        window.removeEventListener("message", onAck);
+        reject(new Error(`[mosaic] save ack timed out (${reason})`));
+      }, SAVE_ACK_TIMEOUT_MS);
+
+      const onAck = (event: MessageEvent) => {
+        if (event.origin !== targetOrigin) {
+          return;
+        }
+        if (event.data?.type !== "mosaic:saved") {
+          return;
+        }
+        if (event.data?.boardId !== boardId) {
+          return;
+        }
+        window.clearTimeout(timer);
+        window.removeEventListener("message", onAck);
+        lastAckedVersion = event.data.sceneVersion ?? lastAckedVersion;
+        resolve();
+      };
+
+      window.addEventListener("message", onAck);
+      try {
+        window.parent.postMessage(
+          {
+            type: "mosaic:save-board",
+            boardId,
+            scene,
+            thumbnail,
+            baseVersion: lastAckedVersion,
+          },
+          targetOrigin,
+        );
+      } catch (error) {
+        window.clearTimeout(timer);
+        window.removeEventListener("message", onAck);
+        reject(error);
+      }
+    });
+
   const runSave = async (reason: string) => {
     if (inFlight || disposed) {
       return;
@@ -298,7 +450,15 @@ export const startBoardAutosave = (
     try {
       const thumbnail = captureThumbnail();
       const scene = serializeScene(api);
-      await writeBoardRecord(boardId, { scene, thumbnail });
+      if (isFramed()) {
+        // The dashboard owns storage. It knows whether this environment persists
+        // to IndexedDB or to the API, so the editor must not write either itself.
+        await saveViaParent(scene, thumbnail, reason);
+      } else {
+        // Standalone editor at the top level (no dashboard to route through):
+        // keep writing directly so it still saves on its own.
+        await writeBoardRecord(boardId, { scene, thumbnail });
+      }
       post("saved", boardId);
     } catch (error) {
       // Never let an autosave failure break the editor: the user keeps drawing
@@ -308,6 +468,22 @@ export const startBoardAutosave = (
       inFlight = false;
     }
   };
+
+  // Adopt the version the dashboard reports when it hydrates us, so the first
+  // save carries a valid optimistic-concurrency token.
+  const onLoadBoard = (event: MessageEvent) => {
+    if (event.origin !== window.location.origin) {
+      return;
+    }
+    if (event.data?.type !== "mosaic:load-board") {
+      return;
+    }
+    if (event.data?.boardId !== boardId) {
+      return;
+    }
+    lastAckedVersion = event.data.sceneVersion ?? 0;
+  };
+  window.addEventListener("message", onLoadBoard);
 
   const interval = window.setInterval(() => {
     void runSave("interval");
@@ -347,6 +523,7 @@ export const startBoardAutosave = (
     document.removeEventListener("visibilitychange", onVisibilityChange);
     window.removeEventListener("keydown", onKeyDown, true);
     window.removeEventListener("beforeunload", onBeforeUnload);
+    window.removeEventListener("message", onLoadBoard);
   };
 };
 

@@ -83,6 +83,33 @@
   color: var(--color-text-muted, #5b6676);
 }
 
+/* "Saving…" — animated so a slow write does not look like a frozen label. */
+.status__saving {
+  color: var(--color-text-muted, #5b6676);
+  animation: status-pulse 1.4s ease-in-out infinite;
+}
+
+/* "Saved" — green only once the write is actually confirmed. */
+.status__saved {
+  color: var(--color-success, #1a7f47);
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status__saving {
+    animation: none;
+  }
+}
+
 /*
  * The editor's viewport.
  *
