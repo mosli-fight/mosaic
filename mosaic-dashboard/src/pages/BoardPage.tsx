@@ -118,18 +118,19 @@ export const BoardPage = () => {
   return (
     <div className={styles.page} data-testid="board-page">
       {/**
-       * Slim bar, not a page header. It carries the board name and the way back,
-       * and it is fixed-height so the editor gets every remaining pixel.
+       * Slim bar, not a page header. It carries the board name and the save
+       * state, and it is fixed-height so the editor gets every remaining pixel.
+       *
+       * The back link that used to sit here is gone: the editor renders its own
+       * "← Back to dashboard" in its footer, so the page had two of them on
+       * screen at once, one top-left and one bottom-right. Removing only this
+       * one leaves the footer control as the single way back.
+       *
+       * Do not add a replacement here, and do not add one to the MainMenu — the
+       * footer already covers it.
        */}
       <div className={styles.bar}>
         <div className={styles.bar__left}>
-          <a
-            className={styles.back}
-            href="/dashboard"
-            data-testid="back-to-dashboard"
-          >
-            ← {t("editor.back")}
-          </a>
           <span className={styles.name}>{board?.name ?? "…"}</span>
         </div>
         {saveState === "saving" ? (

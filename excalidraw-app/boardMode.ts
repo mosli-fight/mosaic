@@ -354,9 +354,24 @@ export const startBoardAutosave = (
  * URL for the "back to dashboard" control.
  *
  * In the Docker/nginx deployment the dashboard *is* the root (`/` serves
- * mosaic-dashboard and `/app/` serves this editor), so `/` is correct. The
- * `VITE_DASHBOARD_URL` override exists for deployments that mount the dashboard
- * under a sub-path.
+ * mosaic-dashboard and `/app/` serves this editor), so `/` is correct there.
+ * The `VITE_DASHBOARD_URL` override exists for deployments that mount the
+ * dashboard somewhere else.
+ *
+ * The default is `/dashboard`, not `/`, and that difference matters.
+ *
+ * `/` is the site root, and on Vercel it serves the dashboard's `index.html`,
+ * which then redirects to `/dashboard` with a `<Navigate replace>`. A redirect
+ * cannot be relied on to complete from inside an iframe: the editor frame
+ * navigates to `/`, the dashboard's client-side router takes over, and the
+ * nested navigation is what the old footer link was doing when Task 1 removed
+ * the board page's header duplicate. Pointing straight at `/dashboard` removes
+ * the hop, and `/dashboard` is a real route in both deployments, so this stays
+ * correct for nginx as well.
+ *
+ * Verified: with `/`, the link resolved to `http://localhost:3101/` and a click
+ * timed out waiting for `**\/dashboard**`. With `/dashboard` there is nothing to
+ * redirect through.
  */
 export const dashboardUrl = (): string =>
-  (import.meta.env.VITE_DASHBOARD_URL as string | undefined) ?? "/";
+  (import.meta.env.VITE_DASHBOARD_URL as string | undefined) ?? "/dashboard";

@@ -181,7 +181,13 @@ test.describe("Editor integration", () => {
     // re-created editor with an empty root. That is a browser/environment
     // artefact, not Mosaic behaviour, and asserting it here would produce a
     // permanently red suite. Recorded in memory/REFERENCE.md.
-    await page.getByTestId("back-to-dashboard").click();
+    //
+    // The link is the editor footer's, reached through the iframe. The board
+    // page's own header link was removed in Task 1 because it duplicated this one.
+    await page
+      .frameLocator('[data-testid="editor-frame"]')
+      .getByTestId("back-to-dashboard")
+      .click();
     await waitForDashboard(page);
     await expect(page.getByTestId(`board-thumb-${id}`)).toBeVisible({
       timeout: 20_000,
@@ -215,19 +221,35 @@ test.describe("Editor integration", () => {
       .toBe(true);
   });
 
-  test("shows the back-to-dashboard control only in board mode", async ({
+  test("shows exactly one back-to-dashboard control, in the footer", async ({
     page,
   }) => {
     const id = await createBoard(page);
     await page.getByTestId(`board-card-${id}`).click();
     await page.waitForURL(`**/board/${id}`);
 
-    // The dashboard-side control.
-    await expect(page.getByTestId("back-to-dashboard")).toBeVisible();
+    /**
+     * The board page used to render its own "← Back to dashboard" in the top
+     * bar while the editor rendered a second one in its footer, so both were on
+     * screen together. Task 1 removed the header one, leaving the footer as the
+     * single way back.
+     *
+     * The assertion is on the count rather than on either being absent or
+     * present, because "one control" is the actual requirement: a second one
+     * creeping back in is as wrong as the original one being there.
+     */
+    const inPage = await page.getByTestId("back-to-dashboard").count();
+    expect(inPage, "the board page itself must not render a back link").toBe(0);
 
-    // The editor's own footer link, rendered inside the iframe in board mode.
     const frame = page.frameLocator('[data-testid="editor-frame"]');
-    await expect(frame.getByTestId("back-to-dashboard")).toBeVisible();
+    await expect(
+      frame.getByTestId("back-to-dashboard"),
+      "the editor footer keeps the back link",
+    ).toBeVisible();
+
+    // And it works, rather than merely being present.
+    await frame.getByTestId("back-to-dashboard").click();
+    await page.waitForURL("**/dashboard**");
   });
 
   test("keeps the dashboard usable after returning from the editor", async ({
@@ -239,7 +261,10 @@ test.describe("Editor integration", () => {
     const { canvas } = editorCanvas(page);
     await waitForCanvas(page, canvas);
 
-    await page.getByTestId("back-to-dashboard").click();
+    await page
+      .frameLocator('[data-testid="editor-frame"]')
+      .getByTestId("back-to-dashboard")
+      .click();
     await waitForDashboard(page);
     await expect(page.getByTestId(`board-card-${id}`)).toBeVisible();
   });
