@@ -21,7 +21,9 @@ const readBoardRow = (page, id: string) =>
       req.onsuccess = () => res(req.result);
       req.onerror = () => rej(req.error);
     });
-    if (!rec) return { found: false };
+    if (!rec) {
+      return { found: false };
+    }
     let elementCount = -1;
     try {
       elementCount = JSON.parse(rec.scene ?? "{}").elements?.length ?? 0;
@@ -43,7 +45,9 @@ test("STEP 2.5.1 local: bridge persists the scene to IndexedDB", async ({
   const saves: string[] = [];
   page.on("console", (m) => {
     const text = m.text();
-    if (/mosaic/.test(text)) saves.push(text.slice(0, 160));
+    if (/mosaic/.test(text)) {
+      saves.push(text.slice(0, 160));
+    }
   });
 
   await page.goto(`${LOCAL}/dashboard`);
@@ -57,6 +61,7 @@ test("STEP 2.5.1 local: bridge persists the scene to IndexedDB", async ({
     .locator("canvas.excalidraw__canvas.interactive");
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await page.screenshot({ path: "task2-debug-before.png" });
+  // eslint-disable-next-line no-console
   console.log(`A_CANVAS_VISIBLE: true`);
 
   // Excalidraw boots with the *select* tool, and dragging with it pans nothing
@@ -95,7 +100,9 @@ test("STEP 2.5.1 local: bridge persists the scene to IndexedDB", async ({
   let pillSeen = "";
   const pillWatch = setInterval(async () => {
     try {
-      const text = await page.getByTestId("save-status").innerText({ timeout: 400 });
+      const text = await page
+        .getByTestId("save-status")
+        .innerText({ timeout: 400 });
       if (text && text !== pillSeen) {
         pillSeen = text;
       }
@@ -103,19 +110,25 @@ test("STEP 2.5.1 local: bridge persists the scene to IndexedDB", async ({
       /* not visible */
     }
   }, 150);
-  await page.locator('[data-testid="editor-frame"]').click({ position: { x: 5, y: 5 } });
+  await page
+    .locator('[data-testid="editor-frame"]')
+    .click({ position: { x: 5, y: 5 } });
   await page.keyboard.press("Control+s");
   await page.waitForTimeout(2500);
   clearInterval(pillWatch);
+  // eslint-disable-next-line no-console
   console.log(`A_PILL_TEXT_SEEN: ${JSON.stringify(pillSeen)}`);
 
   const saved = await readBoardRow(page, boardId);
+  // eslint-disable-next-line no-console
   console.log(`B_IDB_ROW_AFTER_SAVE: ${JSON.stringify(saved)}`);
+  // eslint-disable-next-line no-console
   console.log(`C_MOSAIC_CONSOLE: ${JSON.stringify(saves.slice(-4))}`);
 
   await page.goto(`${LOCAL}/board/${boardId}`);
   await page.waitForTimeout(6000);
   const afterReload = await readBoardRow(page, boardId);
+  // eslint-disable-next-line no-console
   console.log(`D_IDB_ROW_AFTER_RELOAD: ${JSON.stringify(afterReload)}`);
 
   expect(saved.found).toBe(true);
