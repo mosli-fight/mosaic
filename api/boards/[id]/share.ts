@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { json, query } from "../../_db.js";
+import { json, pathSegmentAfter, query } from "../../_db.js";
 
 import { ownerScope, resolveActor } from "../../_owner.js";
 
@@ -63,7 +63,7 @@ export default async function handler(
       return;
     }
 
-    const id = ctx?.params?.id ?? "";
+    const id = ctx?.params?.id ?? pathSegmentAfter(req, "boards");
     if (!uuidRe.test(id)) {
       json(res, { error: "invalid board id" }, 400);
       return;

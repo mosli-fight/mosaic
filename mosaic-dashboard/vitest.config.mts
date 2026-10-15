@@ -10,7 +10,16 @@ import path from "path";
  * import here in `setupFiles` so every test file gets it first.
  */
 export default defineConfig({
-  plugins: [react()],
+  /**
+   * `fastRefresh: false` is what makes component tests possible.
+   *
+   * With fast refresh on, the plugin injects a runtime that expects the dev-server
+   * preamble (`transformIndexHtml` output) to be present on the page. Vitest has no
+   * such HTML, so every render of a `.tsx` module threw "@vitejs/plugin-react can't
+   * detect preamble" before a single assertion ran. Disabling refresh leaves the
+   * automatic JSX runtime — which is all these tests need.
+   */
+  plugins: [react({ fastRefresh: false })],
   resolve: {
     alias: [
       {

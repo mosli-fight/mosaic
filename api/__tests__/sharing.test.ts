@@ -206,6 +206,62 @@ describe("POST /api/boards/[id]/share", () => {
     await share(req({ method: "PUT" }), res, { params: { id: ID } });
     expect(res.statusCode).toBe(405);
   });
+
+  /**
+   * The regression this suite exists for.
+   *
+   * Vercel's Node runtime has been observed invoking these handlers with the context
+   * argument undefined, so a handler that read only `ctx.params.id` answered 400 on
+   * every real request. Every test above passes a context, so the suite stayed green
+   * while the Share dialog showed "Could not share this board" to every user.
+   */
+  it("mints a token when the framework supplies no context", async () => {
+    on(/SELECT share_token, share_mode/i, []);
+    on(/UPDATE boards b SET share_token/i, [
+      { share_token: "x", share_mode: "view" },
+    ]);
+
+    const res = makeRes();
+    await share(req({ method: "POST", url: `/api/boards/${ID}/share` }), res);
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.share.token).toMatch(/^[0-9a-f]{64}$/);
+    expect(sqls("UPDATE boards b SET share_token")[0].params[0]).toBe(ID);
+  });
+
+  it("mints a token from a url carrying a query string", async () => {
+    on(/SELECT share_token, share_mode/i, []);
+    on(/UPDATE boards b SET share_token/i, [
+      { share_token: "x", share_mode: "view" },
+    ]);
+
+    const res = makeRes();
+    await share(
+      req({ method: "POST", url: `/api/boards/${ID}/share?from=card` }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(201);
+  });
+
+  it("revokes from the url when there is no context", async () => {
+    on(/UPDATE boards b SET share_token = NULL/i, [
+      { share_token: TOKEN, share_mode: "view" },
+    ]);
+
+    const res = makeRes();
+    await share(req({ method: "DELETE", url: `/api/boards/${ID}/share` }), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(sqls("UPDATE boards b SET share_token = NULL")[0].params[0]).toBe(ID);
+  });
+
+  it("still rejects a malformed id taken from the url", async () => {
+    const res = makeRes();
+    await share(req({ method: "POST", url: "/api/boards/nope/share" }), res);
+    expect(res.statusCode).toBe(400);
+    expect(state.calls).toHaveLength(0);
+  });
 });
 
 /* -------------------------------------------------------------------------- */
@@ -315,6 +371,31 @@ describe("GET /api/boards/shared/[token]", () => {
       params: { token: TOKEN },
     });
     expect(res.statusCode).toBe(405);
+  });
+
+  /**
+   * The same missing-context regression as the minting route. A link that cannot be
+   * read is not a working share link, so the public half is fixed with the same
+   * `pathSegmentAfter` fallback rather than left to break next.
+   */
+  it("serves a live shared board when the framework supplies no context", async () => {
+    on(/FROM boards/i, [boardRow()]);
+
+    const res = makeRes();
+    await publicRead(
+      req({ url: `/api/boards/shared/${TOKEN}` }),
+      res,
+      undefined,
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.board.name).toBe("Shared board");
+    expect(state.calls[0].params[0]).toBe(TOKEN);
+  });
+
+  it("404s a request whose path carries no token at all", async () => {
+    await publicRead(req({ url: "/api/boards/shared" }), makeRes(), undefined);
+    expect(state.calls).toHaveLength(0);
   });
 });
 
