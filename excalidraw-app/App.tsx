@@ -150,10 +150,12 @@ import { ExcalidrawPlusPromoBanner } from "./components/ExcalidrawPlusPromoBanne
 import { AppSidebar } from "./components/AppSidebar";
 
 import {
+  announceBoardReady,
   getBoardIdFromHash,
   markBoardOpened,
   parseStoredScene,
   readBoardRecord,
+  requestSceneFromParent,
   startBoardAutosave,
 } from "./boardMode";
 import { fetchSharedBoard, getShareTokenFromHash } from "./shareMode";
@@ -595,11 +597,24 @@ const ExcalidrawWrapper = () => {
 
       void (async () => {
         try {
-          const record = await readBoardRecord(boardId);
+          // Where the scene comes from depends on who owns storage.
+          //
+          // Framed: the dashboard does. It reads through its own storage adapter,
+          // which knows whether this deployment persists to IndexedDB or to the
+          // API. Reading IndexedDB from here instead would return nothing on the
+          // API deployment, so the editor would always open an empty board.
+          //
+          // Top level: nobody else is involved, so read our own database.
+          const framed = window.parent !== window;
+          const record = framed
+            ? await requestSceneFromParent(boardId)
+            : await readBoardRecord(boardId);
           if (cancelled) {
             return;
           }
-          const stored = parseStoredScene(record?.scene);
+          const stored = parseStoredScene(
+            typeof record === "string" ? record : record?.scene,
+          );
 
           initialStatePromiseRef.current.promise.resolve(
             stored
@@ -620,6 +635,7 @@ const ExcalidrawWrapper = () => {
           await markBoardOpened(boardId);
           if (!cancelled) {
             disposeAutosave = startBoardAutosave(boardId, excalidrawAPI);
+            announceBoardReady(boardId);
           }
         } catch (error) {
           // Board mode is an add-on; a failure here must not blank the editor.
