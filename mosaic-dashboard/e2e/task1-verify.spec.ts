@@ -23,6 +23,7 @@ test("Task 1: header back link removed, footer link intact and working", async (
 
   // (a) no back control in the board page's own header
   const headerLinks = await page.getByTestId("back-to-dashboard").count();
+  // eslint-disable-next-line no-console
   console.log(`A_HEADER_BACK_LINKS: ${headerLinks}`);
   expect(headerLinks, "board page must not render a back link").toBe(0);
 
@@ -32,6 +33,7 @@ test("Task 1: header back link removed, footer link intact and working", async (
     const bar = page_?.querySelector("div");
     return bar?.textContent?.trim() ?? "(none)";
   });
+  // eslint-disable-next-line no-console
   console.log(`B_TOP_LEFT_TEXT: ${topLeft}`);
   expect(topLeft).not.toMatch(/back to dashboard/i);
 
@@ -41,9 +43,11 @@ test("Task 1: header back link removed, footer link intact and working", async (
   await expect(footerLink, "footer back link must be present").toBeVisible({
     timeout: 30_000,
   });
+  // eslint-disable-next-line no-console
   console.log(`C_FOOTER_TEXT: ${(await footerLink.innerText()).trim()}`);
 
   const href = await footerLink.getAttribute("href");
+  // eslint-disable-next-line no-console
   console.log(`C_FOOTER_HREF: ${href}`);
 
   // (d) the hamburger menu has no back-to-dashboard item
@@ -54,6 +58,7 @@ test("Task 1: header back link removed, footer link intact and working", async (
     .locator(".App-menu, [role='menu']")
     .first()
     .innerText();
+  // eslint-disable-next-line no-console
   console.log(`D_MENU_TEXT: ${menuText.replace(/\s+/g, " ").slice(0, 200)}`);
   expect(menuText.toLowerCase()).not.toContain("back to dashboard");
   await page.keyboard.press("Escape");
@@ -68,5 +73,6 @@ test("Task 1: header back link removed, footer link intact and working", async (
   // above so a broken link cannot pass silently.
   await frame.getByTestId("back-to-dashboard").click({ force: true });
   await page.waitForURL("**/dashboard**", { timeout: 30_000 });
+  // eslint-disable-next-line no-console
   console.log(`E_NAVIGATED_TO: ${page.url()}`);
 });
