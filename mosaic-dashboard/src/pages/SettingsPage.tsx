@@ -59,7 +59,7 @@ export const SettingsPage = () => {
         confirmLabel={t("common.delete")}
         onCancel={() => setConfirming(false)}
         onConfirm={() => {
-          void resetDatabase().then(reload);
+          void resetDatabase().then(() => reload());
           setConfirming(false);
         }}
       />

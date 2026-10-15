@@ -40,6 +40,7 @@ const en: Dictionary = {
   "board.empty.favorites": "You have not favorited any boards yet.",
   "board.empty.trash": "Trash is empty.",
   "board.empty.folder": "This folder is empty.",
+  "board.loading": "Loading boards",
 
   "board.action.open": "Open",
   "board.action.rename": "Rename",
