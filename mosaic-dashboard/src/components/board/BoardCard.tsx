@@ -13,6 +13,7 @@ import type { Board } from "@/db/schema";
 import type { BoardStats } from "@/lib/storage/types";
 
 import { MosaicMark } from "@/components/common/MosaicMark";
+import { Modal } from "@/components/common/Modal";
 import { downloadBoard } from "@/lib/download";
 import { t } from "@/lib/i18n";
 import { relativeTime } from "@/lib/selectors";
@@ -30,7 +31,11 @@ import { useDashboardStore } from "@/state/useDashboardStore";
  *  - star button          → favourite toggle, stops propagation so it does not
  *                           also open the board
  *  - "..." button         → context menu (open/rename/duplicate/move/download/
- *                           trash/delete forever)
+ *                           share/trash/delete forever)
+ *
+ * "Delete forever" is the exception to "menu items act immediately": it opens a
+ * confirm dialog, because it is the only action here that leaves no recovery path —
+ * not the trash, not the 30-day purge.
  *
  * All the data mutation goes through the store, which wraps the DB call and
  * refreshes. The card itself never touches Dexie.
@@ -60,6 +65,10 @@ export const BoardCard = ({
   // STEP 5: which board, if any, has the share dialog open. Local to the card so
   // two cards on screen cannot both hold a dialog.
   const [sharing, setSharing] = useState(false);
+  // "Delete forever" is the one menu item that cannot be undone and cannot be
+  // recovered from the trash afterwards, so it opens a confirm dialog rather than
+  // firing on click — the same shape as the editor's Clear canvas dialog.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const renameBoard = useDashboardStore((s) => s.renameBoard);
   const toggleFavorite = useDashboardStore((s) => s.toggleFavorite);
@@ -86,7 +95,12 @@ export const BoardCard = ({
    * open the board. The `menuOpen` check short-circuits that: while the menu is
    * open, clicks coming from it must not be treated as a card activation.
    *
-   * Ctrl/Cmd+click opens a new tab.
+   * `confirmingDelete` is guarded for the same reason: the confirm dialog is
+   * another portal under this card, and the dialog's Cancel and Delete buttons
+   * live inside a node that stops propagation, but a stray click on the backdrop
+   * must never also open the board.
+   *
+   * Ctrl/Cmd click opens a new tab.
    *
    * This cannot be done with an `<a href>` wrapper, because the card contains
    * buttons and an input for select, rename and the overflow menu, and nesting
@@ -100,7 +114,7 @@ export const BoardCard = ({
    * is the one case an anchor would have given for free.
    */
   const handleClick = (event: React.MouseEvent) => {
-    if (renaming || menuOpen) {
+    if (renaming || menuOpen || confirmingDelete) {
       return;
     }
     if (event.shiftKey) {
@@ -288,7 +302,21 @@ export const BoardCard = ({
           onShare: () => setSharing(true),
           onTrash: () => void trashBoard(board.id),
           onRestore: () => void restoreBoard(board.id),
-          onDeleteForever: () => void deleteBoardForever(board.id),
+          onDeleteForever: () => setConfirmingDelete(true),
+        }}
+      />
+
+      <Modal
+        open={confirmingDelete}
+        title={t("board.delete.title")}
+        description={t("board.delete.body", { name: board.name })}
+        confirmLabel={t("board.action.deleteForever")}
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={() => {
+          // Closed first so the dialog cannot be left open over a card that no
+          // longer exists, and so a second click cannot queue a second delete.
+          setConfirmingDelete(false);
+          void deleteBoardForever(board.id);
         }}
       />
 

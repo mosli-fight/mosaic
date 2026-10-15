@@ -58,6 +58,9 @@ const en: Dictionary = {
   "board.share.failed": "Could not share this board.",
   "board.action.restore": "Restore",
   "board.action.deleteForever": "Delete forever",
+  "board.delete.title": "Delete this board forever?",
+  "board.delete.body":
+    '"{name}" will be permanently deleted. This cannot be undone.',
   "board.action.favorite": "Add to favorites",
   "board.action.unfavorite": "Remove from favorites",
   "board.action.unfiled": "Unfiled",

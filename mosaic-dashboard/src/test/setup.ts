@@ -4,6 +4,7 @@ import { beforeEach } from "vitest";
 // time, so the fake implementation has to be installed before `@/db` is imported
 // anywhere in the test graph.
 import "fake-indexeddb/auto";
+import "@testing-library/jest-dom/vitest";
 
 import { resetDatabase } from "@/lib/storage";
 
