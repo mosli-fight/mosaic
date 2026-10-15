@@ -5,6 +5,24 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: [
+      /**
+       * `@mosaic/brand` is a workspace TypeScript source package with no build
+       * step, exactly like the `@excalidraw/*` ones below. `packages/common`
+       * imports it for `BRAND_NAME`, so without this alias every test that pulls
+       * in `@excalidraw/common` fails to resolve it and the whole editor suite
+       * errors before a single assertion runs.
+       */
+      {
+        find: /^@mosaic\/brand$/,
+        replacement: path.resolve(
+          __dirname,
+          "./packages/mosaic-brand/src/index.ts",
+        ),
+      },
+      {
+        find: /^@mosaic\/brand\/(.*?)/,
+        replacement: path.resolve(__dirname, "./packages/mosaic-brand/src/$1"),
+      },
       {
         find: /^@excalidraw\/common$/,
         replacement: path.resolve(__dirname, "./packages/common/src/index.ts"),

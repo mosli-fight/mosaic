@@ -434,14 +434,14 @@ exports[`<Excalidraw/> > Test UIOptions prop > Test canvasActions > should rende
       </div>
     </button>
     <button
-      aria-label="Reset the canvas"
+      aria-label="Clear canvas"
       class="radix-menu-item dropdown-menu-item dropdown-menu-item-base"
       data-orientation="vertical"
       data-radix-collection-item=""
       data-testid="clear-canvas-button"
       role="menuitem"
       tabindex="-1"
-      title="Reset the canvas"
+      title="Clear canvas"
     >
       <div
         class="dropdown-menu-item__icon"
@@ -469,7 +469,7 @@ exports[`<Excalidraw/> > Test UIOptions prop > Test canvasActions > should rende
         <span
           style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
         >
-          Reset the canvas
+          Clear canvas
         </span>
       </div>
     </button>
