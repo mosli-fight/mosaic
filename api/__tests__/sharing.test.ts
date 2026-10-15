@@ -253,7 +253,9 @@ describe("POST /api/boards/[id]/share", () => {
     await share(req({ method: "DELETE", url: `/api/boards/${ID}/share` }), res);
 
     expect(res.statusCode).toBe(200);
-    expect(sqls("UPDATE boards b SET share_token = NULL")[0].params[0]).toBe(ID);
+    expect(sqls("UPDATE boards b SET share_token = NULL")[0].params[0]).toBe(
+      ID,
+    );
   });
 
   it("still rejects a malformed id taken from the url", async () => {

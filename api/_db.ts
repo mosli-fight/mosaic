@@ -361,7 +361,7 @@ export const pathSegmentAfter = (req: ApiRequest, marker: string): string => {
   const path = (req.url ?? "").split("?")[0];
   const segments = path.split("/").filter(Boolean);
   const index = segments.lastIndexOf(marker);
-  return index === -1 ? "" : (segments[index + 1] ?? "");
+  return index === -1 ? "" : segments[index + 1] ?? "";
 };
 
 /* -------------------------------------------------------------------------- */
