@@ -3,8 +3,12 @@ import { describe, expect, it } from "vitest";
 import type { Board, Folder } from "@/db/schema";
 
 import {
+  UNKNOWN_TIME_LABEL,
+  boardActivityLabel,
+  boardActivityTimestamp,
   countBoardsInFolder,
   daysUntilPurge,
+  exactTimestamp,
   formatBytes,
   matchesQuery,
   pluralize,
@@ -192,6 +196,72 @@ describe("formatting helpers", () => {
     const now = Date.now();
     expect(relativeTime(now - 2 * HOUR, now)).toMatch(/hour/);
     expect(relativeTime(now - 3 * 24 * HOUR, now)).toMatch(/day/);
+  });
+
+  /**
+   * The board-card cases QA reported as a wrong relative time.
+   *
+   * A board created minutes ago rendering a 7-day-scale number is what a missing or
+   * zeroed timestamp looks like: `reference - null` is the epoch and
+   * `reference - 0` is the epoch, so both produced "57 years ago", and
+   * `?? board.updatedAt` cannot rescue `lastOpenedAt: 0` because nullish
+   * coalescing does not treat zero as nullish.
+   */
+  it("refuses to invent an age from a timestamp it cannot use", () => {
+    const now = Date.now();
+    expect(relativeTime(Number.NaN, now)).toBe(UNKNOWN_TIME_LABEL);
+    expect(relativeTime(Number.POSITIVE_INFINITY, now)).toBe(
+      UNKNOWN_TIME_LABEL,
+    );
+    // Zero is the null sentinel on a never-opened row, not 1 January 1970.
+    expect(relativeTime(0, now)).toBe(UNKNOWN_TIME_LABEL);
+    expect(relativeTime(-1, now)).toBe(UNKNOWN_TIME_LABEL);
+  });
+
+  it("does not render a future timestamp as future work", () => {
+    const now = Date.now();
+    // Clock skew between the writer and the reader is milliseconds, not a promise.
+    expect(relativeTime(now + 10 * 60 * 1000, now)).toBe("now");
+  });
+
+  it("still labels a board that was opened minutes ago in minutes", () => {
+    const now = Date.now();
+    const fresh = board({ updatedAt: now - 5 * 60 * 1000, lastOpenedAt: null });
+    expect(boardActivityLabel(fresh, now)).toMatch(/minute/);
+    expect(boardActivityTimestamp(fresh)).toBe(fresh.updatedAt);
+  });
+
+  it("prefers the last-opened time and falls back to the last edit", () => {
+    const now = Date.now();
+    const opened = board({
+      lastOpenedAt: now - 2 * HOUR,
+      updatedAt: now - 30 * 24 * HOUR,
+    });
+    expect(boardActivityLabel(opened, now)).toMatch(/hour/);
+
+    const neverOpened = board({
+      lastOpenedAt: null,
+      updatedAt: now - 2 * HOUR,
+    });
+    expect(boardActivityLabel(neverOpened, now)).toMatch(/hour/);
+  });
+
+  it("treats a zeroed lastOpenedAt as never opened, not as the epoch", () => {
+    const now = Date.now();
+    const row = board({ lastOpenedAt: 0, updatedAt: now - 2 * HOUR });
+    // `??` does not fall through on zero, so this is the case that used to slip
+    // past the fallback and render a 57-year-old board.
+    expect(boardActivityTimestamp(row)).toBe(row.updatedAt);
+    expect(boardActivityLabel(row, now)).toMatch(/hour/);
+  });
+
+  it("answers the unknown label when no timestamp survives", () => {
+    const row = board({ lastOpenedAt: null, updatedAt: null as never });
+    expect(boardActivityTimestamp(row)).toBeNull();
+    expect(boardActivityLabel(row)).toBe(UNKNOWN_TIME_LABEL);
+    // The tooltip must be absent rather than saying "Invalid Date".
+    expect(exactTimestamp(null)).toBe("");
+    expect(exactTimestamp(Date.now())).not.toBe("");
   });
 
   it("daysUntilPurge counts down and floors at zero", () => {

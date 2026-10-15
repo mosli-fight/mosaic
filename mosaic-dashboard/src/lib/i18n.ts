@@ -74,6 +74,8 @@ const en: Dictionary = {
   "board.rename.placeholder": "Board name",
   "board.rename.save": "Save name",
   "board.untitled": "Untitled board",
+  "board.card.editsWeek": "{edits} · last 7 days",
+  "board.card.editsWeekTitle": "{edits} all time",
 
   "board.bulk.selected": "{count} selected",
   "board.bulk.clear": "Clear selection",

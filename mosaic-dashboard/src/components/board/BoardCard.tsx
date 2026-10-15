@@ -16,7 +16,12 @@ import { MosaicMark } from "@/components/common/MosaicMark";
 import { Modal } from "@/components/common/Modal";
 import { downloadBoard } from "@/lib/download";
 import { t } from "@/lib/i18n";
-import { relativeTime } from "@/lib/selectors";
+import {
+  boardActivityLabel,
+  boardActivityTimestamp,
+  exactTimestamp,
+  pluralize,
+} from "@/lib/selectors";
 
 import { useDashboardStore } from "@/state/useDashboardStore";
 
@@ -141,6 +146,19 @@ export const BoardCard = ({
     }
   };
 
+  /**
+   * When this board was last touched, as a label and as an exact timestamp.
+   *
+   * Derived here rather than inline because the same two values are needed in
+   * different shapes: the label goes in the text, the timestamp in the `title`.
+   * `boardActivityTimestamp` returning null is a real case - an API row whose
+   * `timestamptz` could not be parsed - and it renders a dash rather than a
+   * confident lie. See `selectors.ts`.
+   */
+  const activityTimestamp = boardActivityTimestamp(board);
+  const label = boardActivityLabel(board);
+  const exact = exactTimestamp(activityTimestamp);
+
   return (
     <div
       className={[
@@ -264,13 +282,38 @@ export const BoardCard = ({
         )}
 
         <div className={styles.meta}>
-          <span>{relativeTime(board.lastOpenedAt ?? board.updatedAt)}</span>
-          {stats && stats.total > 0 ? (
+          {/**
+           * The time, and the exact time behind it.
+           *
+           * `title` carries the absolute timestamp because the relative label is a
+           * summary and this is a board card — nobody needs to read "2 hours ago"
+           * to know when a meeting is, but "2 hours ago" next to "2 edits · 7d" used
+           * to be the only thing on the row saying *when* this was touched.
+           */}
+          <span title={exact} data-testid={`age-${board.id}`}>
+            {label}
+          </span>
+          {/**
+           * The activity chip, and only when there is activity in the window it
+           * describes.
+           *
+           * Two fixes over the previous `stats.total > 0`: a board last touched
+           * three months ago used to render "0 edits · 7d" because its *total* was
+           * non-zero, and the string was indistinguishable from the time beside it.
+           * It is now pluralised through `pluralize` (so "1 edit", not "1 edits") and
+           * says which window it is counting.
+           */}
+          {stats && stats.last7Days > 0 ? (
             <span
               className={styles.statsChip}
               data-testid={`stats-${board.id}`}
+              title={t("board.card.editsWeekTitle", {
+                edits: pluralize(stats.total, "edit"),
+              })}
             >
-              {stats.last7Days} edits · 7d
+              {t("board.card.editsWeek", {
+                edits: pluralize(stats.last7Days, "edit"),
+              })}
             </span>
           ) : null}
         </div>
