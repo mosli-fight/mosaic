@@ -5,6 +5,7 @@ import styles from "./ShareModal.module.scss";
 import { Modal } from "@/components/common/Modal";
 import { authEnabled } from "@/lib/auth";
 import { t } from "@/lib/i18n";
+import { apiBaseUrl } from "@/lib/storage";
 
 /**
  * Share-a-board dialog (STEP 5).
@@ -56,7 +57,7 @@ export const ShareModal = ({
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch(`/api/boards/${boardId}/share`, {
+        const res = await fetch(`${apiBaseUrl}/api/boards/${boardId}/share`, {
           method: "POST",
           credentials: "include",
           headers: { "content-type": "application/json" },
@@ -106,7 +107,7 @@ export const ShareModal = ({
   const handleRevoke = async () => {
     setBusy(true);
     try {
-      const res = await fetch(`/api/boards/${boardId}/share`, {
+      const res = await fetch(`${apiBaseUrl}/api/boards/${boardId}/share`, {
         method: "DELETE",
         credentials: "include",
       });

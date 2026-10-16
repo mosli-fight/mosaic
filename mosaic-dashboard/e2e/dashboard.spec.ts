@@ -127,12 +127,17 @@ test.describe("Dashboard", () => {
     await page.getByTestId("nav-all-boards").click();
     await expect(page.getByTestId(`board-card-${id}`)).toBeVisible();
 
-    // Trash again, then destroy permanently.
+    // Trash again, then destroy permanently. Deleting forever is irreversible, so
+    // it asks first — same shape as the editor's Clear canvas dialog.
     await openBoardMenu(page, id);
     await page.getByTestId("menu-trash").click();
     await page.getByTestId("nav-trash").click();
     await openBoardMenu(page, id);
     await page.getByTestId("menu-delete-forever").click();
+    await expect(page.getByTestId("modal")).toBeVisible();
+    // Still there until the dialog is confirmed.
+    await expect(page.getByTestId(`board-card-${id}`)).toBeVisible();
+    await page.getByTestId("modal-confirm").click();
     await expect(page.getByTestId(`board-card-${id}`)).toHaveCount(0);
 
     // Gone from the sidebar counts too. The label and the count are separate

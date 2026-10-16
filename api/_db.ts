@@ -335,6 +335,35 @@ export const searchParams = (req: ApiRequest): URLSearchParams => {
   return new URL(req.url ?? "/", "http://localhost").searchParams;
 };
 
+/**
+ * The dynamic segment that follows `marker` in the request path.
+ *
+ * ## Why the URL is the source of truth
+ *
+ * Vercel's Node runtime has been observed invoking these handlers with the context
+ * argument `undefined`, so `ctx.params.x` is a crash ("Cannot read properties of
+ * undefined"), not a feature. Every route here therefore derives its parameter from
+ * the URL and treats the framework context as an optimisation when it happens to be
+ * supplied. A handler that reads `ctx?.params?.x ?? ""` and nothing else answers
+ * `400`/`404` on every real request while still passing every test, because the
+ * tests pass a context: that is exactly how sharing ended up permanently broken.
+ *
+ * ## Why a marker rather than an index
+ *
+ * `/api/boards/<id>` and `/api/boards/<id>/share` share a prefix but not a shape, so
+ * neither can use "the last segment". Anchoring on the literal that precedes the
+ * parameter (`boards`, `shared`) makes both correct, and keeps a route from having to
+ * know which other routes hang off it.
+ *
+ * Returns `""` when the marker is absent, which callers already treat as malformed.
+ */
+export const pathSegmentAfter = (req: ApiRequest, marker: string): string => {
+  const path = (req.url ?? "").split("?")[0];
+  const segments = path.split("/").filter(Boolean);
+  const index = segments.lastIndexOf(marker);
+  return index === -1 ? "" : segments[index + 1] ?? "";
+};
+
 /* -------------------------------------------------------------------------- */
 /* Row mapping                                                                 */
 /* -------------------------------------------------------------------------- */

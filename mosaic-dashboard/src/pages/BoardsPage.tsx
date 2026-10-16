@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
+import {
+  BoardGridSkeleton,
+  LOADING_BOARDS_LABEL,
+  LOADING_COUNT_LABEL,
+} from "@/components/board/BoardGridSkeleton";
 import { BoardGrid } from "@/components/board/BoardGrid";
 import { BoardToolbar } from "@/components/board/BoardToolbar";
 import { Modal } from "@/components/common/Modal";
@@ -26,6 +31,7 @@ export const BoardsPage = () => {
   const boards = useDashboardStore((s) => s.boards);
   const folders = useDashboardStore((s) => s.folders);
   const loadState = useDashboardStore((s) => s.loadState);
+  const hasLoaded = useDashboardStore((s) => s.hasLoaded);
   const query = useDashboardStore((s) => s.query);
   const sort = useDashboardStore((s) => s.sort);
 
@@ -53,6 +59,20 @@ export const BoardsPage = () => {
     : folderId
     ? folders.find((f) => f.id === folderId)?.name ?? t("nav.folders")
     : t("nav.allBoards");
+
+  /**
+   * True only before the first read has resolved.
+   *
+   * `idle` and `loading` both mean "we do not know yet", and both used to fall
+   * through to the empty state, which asserted "No boards yet / 0 boards" to anyone
+   * who already had boards. `hasLoaded` is what separates that from the genuine
+   * empty case, which only `hasLoaded` can answer.
+   *
+   * A refresh that runs over data already on screen does not re-enter this state:
+   * it keeps showing the previous rows rather than flashing a skeleton on every
+   * navigation.
+   */
+  const initialising = !hasLoaded && loadState !== "error";
 
   /**
    * Empty-state copy. Resolved as a pair of explicit keys rather than by string
@@ -109,7 +129,9 @@ export const BoardsPage = () => {
             }}
             data-testid="board-count"
           >
-            {pluralize(visible.length, "board")}
+            {initialising
+              ? LOADING_COUNT_LABEL
+              : pluralize(visible.length, "board")}
           </p>
         </div>
       </header>
@@ -129,8 +151,25 @@ export const BoardsPage = () => {
         />
       )}
 
-      {loadState === "loading" ? (
-        <p data-testid="loading">Loading…</p>
+      {initialising ? (
+        <>
+          <span
+            role="status"
+            data-testid="boards-loading-status"
+            className="dashboard-sr-only"
+            style={{
+              position: "absolute",
+              width: 1,
+              height: 1,
+              overflow: "hidden",
+              clipPath: "inset(50%)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {LOADING_BOARDS_LABEL}
+          </span>
+          <BoardGridSkeleton />
+        </>
       ) : visible.length === 0 ? (
         <div
           style={{

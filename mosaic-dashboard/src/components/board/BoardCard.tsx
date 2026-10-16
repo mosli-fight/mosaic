@@ -13,9 +13,15 @@ import type { Board } from "@/db/schema";
 import type { BoardStats } from "@/lib/storage/types";
 
 import { MosaicMark } from "@/components/common/MosaicMark";
+import { Modal } from "@/components/common/Modal";
 import { downloadBoard } from "@/lib/download";
 import { t } from "@/lib/i18n";
-import { relativeTime } from "@/lib/selectors";
+import {
+  boardActivityLabel,
+  boardActivityTimestamp,
+  exactTimestamp,
+  pluralize,
+} from "@/lib/selectors";
 
 import { useDashboardStore } from "@/state/useDashboardStore";
 
@@ -30,7 +36,11 @@ import { useDashboardStore } from "@/state/useDashboardStore";
  *  - star button          → favourite toggle, stops propagation so it does not
  *                           also open the board
  *  - "..." button         → context menu (open/rename/duplicate/move/download/
- *                           trash/delete forever)
+ *                           share/trash/delete forever)
+ *
+ * "Delete forever" is the exception to "menu items act immediately": it opens a
+ * confirm dialog, because it is the only action here that leaves no recovery path —
+ * not the trash, not the 30-day purge.
  *
  * All the data mutation goes through the store, which wraps the DB call and
  * refreshes. The card itself never touches Dexie.
@@ -60,6 +70,10 @@ export const BoardCard = ({
   // STEP 5: which board, if any, has the share dialog open. Local to the card so
   // two cards on screen cannot both hold a dialog.
   const [sharing, setSharing] = useState(false);
+  // "Delete forever" is the one menu item that cannot be undone and cannot be
+  // recovered from the trash afterwards, so it opens a confirm dialog rather than
+  // firing on click — the same shape as the editor's Clear canvas dialog.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const renameBoard = useDashboardStore((s) => s.renameBoard);
   const toggleFavorite = useDashboardStore((s) => s.toggleFavorite);
@@ -86,7 +100,12 @@ export const BoardCard = ({
    * open the board. The `menuOpen` check short-circuits that: while the menu is
    * open, clicks coming from it must not be treated as a card activation.
    *
-   * Ctrl/Cmd+click opens a new tab.
+   * `confirmingDelete` is guarded for the same reason: the confirm dialog is
+   * another portal under this card, and the dialog's Cancel and Delete buttons
+   * live inside a node that stops propagation, but a stray click on the backdrop
+   * must never also open the board.
+   *
+   * Ctrl/Cmd click opens a new tab.
    *
    * This cannot be done with an `<a href>` wrapper, because the card contains
    * buttons and an input for select, rename and the overflow menu, and nesting
@@ -100,7 +119,7 @@ export const BoardCard = ({
    * is the one case an anchor would have given for free.
    */
   const handleClick = (event: React.MouseEvent) => {
-    if (renaming || menuOpen) {
+    if (renaming || menuOpen || confirmingDelete) {
       return;
     }
     if (event.shiftKey) {
@@ -126,6 +145,19 @@ export const BoardCard = ({
       await renameBoard(board.id, name);
     }
   };
+
+  /**
+   * When this board was last touched, as a label and as an exact timestamp.
+   *
+   * Derived here rather than inline because the same two values are needed in
+   * different shapes: the label goes in the text, the timestamp in the `title`.
+   * `boardActivityTimestamp` returning null is a real case - an API row whose
+   * `timestamptz` could not be parsed - and it renders a dash rather than a
+   * confident lie. See `selectors.ts`.
+   */
+  const activityTimestamp = boardActivityTimestamp(board);
+  const label = boardActivityLabel(board);
+  const exact = exactTimestamp(activityTimestamp);
 
   return (
     <div
@@ -250,13 +282,38 @@ export const BoardCard = ({
         )}
 
         <div className={styles.meta}>
-          <span>{relativeTime(board.lastOpenedAt ?? board.updatedAt)}</span>
-          {stats && stats.total > 0 ? (
+          {/**
+           * The time, and the exact time behind it.
+           *
+           * `title` carries the absolute timestamp because the relative label is a
+           * summary and this is a board card — nobody needs to read "2 hours ago"
+           * to know when a meeting is, but "2 hours ago" next to "2 edits · 7d" used
+           * to be the only thing on the row saying *when* this was touched.
+           */}
+          <span title={exact} data-testid={`age-${board.id}`}>
+            {label}
+          </span>
+          {/**
+           * The activity chip, and only when there is activity in the window it
+           * describes.
+           *
+           * Two fixes over the previous `stats.total > 0`: a board last touched
+           * three months ago used to render "0 edits · 7d" because its *total* was
+           * non-zero, and the string was indistinguishable from the time beside it.
+           * It is now pluralised through `pluralize` (so "1 edit", not "1 edits") and
+           * says which window it is counting.
+           */}
+          {stats && stats.last7Days > 0 ? (
             <span
               className={styles.statsChip}
               data-testid={`stats-${board.id}`}
+              title={t("board.card.editsWeekTitle", {
+                edits: pluralize(stats.total, "edit"),
+              })}
             >
-              {stats.last7Days} edits · 7d
+              {t("board.card.editsWeek", {
+                edits: pluralize(stats.last7Days, "edit"),
+              })}
             </span>
           ) : null}
         </div>
@@ -288,7 +345,21 @@ export const BoardCard = ({
           onShare: () => setSharing(true),
           onTrash: () => void trashBoard(board.id),
           onRestore: () => void restoreBoard(board.id),
-          onDeleteForever: () => void deleteBoardForever(board.id),
+          onDeleteForever: () => setConfirmingDelete(true),
+        }}
+      />
+
+      <Modal
+        open={confirmingDelete}
+        title={t("board.delete.title")}
+        description={t("board.delete.body", { name: board.name })}
+        confirmLabel={t("board.action.deleteForever")}
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={() => {
+          // Closed first so the dialog cannot be left open over a card that no
+          // longer exists, and so a second click cannot queue a second delete.
+          setConfirmingDelete(false);
+          void deleteBoardForever(board.id);
         }}
       />
 

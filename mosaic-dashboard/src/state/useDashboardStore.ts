@@ -26,6 +26,16 @@ import { storage } from "@/lib/storage";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
+/**
+ * How to re-read from storage.
+ *
+ * `background` is the difference between "I have nothing to show, go fetch" and
+ * "what I am showing may be out of date, refresh it without taking the screen
+ * away". Without it, re-reading on navigation tore the grid down on every click
+ * and put a skeleton back up, which is worse than the staleness it fixed.
+ */
+export type ReloadOptions = { background?: boolean };
+
 type DashboardState = {
   boards: Board[];
   folders: Folder[];
@@ -33,13 +43,23 @@ type DashboardState = {
 
   loadState: LoadState;
   error: string | null;
+  /**
+   * True once a read has completed at least once, whatever it returned.
+   *
+   * `loadState` cannot answer "have we ever loaded?" on its own: `idle` is the
+   * pre-first-read state and `ready` is the steady state, but a page that renders
+   * the moment it mounts sees `idle` and cannot tell "no boards yet" apart from
+   * "not loaded yet" — which is exactly how the dashboard used to greet a returning
+   * user with "No boards yet / 0 boards" for a second before filling in.
+   */
+  hasLoaded: boolean;
 
   /** UI-only view state, not persisted. */
   selectedIds: string[];
   query: string;
   sort: BoardSort;
 
-  reload: () => Promise<void>;
+  reload: (options?: ReloadOptions) => Promise<void>;
 
   // board actions
   createBoard: (name?: string) => Promise<Board>;
@@ -95,19 +115,35 @@ const withReload =
   };
 
 export const useDashboardStore = create<DashboardState>((set, get) => {
+  /**
+   * Monotonic token for in-flight reads.
+   *
+   * Two reads can overlap — the boot read and a navigation refresh, or a refresh
+   * that lands while a mutation's own reload is still running. Without this the
+   * slower one wins and writes older rows over newer ones, which is a visible
+   * regression from a silent one, so the loser is discarded instead.
+   */
+  let latestRead = 0;
+
   return {
     boards: [],
     folders: [],
     activity: [],
     loadState: "idle",
     error: null,
+    hasLoaded: false,
 
     selectedIds: [],
     query: "",
     sort: "recent",
 
-    reload: async () => {
-      set({ loadState: "loading" });
+    reload: async ({ background = false }: ReloadOptions = {}) => {
+      const ticket = (latestRead += 1);
+      // A background refresh leaves `loadState` alone: the rows already on screen
+      // stay on screen until better ones arrive, which is the whole point.
+      if (!background) {
+        set({ loadState: "loading" });
+      }
       try {
         // `includeTrashed` is true here because the trash page needs the same
         // array; `selectBoards` is what scopes views down to live boards.
@@ -116,10 +152,24 @@ export const useDashboardStore = create<DashboardState>((set, get) => {
           storage.listFolders(),
           storage.listActivity(),
         ]);
-        set({ boards, folders, activity, loadState: "ready", error: null });
+        if (ticket !== latestRead) {
+          return;
+        }
+        set({
+          boards,
+          folders,
+          activity,
+          loadState: "ready",
+          hasLoaded: true,
+          error: null,
+        });
       } catch (error) {
+        if (ticket !== latestRead) {
+          return;
+        }
         set({
           loadState: "error",
+          hasLoaded: true,
           error: error instanceof Error ? error.message : String(error),
         });
       }

@@ -40,6 +40,7 @@ const en: Dictionary = {
   "board.empty.favorites": "You have not favorited any boards yet.",
   "board.empty.trash": "Trash is empty.",
   "board.empty.folder": "This folder is empty.",
+  "board.loading": "Loading boards",
 
   "board.action.open": "Open",
   "board.action.rename": "Rename",
@@ -58,6 +59,9 @@ const en: Dictionary = {
   "board.share.failed": "Could not share this board.",
   "board.action.restore": "Restore",
   "board.action.deleteForever": "Delete forever",
+  "board.delete.title": "Delete this board forever?",
+  "board.delete.body":
+    '"{name}" will be permanently deleted. This cannot be undone.',
   "board.action.favorite": "Add to favorites",
   "board.action.unfavorite": "Remove from favorites",
   "board.action.unfiled": "Unfiled",
@@ -70,6 +74,8 @@ const en: Dictionary = {
   "board.rename.placeholder": "Board name",
   "board.rename.save": "Save name",
   "board.untitled": "Untitled board",
+  "board.card.editsWeek": "{edits} · last 7 days",
+  "board.card.editsWeekTitle": "{edits} all time",
 
   "board.bulk.selected": "{count} selected",
   "board.bulk.clear": "Clear selection",

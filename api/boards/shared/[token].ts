@@ -1,4 +1,4 @@
-import { json, query, toBoard } from "../../_db.js";
+import { json, pathSegmentAfter, query, toBoard } from "../../_db.js";
 
 import type { ApiRequest, ApiResponse, BoardRow } from "../../_db.js";
 
@@ -37,7 +37,10 @@ export default async function handler(
       return;
     }
 
-    const token = ctx?.params?.token ?? "";
+    // From the URL, not from `ctx.params`: Vercel's Node runtime has been observed
+    // calling these handlers with the context argument undefined. Without this the
+    // token is always "" and every share link 404s — see `pathSegmentAfter`.
+    const token = ctx?.params?.token ?? pathSegmentAfter(req, "shared");
 
     // Shape check before the database. A token we could not have issued is not worth
     // a round trip, and 64 lowercase hex characters is exactly what we mint.

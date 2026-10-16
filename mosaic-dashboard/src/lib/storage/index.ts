@@ -38,6 +38,18 @@ export const usingApi = rawApiUrl !== undefined;
 const apiUrl = rawApiUrl ?? "";
 
 /**
+ * Base URL every server request must be built on.
+ *
+ * Exported rather than kept private because `ShareModal` mints its share link
+ * outside the adapter (there is no storage method for it). When that call used a
+ * bare `/api/...` it was correct only for the same-origin deployment; point
+ * `VITE_API_URL` at a different origin and the share request goes to the wrong host
+ * and fails with the same "Could not share this board" the broken route produced.
+ * One export means one place to get it right.
+ */
+export const apiBaseUrl = apiUrl;
+
+/**
  * The active adapter.
  *
  * In API mode the boards operations go to Neon and the not-yet-servered ones fall

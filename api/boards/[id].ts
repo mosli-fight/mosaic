@@ -1,4 +1,12 @@
-import { json, query, rateLimitOk, readJson, toBoard, toIso } from "../_db.js";
+import {
+  json,
+  pathSegmentAfter,
+  query,
+  rateLimitOk,
+  readJson,
+  toBoard,
+  toIso,
+} from "../_db.js";
 
 import { ownerScope, resolveActor } from "../_owner.js";
 
@@ -267,7 +275,7 @@ const handleDelete = async (
  * Vercel's Node runtime has been observed invoking this handler with the context
  * argument `undefined`, so `ctx.params.id` is a crash ("Cannot read properties of
  * undefined"), not a feature. `ctx?.params?.id` guards that, and the id is then
- * taken from the last path segment of `/api/boards/<id>`.
+ * taken from the path with the same helper the share and shared-token routes use.
  *
  * Deriving it from the URL is safe here because this file only ever serves one
  * route shape — there is no wildcard to disambiguate against.
@@ -275,14 +283,7 @@ const handleDelete = async (
 const boardIdFromRequest = (
   req: ApiRequest,
   ctx?: { params?: { id?: string } },
-): string => {
-  const fromContext = ctx?.params?.id;
-  if (fromContext) {
-    return fromContext;
-  }
-  const path = (req.url ?? "").split("?")[0].replace(/\/+$/, "");
-  return path.split("/").filter(Boolean).pop() ?? "";
-};
+): string => ctx?.params?.id ?? pathSegmentAfter(req, "boards");
 
 export default async function handler(
   req: ApiRequest,

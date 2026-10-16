@@ -229,7 +229,7 @@
     "texts": "Texts"
   },
   "buttons": {
-    "clearReset": "Reset the canvas",
+    "clearReset": "Clear canvas",
     "exportJSON": "Export to file",
     "exportImage": "Export image...",
     "export": "Save to...",

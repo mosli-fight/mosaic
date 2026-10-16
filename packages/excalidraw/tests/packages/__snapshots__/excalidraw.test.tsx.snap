@@ -309,10 +309,10 @@ exports[`<Excalidraw/> > Test UIOptions prop > Test canvasActions > should rende
       </div>
     </button>
     <button
-      aria-label="Reset the canvas"
+      aria-label="Clear canvas"
       class="dropdown-menu-item dropdown-menu-item-base"
       data-testid="clear-canvas-button"
-      title="Reset the canvas"
+      title="Clear canvas"
       type="button"
     >
       <div
@@ -338,7 +338,7 @@ exports[`<Excalidraw/> > Test UIOptions prop > Test canvasActions > should rende
       <div
         class="dropdown-menu-item__text"
       >
-        Reset the canvas
+        Clear canvas
       </div>
     </button>
     <div
