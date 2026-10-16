@@ -34,15 +34,14 @@ const openMenu = async (page: import("@playwright/test").Page) => {
  * Links outside the hamburger menu that still point upstream, with the reason
  * each is still there. Anything not listed here must not appear.
  *
- * - welcome screen guest CTA and the guest banner are upstream surfaces that
- *   FEATURE_FLAGS does not cover; they are a known residual and are reported
- *   for a follow-up decision.
  * - the encryption blog link comes from `labels.link` in en.json, which
- *   Part 1's rebrand deliberately left as product copy.
+ *   Part 1's rebrand deliberately left as product copy. It is informational,
+ *   not a paid upsell, so it stays.
+ * - the welcome screen guest CTA and the guest banner (both Excalidraw+ paid
+ *   upsells) were REMOVED in #122 — Mosaic has no paid product or signup flow
+ *   to repoint them to. If either ever reappears, this test fails.
  */
 const KNOWN_RESIDUAL_UPSTREAM_HREFS = [
-  "https://plus.excalidraw.com/plus?utm_source=excalidraw&utm_medium=app&utm_content=welcomeScreenGuest",
-  "https://plus.excalidraw.com/plus?utm_source=excalidraw&utm_medium=app&utm_content=guestBanner#excalidraw-redirect",
   "https://plus.excalidraw.com/blog/end-to-end-encryption",
 ];
 
