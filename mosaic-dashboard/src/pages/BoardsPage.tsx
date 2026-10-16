@@ -13,6 +13,8 @@ import { t } from "@/lib/i18n";
 import { pluralize, selectBoards } from "@/lib/selectors";
 import { useDashboardStore } from "@/state/useDashboardStore";
 
+import styles from "./BoardsPage.module.scss";
+
 /**
  * The board list route (STEP 2).
  *
@@ -107,28 +109,21 @@ export const BoardsPage = () => {
     };
   })();
 
+  const hasToolbar = !isTrash;
+
   return (
-    <div>
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 16,
-        }}
-      >
+    <div className={styles.page}>
+      <header className={styles.header} data-testid="page-header">
         <div>
-          <h1 style={{ margin: 0, fontSize: 22 }} data-testid="page-heading">
+          <h1
+            className={`${styles.header__title} ${
+              hasToolbar ? styles["header__title--withToolbar"] : ""
+            }`}
+            data-testid="page-heading"
+          >
             {heading}
           </h1>
-          <p
-            style={{
-              margin: "4px 0 0",
-              fontSize: 13,
-              color: "var(--muted, #5b6676)",
-            }}
-            data-testid="board-count"
-          >
+          <p className={styles.header__count} data-testid="board-count">
             {initialising
               ? LOADING_COUNT_LABEL
               : pluralize(visible.length, "board")}
@@ -171,44 +166,25 @@ export const BoardsPage = () => {
           <BoardGridSkeleton />
         </>
       ) : visible.length === 0 ? (
-        <div
-          style={{
-            padding: 48,
-            textAlign: "center",
-            border: "1px dashed #cbd3e1",
-            borderRadius: 12,
-          }}
-          data-testid="empty-state"
-        >
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
-            {emptyCopy.title}
-          </p>
-          <p style={{ margin: "6px 0 0", color: "#5b6676", fontSize: 13 }}>
-            {emptyCopy.description}
-          </p>
+        <div className={styles.empty} data-testid="empty-state">
+          <p className={styles.empty__title}>{emptyCopy.title}</p>
+          <p className={styles.empty__description}>{emptyCopy.description}</p>
           {!isTrash && !isFavorites && !query.trim() ? (
             <button
               type="button"
+              className={styles.empty__create}
               data-testid="empty-state-create"
               onClick={async () => {
                 const board = await useDashboardStore.getState().createBoard();
                 navigate(`/board/${board.id}`);
               }}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginTop: 20,
-                padding: "14px 36px",
-                fontSize: 16,
-                fontWeight: 700,
-                borderRadius: 12,
-                border: "none",
-                cursor: "pointer",
-                background: "var(--primary, #4f7cff)",
-                color: "#fff",
-              }}
             >
+              <span
+                style={{ fontSize: 18, lineHeight: 1 }}
+                aria-hidden="true"
+              >
+                +
+              </span>
               {t("board.empty.action")}
             </button>
           ) : null}
@@ -231,29 +207,15 @@ const TrashHeader = ({ onEmpty }: { onEmpty: () => Promise<void> }) => {
 
   return (
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginTop: 16,
-      }}
+      className={styles.trashHeader}
       data-testid="trash-header"
     >
-      <p style={{ margin: 0, fontSize: 13, color: "#5b6676" }}>
-        {t("trash.empty")}
-      </p>
+      <p className={styles.trashNote}>{t("trash.empty")}</p>
       {trashedCount > 0 ? (
         <button
           type="button"
+          className={styles.trashButton}
           onClick={() => setConfirming(true)}
-          style={{
-            padding: "8px 14px",
-            border: "1px solid #d64545",
-            borderRadius: 8,
-            background: "#fff",
-            color: "#d64545",
-            fontWeight: 600,
-          }}
           data-testid="empty-trash"
         >
           {t("nav.trash")} — {t("common.delete")} all
