@@ -186,6 +186,32 @@ export const BoardsPage = () => {
           <p style={{ margin: "6px 0 0", color: "#5b6676", fontSize: 13 }}>
             {emptyCopy.description}
           </p>
+          {!isTrash && !isFavorites && !query.trim() ? (
+            <button
+              type="button"
+              data-testid="empty-state-create"
+              onClick={async () => {
+                const board = await useDashboardStore.getState().createBoard();
+                navigate(`/board/${board.id}`);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 20,
+                padding: "14px 36px",
+                fontSize: 16,
+                fontWeight: 700,
+                borderRadius: 12,
+                border: "none",
+                cursor: "pointer",
+                background: "var(--primary, #4f7cff)",
+                color: "#fff",
+              }}
+            >
+              {t("board.empty.action")}
+            </button>
+          ) : null}
         </div>
       ) : (
         <BoardGrid boards={visible} isTrashView={isTrash} />
