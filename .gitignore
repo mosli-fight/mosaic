@@ -52,3 +52,6 @@ mosaic-dashboard/test-results-auth
 .agents/
 opencode.json
 skills-lock.json
+
+# Playwright browsers downloaded locally (PLAYWRIGHT_BROWSERS_PATH)
+.pw-browsers/

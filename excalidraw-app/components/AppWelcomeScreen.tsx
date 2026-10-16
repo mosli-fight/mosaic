@@ -64,6 +64,24 @@ export const AppWelcomeScreen: React.FC<{
             />
           )}
         </WelcomeScreen.Center.Menu>
+        <div
+          data-testid="welcome-powered-by"
+          style={{
+            marginTop: 16,
+            fontSize: 12,
+            textAlign: "center",
+            color: "var(--color-gray-60, #8a94a6)",
+          }}
+        >
+          <a
+            href="https://excalidraw.com"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            {t("welcomeScreen.app.poweredBy")}
+          </a>
+        </div>
       </WelcomeScreen.Center>
     </WelcomeScreen>
   );
