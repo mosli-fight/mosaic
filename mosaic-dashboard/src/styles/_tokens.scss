@@ -1,8 +1,15 @@
 // Design tokens for the dashboard.
 //
 // Color tokens are CSS custom properties so the dashboard can theme at runtime
-// (light/dark). They are defined on `.dashboardRoot` (see below) and consumed
-// via `var(--color-*)` / `var(--brand-*)`.
+// (light/dark). They are emitted for BOTH `:root` and `.dashboardRoot` (see
+// below) and consumed via `var(--color-*)` / `var(--brand-*)`.
+//
+// Why the document root too: custom properties only inherit *downward*, and
+// `html`/`body` are ancestors of `.dashboardRoot`. Declaring the palette on the
+// shell alone leaves the page chrome (body background, overscroll area) with
+// nothing to resolve, and leaves anything portalled to `document.body` — modals,
+// context menus — unthemed. The document root is therefore kept in sync by
+// setting `data-theme` on `document.documentElement` (see `useThemeStore`).
 //
 // Non-color tokens remain SCSS variables: compile-time values are fine for
 // spacing, radius, shadows, fonts and layout dimensions, which do not change
@@ -31,7 +38,19 @@ $sidebar-width: 248px;
 $header-height: 60px;
 
 @if $emit-color-vars {
+  // `:root` (html) carries the palette for the page itself — the body/overscroll
+  // background and everything outside the shell — while `.dashboardRoot` keeps
+  // its own copy so the app themes on the shell attribute alone, exactly as it
+  // did before. Both selectors declare the same values, so they cannot drift
+  // apart visually: the shell simply re-declares what it already inherits.
+  :root,
   .dashboardRoot {
+    // Tells the UA to paint default form controls, scrollbars and the canvas in
+    // the matching scheme, so nothing falls back to a light widget on a dark
+    // page (and vice versa). `color-scheme` is inherited, so `:root` is enough
+    // for the whole document.
+    color-scheme: light;
+
     --brand-primary: #3977df;
     --brand-primary-hover: #759dec;
     --brand-accent: #759dec;
@@ -57,7 +76,10 @@ $header-height: 60px;
     --color-warning: #e08c2b;
   }
 
+  :root[data-theme="dark"],
   .dashboardRoot[data-theme="dark"] {
+    color-scheme: dark;
+
     --brand-primary: #3977df;
     --brand-primary-hover: #759dec;
     --brand-accent: #759dec;
