@@ -1,4 +1,6 @@
-@use "../../styles/tokens" as t;
+@use "../../styles/tokens" as t with (
+  $emit-color-vars: false
+);
 
 .sidebar {
   width: t.$sidebar-width;
@@ -7,8 +9,12 @@
   flex-direction: column;
   gap: t.$space-md;
   padding: t.$space-lg t.$space-md;
-  border-right: 1px solid t.$color-border;
-  background: linear-gradient(180deg, t.$color-surface-raised, #f4f6fa);
+  border-right: 1px solid var(--color-border);
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-raised),
+    var(--color-surface)
+  );
   overflow-y: auto;
 }
 
@@ -20,7 +26,7 @@
   font-weight: 800;
   font-size: 17px;
   letter-spacing: -0.015em;
-  color: t.$color-text;
+  color: var(--color-text);
 }
 
 .brand__mark {
@@ -42,18 +48,18 @@
   gap: t.$space-sm;
   padding: 9px t.$space-md;
   border-radius: t.$radius-md;
-  color: t.$color-text-muted;
+  color: var(--color-text-muted);
   font-size: 14px;
   transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
 
   &:hover {
-    background: t.$color-surface-sunken;
-    color: t.$color-text;
+    background: var(--color-surface-sunken);
+    color: var(--color-text);
   }
 
   &.isActive {
-    background: t.$color-primary-soft;
-    color: t.$color-primary;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
     font-weight: 600;
     box-shadow: inset 0 0 0 1px rgba(57, 119, 223, 0.25);
 
@@ -66,21 +72,21 @@
       bottom: 20%;
       width: 3px;
       border-radius: 0 3px 3px 0;
-      background: t.$color-primary;
+      background: var(--color-primary);
     }
   }
 
   /* Board card is hovering over this folder: highlight as a drop target. */
   &.isDropTarget {
-    background: t.$color-primary-soft;
-    box-shadow: inset 0 0 0 2px t.$color-primary;
+    background: var(--color-primary-soft);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
   }
 }
 
 .navItem__count {
   margin-left: auto;
   font-size: 12px;
-  color: t.$color-text-faint;
+  color: var(--color-text-faint);
 }
 
 .section {
@@ -98,7 +104,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: t.$color-text-faint;
+  color: var(--color-text-faint);
 }
 
 .iconButton {
@@ -110,11 +116,11 @@
   border: none;
   border-radius: t.$radius-sm;
   background: transparent;
-  color: t.$color-text-muted;
+  color: var(--color-text-muted);
 
   &:hover {
-    background: t.$color-surface-sunken;
-    color: t.$color-text;
+    background: var(--color-surface-sunken);
+    color: var(--color-text);
   }
 }
 
@@ -134,17 +140,25 @@
   padding: 10px t.$space-sm;
   border: none;
   border-radius: t.$radius-md;
-  color: t.$color-text-inverse;
+  color: var(--color-text-inverse);
   font-weight: 700;
   font-size: 14px;
   letter-spacing: -0.01em;
-  background: linear-gradient(135deg, t.$color-primary, #5a8cf0);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-hover)
+  );
   box-shadow: 0 3px 10px rgba(57, 119, 223, 0.32);
   cursor: pointer;
   transition: filter 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 
   &:hover {
-    background: linear-gradient(135deg, #3273d4, #4a83ee);
+    background: linear-gradient(
+      135deg,
+      var(--color-primary),
+      var(--color-primary-hover)
+    );
     box-shadow: 0 5px 14px rgba(57, 119, 223, 0.4);
     transform: translateY(-1px);
   }
@@ -156,7 +170,7 @@
 
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px t.$color-primary-soft,
+    box-shadow: 0 0 0 3px var(--color-primary-soft),
       0 3px 10px rgba(57, 119, 223, 0.32);
   }
 }
@@ -164,13 +178,39 @@
 .newFolderInput {
   margin: t.$space-xs t.$space-sm;
   padding: t.$space-xs t.$space-sm;
-  border: 1px solid t.$color-border-strong;
+  border: 1px solid var(--color-border-strong);
   border-radius: t.$radius-sm;
-  background: t.$color-surface;
+  background: var(--color-surface);
   font-size: 13px;
   outline: none;
 
   &:focus {
-    border-color: t.$color-primary;
+    border-color: var(--color-primary);
+  }
+}
+
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: t.$radius-md;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+
+  &:hover {
+    background: var(--color-surface-sunken);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
   }
 }

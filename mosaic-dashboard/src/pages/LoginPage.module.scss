@@ -17,8 +17,8 @@
 .loginPage__card {
   width: 100%;
   max-width: 400px;
-  background: var(--color-surface, #fff);
-  border: 1px solid var(--color-border, #e3e6ea);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 28px;
   /* Centered card, so its own shadow has to be its own stacking context. */
@@ -43,7 +43,7 @@
   margin: 0 0 20px;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--color-text-muted, #5b6676);
+  color: var(--color-text-muted);
 }
 
 .loginPage__form {
@@ -61,14 +61,14 @@
   font: inherit;
   font-size: 14px;
   padding: 9px 11px;
-  border: 1px solid var(--color-border, #cfd5dc);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-surface, #fff);
+  background: var(--color-surface);
   color: inherit;
 }
 
 .loginPage__input:focus-visible {
-  outline: 2px solid var(--color-primary, #1b6ef3);
+  outline: 2px solid var(--color-primary);
   outline-offset: 1px;
 }
 
@@ -80,8 +80,8 @@
   padding: 10px 14px;
   border: 0;
   border-radius: 8px;
-  background: var(--color-primary, #1b6ef3);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
   cursor: pointer;
 }
 
@@ -97,7 +97,7 @@
   background: none;
   border: 0;
   padding: 0;
-  color: var(--color-primary, #1b6ef3);
+  color: var(--color-primary);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -114,21 +114,21 @@
   border-radius: 8px;
   font-size: 13px;
   line-height: 1.4;
-  background: rgb(220 38 38 / 8%);
-  color: #b42318;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .loginPage__foot {
   margin: 20px 0 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--color-text-muted, #5b6676);
+  color: var(--color-text-muted);
 }
 
 .loginPage__note {
   max-width: 400px;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--color-text-muted, #5b6676);
+  color: var(--color-text-muted);
   text-align: center;
 }

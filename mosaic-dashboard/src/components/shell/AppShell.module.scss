@@ -1,12 +1,14 @@
-@use "../../styles/tokens" as t;
+@use "../../styles/tokens" as t with (
+  $emit-color-vars: false
+);
 
 .shell {
   display: flex;
   height: 100vh;
   overflow: hidden;
   font-family: t.$font-ui;
-  color: t.$color-text;
-  background: t.$color-surface;
+  color: var(--color-text);
+  background: var(--color-surface);
 }
 
 .shell__main {
@@ -14,14 +16,14 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: #f7f9fc;
+  background: var(--color-surface);
 }
 
 .shell__content {
   flex: 1 1 auto;
   overflow-y: auto;
   padding: t.$space-lg t.$space-xl;
-  background: #f7f9fc;
+  background: var(--color-surface);
 }
 
 .globalError {
@@ -29,8 +31,8 @@
   inset: auto t.$space-md t.$space-md;
   padding: t.$space-sm t.$space-md;
   border-radius: t.$radius-md;
-  background: t.$color-danger-bg;
-  color: t.$color-danger-text;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
   box-shadow: t.$shadow-md;
   z-index: 100;
 }

@@ -127,7 +127,7 @@
   min-height: 0;
   border: 0;
   display: block;
-  background: #ffffff;
+  background: var(--color-surface, #ffffff);
 }
 
 .missing {

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 
 import styles from "./AppShell.module.scss";
@@ -6,6 +6,7 @@ import styles from "./AppShell.module.scss";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { DndProvider } from "@/components/dnd/DndProvider";
 import { useDashboardStore } from "@/state/useDashboardStore";
+import { useThemeStore } from "@/state/useThemeStore";
 
 /**
  * Two-column app shell: persistent sidebar + scrolling content area.
@@ -35,13 +36,22 @@ import { useDashboardStore } from "@/state/useDashboardStore";
 export const AppShell = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const reload = useDashboardStore((s) => s.reload);
+  const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void reload({ background: true });
   }, [reload, location.pathname]);
 
+  useEffect(() => {
+    const el = rootRef.current;
+    if (el) {
+      el.setAttribute("data-theme", resolvedTheme);
+    }
+  }, [resolvedTheme]);
+
   return (
-    <div className={`dashboardRoot ${styles.shell}`}>
+    <div ref={rootRef} className={`dashboardRoot ${styles.shell}`}>
       <DndProvider>
         <Sidebar />
         <div className={styles.shell__main}>

@@ -30,7 +30,10 @@ export const ActivityPage = () => {
       <h1 style={{ margin: "0 0 4px", fontSize: 22 }}>{t("activity.title")}</h1>
 
       {rows.length === 0 ? (
-        <p style={{ color: "#5b6676" }} data-testid="activity-empty">
+        <p
+          style={{ color: "var(--color-text-muted)" }}
+          data-testid="activity-empty"
+        >
           {t("activity.empty")}
         </p>
       ) : (
@@ -57,7 +60,7 @@ export const ActivityPage = () => {
             >
               <span
                 style={{
-                  color: "#8a94a6",
+                  color: "var(--color-text-faint)",
                   fontVariantNumeric: "tabular-nums",
                   flex: "0 0 auto",
                 }}
@@ -67,11 +70,11 @@ export const ActivityPage = () => {
               <span style={{ fontWeight: 600 }}>
                 {board?.name ?? "(deleted board)"}
               </span>
-              <span style={{ color: "#5b6676" }}>
+              <span style={{ color: "var(--color-text-muted)" }}>
                 {t(`activity.type.${entry.type}`)}
               </span>
               {entry.type === "move" && entry.detail ? (
-                <span style={{ color: "#8a94a6" }}>
+                <span style={{ color: "var(--color-text-faint)" }}>
                   →{" "}
                   {boards.find((f) => f.id === entry.detail)?.name ??
                     entry.detail ??

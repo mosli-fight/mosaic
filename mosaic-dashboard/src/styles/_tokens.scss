@@ -1,36 +1,17 @@
 // Design tokens for the dashboard.
 //
-// SCSS variables (not CSS custom properties) because Sass module consumers want
-// compile-time values, and every consumer here is a module — the dashboard never
-// needs runtime theming. Values are derived from the Mosaic brand palette in
-// `@mosaic/brand` so a brand change propagates.
+// Color tokens are CSS custom properties so the dashboard can theme at runtime
+// (light/dark). They are defined on `.dashboardRoot` (see below) and consumed
+// via `var(--color-*)` / `var(--brand-*)`.
+//
+// Non-color tokens remain SCSS variables: compile-time values are fine for
+// spacing, radius, shadows, fonts and layout dimensions, which do not change
+// between themes.
 
-$brand-primary: #3977df;
-$brand-primary-hover: #759dec;
-$brand-accent: #759dec;
+$emit-color-vars: true !default;
 
 $font-ui: Inter, "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto,
   Helvetica, Arial, sans-serif;
-
-$color-surface: #ffffff;
-$color-surface-raised: #f8f9fb;
-$color-surface-sunken: #f1f3f7;
-$color-border: #e3e7ef;
-$color-border-strong: #cbd3e1;
-
-$color-text: #1f2733;
-$color-text-muted: #5b6676;
-$color-text-faint: #8a94a6;
-$color-text-inverse: #ffffff;
-
-$color-primary: $brand-primary;
-$color-primary-hover: $brand-primary-hover;
-$color-primary-soft: #eaf1fd;
-
-$color-danger: #d64545;
-$color-danger-bg: #fdecec;
-$color-danger-text: #8f2626;
-$color-warning: #e08c2b;
 
 $space-xs: 4px;
 $space-sm: 8px;
@@ -48,3 +29,57 @@ $shadow-lg: 0 12px 32px rgba(31, 39, 51, 0.16);
 
 $sidebar-width: 248px;
 $header-height: 60px;
+
+@if $emit-color-vars {
+  .dashboardRoot {
+    --brand-primary: #3977df;
+    --brand-primary-hover: #759dec;
+    --brand-accent: #759dec;
+
+    --color-surface: #ffffff;
+    --color-surface-raised: #f8f9fb;
+    --color-surface-sunken: #f1f3f7;
+    --color-border: #e3e7ef;
+    --color-border-strong: #cbd3e1;
+
+    --color-text: #1f2733;
+    --color-text-muted: #5b6676;
+    --color-text-faint: #8a94a6;
+    --color-text-inverse: #ffffff;
+
+    --color-primary: var(--brand-primary);
+    --color-primary-hover: var(--brand-primary-hover);
+    --color-primary-soft: #eaf1fd;
+
+    --color-danger: #d64545;
+    --color-danger-bg: #fdecec;
+    --color-danger-text: #8f2626;
+    --color-warning: #e08c2b;
+  }
+
+  .dashboardRoot[data-theme="dark"] {
+    --brand-primary: #3977df;
+    --brand-primary-hover: #759dec;
+    --brand-accent: #759dec;
+
+    --color-surface: #161b24;
+    --color-surface-raised: #1f2733;
+    --color-surface-sunken: #13171f;
+    --color-border: #2a3342;
+    --color-border-strong: #3a4556;
+
+    --color-text: #e8ecf3;
+    --color-text-muted: #9aa4b5;
+    --color-text-faint: #6b7688;
+    --color-text-inverse: #ffffff;
+
+    --color-primary: var(--brand-primary);
+    --color-primary-hover: var(--brand-primary-hover);
+    --color-primary-soft: #1e2d4a;
+
+    --color-danger: #e36a6a;
+    --color-danger-bg: #2a1f21;
+    --color-danger-text: #f08a8a;
+    --color-warning: #e8a34a;
+  }
+}

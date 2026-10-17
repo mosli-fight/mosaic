@@ -5,7 +5,7 @@
   gap: 8px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--color-border, #e3e6ea);
+  border-top: 1px solid var(--color-border);
   font-size: 12px;
   min-width: 0;
 }
@@ -16,7 +16,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--color-text-muted, #5b6676);
+  color: var(--color-text-muted);
 }
 
 .signIn,
@@ -27,11 +27,11 @@
   background: none;
   border: 0;
   padding: 0;
-  color: var(--color-primary, #1b6ef3);
+  color: var(--color-primary);
   cursor: pointer;
   text-decoration: underline;
 }
 
 .signOut {
-  color: var(--color-text-muted, #5b6676);
+  color: var(--color-text-muted);
 }
