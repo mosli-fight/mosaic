@@ -232,8 +232,7 @@
   color: t.$color-text-inverse;
   background: linear-gradient(135deg, t.$color-primary, #5a8cf0);
   box-shadow: 0 6px 18px rgba(57, 119, 223, 0.35);
-  transition: transform 0.14s ease, box-shadow 0.14s ease,
-    filter 0.14s ease;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
 
   &:hover {
     filter: brightness(1.05);
