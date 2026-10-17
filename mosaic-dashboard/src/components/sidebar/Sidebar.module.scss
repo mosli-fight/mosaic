@@ -8,7 +8,7 @@
   gap: t.$space-md;
   padding: t.$space-lg t.$space-md;
   border-right: 1px solid t.$color-border;
-  background: t.$color-surface-raised;
+  background: linear-gradient(180deg, t.$color-surface-raised, #f4f6fa);
   overflow-y: auto;
 }
 
@@ -16,9 +16,10 @@
   display: flex;
   align-items: center;
   gap: t.$space-sm;
-  padding: t.$space-xs t.$space-sm;
-  font-weight: 700;
+  padding: t.$space-xs t.$space-sm t.$space-sm;
+  font-weight: 800;
   font-size: 17px;
+  letter-spacing: -0.015em;
   color: t.$color-text;
 }
 
@@ -35,14 +36,15 @@
 }
 
 .navItem {
+  position: relative;
   display: flex;
   align-items: center;
   gap: t.$space-sm;
-  padding: t.$space-sm t.$space-md;
-  border-radius: t.$radius-sm;
+  padding: 9px t.$space-md;
+  border-radius: t.$radius-md;
   color: t.$color-text-muted;
   font-size: 14px;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
 
   &:hover {
     background: t.$color-surface-sunken;
@@ -53,6 +55,19 @@
     background: t.$color-primary-soft;
     color: t.$color-primary;
     font-weight: 600;
+    box-shadow: inset 0 0 0 1px rgba(57, 119, 223, 0.25);
+
+    /* Small accent bar on the left edge of the active item. */
+    &::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: t.$color-primary;
+    }
   }
 
   /* Board card is hovering over this folder: highlight as a drop target. */
@@ -78,10 +93,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: t.$space-sm t.$space-md t.$space-xs;
+  padding: t.$space-md t.$space-md t.$space-xs;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: t.$color-text-faint;
 }
@@ -116,17 +131,33 @@
   justify-content: center;
   gap: t.$space-sm;
   width: 100%;
-  padding: t.$space-sm;
+  padding: 10px t.$space-sm;
   border: none;
-  border-radius: t.$radius-sm;
-  background: t.$color-primary;
+  border-radius: t.$radius-md;
   color: t.$color-text-inverse;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
-  transition: background 0.12s ease;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, t.$color-primary, #5a8cf0);
+  box-shadow: 0 3px 10px rgba(57, 119, 223, 0.32);
+  cursor: pointer;
+  transition: filter 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 
   &:hover {
-    background: t.$color-primary-hover;
+    background: linear-gradient(135deg, #3273d4, #4a83ee);
+    box-shadow: 0 5px 14px rgba(57, 119, 223, 0.4);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 7px rgba(57, 119, 223, 0.3);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px t.$color-primary-soft,
+      0 3px 10px rgba(57, 119, 223, 0.32);
   }
 }
 

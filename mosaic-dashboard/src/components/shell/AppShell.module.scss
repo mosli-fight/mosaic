@@ -14,13 +14,14 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: t.$color-surface;
+  background: #f7f9fc;
 }
 
 .shell__content {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: t.$space-lg;
+  padding: t.$space-lg t.$space-xl;
+  background: #f7f9fc;
 }
 
 .globalError {

@@ -1,0 +1,253 @@
+@use "../styles/tokens" as t;
+
+/**
+ * Visual polish for the boards page: header hierarchy, toolbar area and the
+ * empty state. Purely presentational — it adds no elements and never renames
+ * the data-testid hooks the e2e suite relies on.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: t.$space-md;
+  padding-top: t.$space-sm;
+}
+
+.header__title {
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: t.$color-text;
+
+  &.header__title--withToolbar {
+    font-size: 24px;
+  }
+}
+
+.header__count {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: t.$color-text-muted;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: t.$space-sm;
+  flex-wrap: wrap;
+  margin-top: t.$space-sm;
+  margin-bottom: t.$space-lg;
+  padding: t.$space-sm;
+  border: 1px solid t.$color-border;
+  border-radius: t.$radius-md;
+  background: t.$color-surface-raised;
+  box-shadow: t.$shadow-sm;
+}
+
+.search {
+  flex: 1 1 220px;
+  max-width: 340px;
+  padding: 9px 14px;
+  border: 1px solid t.$color-border;
+  border-radius: t.$radius-md;
+  background: t.$color-surface;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+
+  &::placeholder {
+    color: t.$color-text-faint;
+  }
+
+  &:focus {
+    border-color: t.$color-primary;
+    box-shadow: 0 0 0 3px t.$color-primary-soft;
+  }
+}
+
+.sortField {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: t.$color-text-muted;
+}
+
+.sortSelect {
+  padding: 9px 10px;
+  border: 1px solid t.$color-border;
+  border-radius: t.$radius-md;
+  background: t.$color-surface;
+  color: t.$color-text;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+
+  &:hover {
+    border-color: t.$color-border-strong;
+  }
+
+  &:focus {
+    border-color: t.$color-primary;
+    outline: none;
+    box-shadow: 0 0 0 3px t.$color-primary-soft;
+  }
+}
+
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: t.$space-sm;
+  padding-left: t.$space-sm;
+  margin-left: t.$space-sm;
+  border-left: 1px solid t.$color-border;
+}
+
+.bulkCount {
+  font-size: 13px;
+  font-weight: 600;
+  color: t.$color-text-muted;
+}
+
+.bulkButton {
+  padding: 7px 12px;
+  border: 1px solid t.$color-border;
+  border-radius: t.$radius-sm;
+  background: t.$color-surface;
+  color: t.$color-text;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.12s ease, border-color 0.12s ease,
+    box-shadow 0.12s ease;
+
+  &:hover {
+    background: t.$color-surface-sunken;
+    border-color: t.$color-border-strong;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px t.$color-primary-soft;
+  }
+}
+
+.bulkButton--danger {
+  color: t.$color-danger;
+  border-color: t.$color-danger;
+
+  &:hover {
+    background: t.$color-danger-bg;
+    border-color: t.$color-danger;
+  }
+}
+
+.trashHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: t.$space-md;
+  margin-bottom: t.$space-lg;
+  padding: t.$space-sm t.$space-md;
+  border: 1px solid t.$color-border;
+  border-radius: t.$radius-md;
+  background: t.$color-surface-raised;
+}
+
+.trashNote {
+  margin: 0;
+  font-size: 13px;
+  color: t.$color-text-muted;
+}
+
+.trashButton {
+  padding: 8px 14px;
+  border: 1px solid t.$color-danger;
+  border-radius: t.$radius-sm;
+  background: t.$color-surface;
+  color: t.$color-danger;
+  font-weight: 600;
+  font-size: 13px;
+  transition: background 0.12s ease;
+
+  &:hover {
+    background: t.$color-danger-bg;
+  }
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-height: 380px;
+  padding: t.$space-xl 48px;
+  text-align: center;
+  border: 1px dashed t.$color-border-strong;
+  border-radius: t.$radius-lg;
+  background: linear-gradient(
+    180deg,
+    rgba(234, 241, 253, 0.35),
+    rgba(255, 255, 255, 0) 70%
+  );
+}
+
+.empty__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: t.$color-text;
+}
+
+.empty__description {
+  margin: 8px 0 0;
+  max-width: 40ch;
+  color: t.$color-text-muted;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.empty__create {
+  display: inline-flex;
+  align-items: center;
+  gap: t.$space-sm;
+  margin-top: t.$space-xl;
+  padding: 13px 32px;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  color: t.$color-text-inverse;
+  background: linear-gradient(135deg, t.$color-primary, #5a8cf0);
+  box-shadow: 0 6px 18px rgba(57, 119, 223, 0.35);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+
+  &:hover {
+    filter: brightness(1.05);
+    box-shadow: 0 8px 24px rgba(57, 119, 223, 0.45);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 12px rgba(57, 119, 223, 0.35);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px t.$color-primary-soft,
+      0 6px 18px rgba(57, 119, 223, 0.35);
+  }
+}

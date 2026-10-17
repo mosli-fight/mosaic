@@ -5,6 +5,8 @@ import { t } from "@/lib/i18n";
 import { BOARD_SORTS, type BoardSort } from "@/db/schema";
 import { pluralize } from "@/lib/selectors";
 
+import pageStyles from "@/pages/BoardsPage.module.scss";
+
 /**
  * Search, sort and bulk-action bar above the grid (STEP 3).
  *
@@ -31,44 +33,22 @@ export const BoardToolbar = ({ onCreate }: { onCreate: () => void }) => {
   const hasSelection = selectedIds.length > 0;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        flexWrap: "wrap",
-        marginTop: 16,
-      }}
-      data-testid="board-toolbar"
-    >
+    <div className={pageStyles.toolbar} data-testid="board-toolbar">
       <input
         type="search"
         placeholder={t("toolbar.search")}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        style={{
-          flex: "1 1 220px",
-          padding: "8px 12px",
-          border: "1px solid #e3e7ef",
-          borderRadius: 10,
-          outline: "none",
-        }}
+        className={pageStyles.search}
         data-testid="search-input"
       />
 
-      <label
-        style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}
-      >
-        <span style={{ color: "#5b6676" }}>{t("toolbar.sort")}</span>
+      <label className={pageStyles.sortField}>
+        <span>{t("toolbar.sort")}</span>
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as BoardSort)}
-          style={{
-            padding: "8px 10px",
-            border: "1px solid #e3e7ef",
-            borderRadius: 10,
-            background: "#fff",
-          }}
+          className={pageStyles.sortSelect}
           data-testid="sort-select"
         >
           {BOARD_SORTS.map((option) => (
@@ -80,24 +60,13 @@ export const BoardToolbar = ({ onCreate }: { onCreate: () => void }) => {
       </label>
 
       {hasSelection ? (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            paddingLeft: 8,
-            borderLeft: "1px solid #e3e7ef",
-          }}
-          data-testid="bulk-bar"
-        >
-          <span
-            style={{ fontSize: 13, color: "#5b6676" }}
-            data-testid="bulk-count"
-          >
+        <div className={pageStyles.bulkBar} data-testid="bulk-bar">
+          <span className={pageStyles.bulkCount} data-testid="bulk-count">
             {pluralize(selectedIds.length, "selected", "selected")}
           </span>
           <button
             type="button"
+            className={pageStyles.bulkButton}
             onClick={() => {
               void Promise.all(selectedIds.map((id) => toggleFavorite(id)));
             }}
@@ -107,18 +76,17 @@ export const BoardToolbar = ({ onCreate }: { onCreate: () => void }) => {
           </button>
           <button
             type="button"
+            className={pageStyles.bulkButton}
             onClick={() => setMoveOpen((v) => !v)}
             data-testid="bulk-move-toggle"
           >
             {t("board.bulk.move")}
           </button>
           {moveOpen ? (
-            <div
-              data-testid="bulk-move-list"
-              style={{ display: "flex", gap: 6 }}
-            >
+            <div className={pageStyles.bulkBar} data-testid="bulk-move-list">
               <button
                 type="button"
+                className={pageStyles.bulkButton}
                 onClick={() => {
                   void Promise.all(
                     selectedIds.map((id) => moveBoardToFolder(id, null)),
@@ -133,6 +101,7 @@ export const BoardToolbar = ({ onCreate }: { onCreate: () => void }) => {
                 <button
                   key={folder.id}
                   type="button"
+                  className={pageStyles.bulkButton}
                   onClick={() => {
                     void Promise.all(
                       selectedIds.map((id) => moveBoardToFolder(id, folder.id)),
@@ -148,6 +117,7 @@ export const BoardToolbar = ({ onCreate }: { onCreate: () => void }) => {
           ) : null}
           <button
             type="button"
+            className={`${pageStyles.bulkButton} ${pageStyles["bulkButton--danger"]}`}
             onClick={() => {
               void Promise.all(selectedIds.map((id) => trashBoard(id)));
               clearSelection();
@@ -158,6 +128,7 @@ export const BoardToolbar = ({ onCreate }: { onCreate: () => void }) => {
           </button>
           <button
             type="button"
+            className={pageStyles.bulkButton}
             onClick={clearSelection}
             data-testid="bulk-clear"
           >
