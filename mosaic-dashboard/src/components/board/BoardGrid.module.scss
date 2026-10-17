@@ -1,4 +1,4 @@
-@use "../../styles/tokens" as t;
+@use "../../styles/tokens" as t with ($emit-color-vars: false);
 
 .grid {
   display: grid;
@@ -12,8 +12,8 @@
 }
 
 .dropTarget {
-  background: t.$color-primary-soft;
-  box-shadow: inset 0 0 0 2px t.$color-primary;
+  background: var(--color-primary-soft);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
 }
 
 /*
@@ -28,20 +28,20 @@
  * screen reader hears "Loading boards" once instead of six empty divs.
  */
 .skeletonTile {
-  border: 1px solid t.$color-border;
+  border: 1px solid var(--color-border);
   border-radius: t.$radius-lg;
-  background: t.$color-surface;
+  background: var(--color-surface);
   overflow: hidden;
 }
 
 .skeletonBlock {
-  background: t.$color-surface-sunken;
+  background: var(--color-surface-sunken);
   animation: skeletonPulse 1.4s ease-in-out infinite;
 }
 
 .skeletonThumb {
   aspect-ratio: 16 / 10;
-  border-bottom: 1px solid t.$color-border;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .skeletonBody {

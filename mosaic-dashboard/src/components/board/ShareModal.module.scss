@@ -16,9 +16,9 @@
      without truncation — a half-visible URL cannot be copied by hand. */
   font-size: 12px;
   padding: 8px 10px;
-  border: 1px solid var(--color-border, #cfd5dc);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-surface-muted, #f7f8fa);
+  background: var(--color-surface-sunken);
   color: inherit;
   width: 100%;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -30,10 +30,10 @@
   font: inherit;
   font-size: 13px;
   padding: 6px 10px;
-  border: 1px solid rgb(180 35 24 / 35%);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
   border-radius: 8px;
   background: none;
-  color: #b42318;
+  color: var(--color-danger-text);
   cursor: pointer;
 }
 

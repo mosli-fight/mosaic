@@ -82,7 +82,7 @@ export const DndProvider = ({ children }: { children: ReactNode }) => {
             style={{
               padding: "8px 14px",
               borderRadius: 10,
-              background: "#ffffff",
+              background: "var(--color-surface)",
               boxShadow: "0 12px 32px rgba(31, 39, 51, 0.22)",
               fontSize: 13,
               fontWeight: 600,

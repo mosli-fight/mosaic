@@ -1,4 +1,4 @@
-@use "../../styles/tokens" as t;
+@use "../../styles/tokens" as t with ($emit-color-vars: false);
 
 .backdrop {
   position: fixed;
@@ -16,7 +16,7 @@
   max-width: 420px;
   padding: t.$space-lg;
   border-radius: t.$radius-lg;
-  background: t.$color-surface;
+  background: var(--color-surface);
   box-shadow: t.$shadow-lg;
 }
 
@@ -29,7 +29,7 @@
 .description {
   margin: 0 0 t.$space-lg;
   font-size: 14px;
-  color: t.$color-text-muted;
+  color: var(--color-text-muted);
   line-height: 1.5;
 }
 
@@ -43,8 +43,8 @@
   padding: t.$space-sm t.$space-lg;
   border: none;
   border-radius: t.$radius-sm;
-  background: t.$color-danger;
-  color: t.$color-text-inverse;
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
   font-weight: 600;
   font-size: 14px;
 

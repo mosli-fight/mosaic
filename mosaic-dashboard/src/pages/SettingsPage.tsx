@@ -27,7 +27,7 @@ export const SettingsPage = () => {
         <h2 style={{ fontSize: 15, margin: "0 0 6px" }}>
           {t("settings.storage")}
         </h2>
-        <p style={{ color: "#5b6676", fontSize: 13, margin: "0 0 16px" }}>
+        <p style={{ color: "var(--color-text-muted)", fontSize: 13, margin: "0 0 16px" }}>
           {t("settings.usage", {
             // pluralize supplies the noun and the correct "1 board" / "2 boards"
             // inflection; the template deliberately has no hard-coded plural.
@@ -40,10 +40,10 @@ export const SettingsPage = () => {
           onClick={() => setConfirming(true)}
           style={{
             padding: "8px 14px",
-            border: "1px solid #d64545",
+            border: "1px solid var(--color-danger)",
             borderRadius: 8,
-            background: "#fff",
-            color: "#d64545",
+            background: "var(--color-surface)",
+            color: "var(--color-danger)",
             fontWeight: 600,
           }}
           data-testid="reset-data"

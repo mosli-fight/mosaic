@@ -26,8 +26,8 @@
   body {
     margin: 0;
     font-family: t.$font-ui;
-    color: t.$color-text;
-    background: t.$color-surface;
+    color: var(--color-text);
+    background: var(--color-surface);
     -webkit-font-smoothing: antialiased;
   }
 

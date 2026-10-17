@@ -1,4 +1,4 @@
-@use "../styles/tokens" as t;
+@use "../styles/tokens" as t with ($emit-color-vars: false);
 
 /**
  * Visual polish for the boards page: header hierarchy, toolbar area and the
@@ -27,7 +27,7 @@
   line-height: 1.2;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: t.$color-text;
+  color: var(--color-text);
 
   &.header__title--withToolbar {
     font-size: 24px;
@@ -37,7 +37,7 @@
 .header__count {
   margin: 4px 0 0;
   font-size: 13px;
-  color: t.$color-text-muted;
+  color: var(--color-text-muted);
 }
 
 .toolbar {
@@ -48,9 +48,9 @@
   margin-top: t.$space-sm;
   margin-bottom: t.$space-lg;
   padding: t.$space-sm;
-  border: 1px solid t.$color-border;
+  border: 1px solid var(--color-border);
   border-radius: t.$radius-md;
-  background: t.$color-surface-raised;
+  background: var(--color-surface-raised);
   box-shadow: t.$shadow-sm;
 }
 
@@ -58,20 +58,20 @@
   flex: 1 1 220px;
   max-width: 340px;
   padding: 9px 14px;
-  border: 1px solid t.$color-border;
+  border: 1px solid var(--color-border);
   border-radius: t.$radius-md;
-  background: t.$color-surface;
+  background: var(--color-surface);
   font-size: 14px;
   outline: none;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 
   &::placeholder {
-    color: t.$color-text-faint;
+    color: var(--color-text-faint);
   }
 
   &:focus {
-    border-color: t.$color-primary;
-    box-shadow: 0 0 0 3px t.$color-primary-soft;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
   }
 }
 
@@ -80,28 +80,28 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: t.$color-text-muted;
+  color: var(--color-text-muted);
 }
 
 .sortSelect {
   padding: 9px 10px;
-  border: 1px solid t.$color-border;
+  border: 1px solid var(--color-border);
   border-radius: t.$radius-md;
-  background: t.$color-surface;
-  color: t.$color-text;
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 
   &:hover {
-    border-color: t.$color-border-strong;
+    border-color: var(--color-border-strong);
   }
 
   &:focus {
-    border-color: t.$color-primary;
+    border-color: var(--color-primary);
     outline: none;
-    box-shadow: 0 0 0 3px t.$color-primary-soft;
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
   }
 }
 
@@ -111,44 +111,44 @@
   gap: t.$space-sm;
   padding-left: t.$space-sm;
   margin-left: t.$space-sm;
-  border-left: 1px solid t.$color-border;
+  border-left: 1px solid var(--color-border);
 }
 
 .bulkCount {
   font-size: 13px;
   font-weight: 600;
-  color: t.$color-text-muted;
+  color: var(--color-text-muted);
 }
 
 .bulkButton {
   padding: 7px 12px;
-  border: 1px solid t.$color-border;
+  border: 1px solid var(--color-border);
   border-radius: t.$radius-sm;
-  background: t.$color-surface;
-  color: t.$color-text;
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
   transition: background 0.12s ease, border-color 0.12s ease,
     box-shadow 0.12s ease;
 
   &:hover {
-    background: t.$color-surface-sunken;
-    border-color: t.$color-border-strong;
+    background: var(--color-surface-sunken);
+    border-color: var(--color-border-strong);
   }
 
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px t.$color-primary-soft;
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
   }
 }
 
 .bulkButton--danger {
-  color: t.$color-danger;
-  border-color: t.$color-danger;
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 
   &:hover {
-    background: t.$color-danger-bg;
-    border-color: t.$color-danger;
+    background: var(--color-danger-bg);
+    border-color: var(--color-danger);
   }
 }
 
@@ -159,29 +159,29 @@
   margin-top: t.$space-md;
   margin-bottom: t.$space-lg;
   padding: t.$space-sm t.$space-md;
-  border: 1px solid t.$color-border;
+  border: 1px solid var(--color-border);
   border-radius: t.$radius-md;
-  background: t.$color-surface-raised;
+  background: var(--color-surface-raised);
 }
 
 .trashNote {
   margin: 0;
   font-size: 13px;
-  color: t.$color-text-muted;
+  color: var(--color-text-muted);
 }
 
 .trashButton {
   padding: 8px 14px;
-  border: 1px solid t.$color-danger;
+  border: 1px solid var(--color-danger);
   border-radius: t.$radius-sm;
-  background: t.$color-surface;
-  color: t.$color-danger;
+  background: var(--color-surface);
+  color: var(--color-danger);
   font-weight: 600;
   font-size: 13px;
   transition: background 0.12s ease;
 
   &:hover {
-    background: t.$color-danger-bg;
+    background: var(--color-danger-bg);
   }
 }
 
@@ -194,12 +194,12 @@
   min-height: 380px;
   padding: t.$space-xl 48px;
   text-align: center;
-  border: 1px dashed t.$color-border-strong;
+  border: 1px dashed var(--color-border-strong);
   border-radius: t.$radius-lg;
   background: linear-gradient(
     180deg,
-    rgba(234, 241, 253, 0.35),
-    rgba(255, 255, 255, 0) 70%
+    color-mix(in srgb, var(--color-primary-soft) 35%, transparent),
+    transparent 70%
   );
 }
 
@@ -207,13 +207,13 @@
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: t.$color-text;
+  color: var(--color-text);
 }
 
 .empty__description {
   margin: 8px 0 0;
   max-width: 40ch;
-  color: t.$color-text-muted;
+  color: var(--color-text-muted);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -229,8 +229,8 @@
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  color: t.$color-text-inverse;
-  background: linear-gradient(135deg, t.$color-primary, #5a8cf0);
+  color: var(--color-text-inverse);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
   box-shadow: 0 6px 18px rgba(57, 119, 223, 0.35);
   transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
 
@@ -247,7 +247,7 @@
 
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px t.$color-primary-soft,
+    box-shadow: 0 0 0 3px var(--color-primary-soft),
       0 6px 18px rgba(57, 119, 223, 0.35);
   }
 }
