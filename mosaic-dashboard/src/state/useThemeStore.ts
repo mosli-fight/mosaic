@@ -82,6 +82,12 @@ function resolvePreference(preference: ThemePreference): ResolvedTheme {
 
 function applyToDom(resolved: ResolvedTheme): void {
   try {
+    // The document root as well as the shell: `html`/`body` are *ancestors* of
+    // `.dashboardRoot`, and custom properties only inherit downward, so the
+    // page-level tokens (and the body background that uses them) are declared
+    // on `:root[data-theme=...]`. The shell keeps its own attribute for the
+    // `.dashboardRoot[data-theme=...]` rules that theme the app subtree.
+    document.documentElement.setAttribute("data-theme", resolved);
     const root = document.querySelector(".dashboardRoot");
     if (root) {
       root.setAttribute("data-theme", resolved);

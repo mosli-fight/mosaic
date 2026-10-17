@@ -1,34 +1,51 @@
 @use "../styles/tokens" as t;
 
 /**
- * Dashboard reset, scoped.
+ * Dashboard reset.
  *
  * Hard rule from the brief: no new global CSS that leaks into the editor app.
  * The editor is a separate Vite app with its own stylesheet, so nothing here can
- * actually reach it — but the guard below keeps that true structurally: every
- * selector is nested under `.dashboardRoot`, and `:global()` is never used except
- * for the handful of element resets that are unavoidable for a full-page app.
+ * actually reach it — and the guard below keeps that structurally true for
+ * everything that can be scoped: component selectors stay nested under
+ * `.dashboardRoot`, and `:global()` is never used.
+ *
+ * The document-level resets are the unavoidable exception. `html`, `body` and
+ * `#root` are ANCESTORS of `.dashboardRoot`, so writing them inside this block
+ * compiles to descendant selectors (`.dashboardRoot body`) that can never match
+ * — which is why body kept the browser's default white background and 8px
+ * margin in dark mode. They belong at top level, where they actually match, and
+ * they take their colours from the page-level tokens on `:root` in
+ * `_tokens.scss`: custom properties only inherit downward, so these ancestors
+ * cannot resolve the ones declared on `.dashboardRoot`.
  */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html,
+body {
+  margin: 0;
+  // Painted on both elements on purpose: the root background propagates to the
+  // canvas — i.e. the overscroll/rubber-band area outside the body box — while
+  // body covers the area inside it. One declaration would leave the other
+  // showing the browser's default white in dark mode.
+  background: var(--color-surface);
+}
+
+body {
+  font-family: t.$font-ui;
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
 
 .dashboardRoot {
   *,
   *::before,
   *::after {
     box-sizing: border-box;
-  }
-
-  html,
-  body,
-  #root {
-    height: 100%;
-  }
-
-  body {
-    margin: 0;
-    font-family: t.$font-ui;
-    color: var(--color-text);
-    background: var(--color-surface);
-    -webkit-font-smoothing: antialiased;
   }
 
   button {
