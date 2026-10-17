@@ -188,29 +188,3 @@
     border-color: var(--color-primary);
   }
 }
-
-.themeToggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: flex-start;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--color-border);
-  border-radius: t.$radius-md;
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
-
-  &:hover {
-    background: var(--color-surface-sunken);
-    color: var(--color-text);
-    border-color: var(--color-border-strong);
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--color-primary-soft);
-  }
-}

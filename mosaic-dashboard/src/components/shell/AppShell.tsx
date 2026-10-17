@@ -36,19 +36,27 @@ import { useThemeStore } from "@/state/useThemeStore";
 export const AppShell = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const reload = useDashboardStore((s) => s.reload);
-  const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void reload({ background: true });
   }, [reload, location.pathname]);
 
+  // `resolvedTheme` never reaches this component's JSX, so subscribing during
+  // render would re-render the shell — sidebar included — on every toggle for no
+  // visual gain. The attribute is applied on mount (the store's first write
+  // happens before this node exists) and then kept in sync from the store,
+  // leaving only the toolbar to re-render when the theme flips.
   useEffect(() => {
     const el = rootRef.current;
-    if (el) {
-      el.setAttribute("data-theme", resolvedTheme);
+    if (!el) {
+      return;
     }
-  }, [resolvedTheme]);
+    el.setAttribute("data-theme", useThemeStore.getState().resolvedTheme);
+    return useThemeStore.subscribe((state) => {
+      el.setAttribute("data-theme", state.resolvedTheme);
+    });
+  }, []);
 
   return (
     <div ref={rootRef} className={`dashboardRoot ${styles.shell}`}>

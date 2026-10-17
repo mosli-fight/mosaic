@@ -11,10 +11,16 @@ export type ThemeState = {
 };
 
 const PRIMARY_KEY = "mosaic.theme.preference";
-const ALIAS_KEYS = [
+
+/**
+ * Keys earlier builds also wrote the preference to. They are still *read*, so a
+ * choice saved by an older version is not silently lost, but every write goes to
+ * `PRIMARY_KEY` alone — mirroring the value across a dozen keys on each toggle
+ * only added synchronous storage work to the click handler.
+ */
+const LEGACY_KEYS = [
   "mosaic.theme",
   "mosaic-theme",
-  "mosaic.theme.preference",
   "mosaic-theme-preference",
   "theme",
   "theme-preference",
@@ -36,37 +42,19 @@ function isPreference(value: unknown): value is ThemePreference {
   return typeof value === "string" && VALID_PREFERENCES.has(value);
 }
 
-const observedKeys: string[] = [];
-
 function readStoredPreference(): ThemePreference {
   const storage = globalThis.localStorage;
   if (!storage) {
     return "system";
   }
 
-  // Prefer well-known keys first.
-  for (const key of [PRIMARY_KEY, ...ALIAS_KEYS]) {
+  // Primary key first, then the keys older builds wrote to. Deliberately no
+  // full-storage scan: walking every key to find a preference stored under some
+  // unknown name costs a synchronous loop over the whole origin for a case that
+  // the primary/legacy keys already cover.
+  for (const key of [PRIMARY_KEY, ...LEGACY_KEYS]) {
     const value = storage.getItem(key);
     if (isPreference(value)) {
-      if (!observedKeys.includes(key)) {
-        observedKeys.push(key);
-      }
-      return value;
-    }
-  }
-
-  // Fall back to scanning every stored key, so a preference saved under an
-  // unexpected key still wins over the default.
-  for (let i = 0; i < storage.length; i += 1) {
-    const key = storage.key(i);
-    if (!key) {
-      continue;
-    }
-    const value = storage.getItem(key);
-    if (isPreference(value)) {
-      if (!observedKeys.includes(key)) {
-        observedKeys.push(key);
-      }
       return value;
     }
   }
@@ -104,17 +92,12 @@ function applyToDom(resolved: ResolvedTheme): void {
 }
 
 function persistPreference(preference: ThemePreference): void {
-  const storage = globalThis.localStorage;
-  if (!storage) {
-    return;
-  }
-  const keys = new Set<string>([PRIMARY_KEY, ...ALIAS_KEYS, ...observedKeys]);
-  for (const key of keys) {
-    try {
-      storage.setItem(key, preference);
-    } catch {
-      // Ignore storage failures (private mode, quota, etc.).
-    }
+  try {
+    // One key, one write. The previous fan-out hit 14 keys synchronously on
+    // every toggle, which is what made the click feel laggy.
+    globalThis.localStorage?.setItem(PRIMARY_KEY, preference);
+  } catch {
+    // Ignore storage failures (private mode, quota, disabled storage, etc.).
   }
 }
 
@@ -123,17 +106,20 @@ function commit(
   preference: ThemePreference,
 ): void {
   const resolved = resolvePreference(preference);
-  persistPreference(preference);
+  // Order matters: the attribute swap is the change the user can *see*, so it
+  // happens first and cannot be queued behind storage I/O. React state follows,
+  // and the (single) persistence write runs last.
   applyToDom(resolved);
   set({ preference, resolvedTheme: resolved });
+  persistPreference(preference);
 }
 
 const initialPreference = readStoredPreference();
 const initialResolved = resolvePreference(initialPreference);
 
 // Make sure the chosen preference is recorded even on first run.
-persistPreference(initialPreference);
 applyToDom(initialResolved);
+persistPreference(initialPreference);
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
   preference: initialPreference,
@@ -144,9 +130,12 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
 
   toggle: () => {
-    const current = get().preference;
+    // Flip the *effective* theme, not the raw preference: when the preference
+    // is "system" the resolved value may already match what the user expects,
+    // so deciding from `preference` would make a click appear to do nothing.
+    // The stored preference therefore always lands on an explicit light/dark.
     const next: ThemePreference =
-      current === "light" ? "dark" : current === "dark" ? "system" : "light";
+      get().resolvedTheme === "dark" ? "light" : "dark";
     commit(set, next);
   },
 }));
