@@ -156,14 +156,15 @@ export const DrawingToolsPopover = ({
           type="toggle"
           icon={displayedOption.icon}
           checked={isOptionChecked(displayedOption.type)}
-          disabled={DRAWING_TOOLS.every((option) =>
-            isOptionDisabled(option.type),
-          )}
+          // the trigger stays operable even when every option is disabled
+          // (e.g. a host-forced tool) — same as the extra-tools menu, so the
+          // options remain discoverable instead of the button going dead
           title={t("toolBar.drawingTools")}
           aria-label={t("toolBar.drawingTools")}
-          data-testid="toolbar-drawing-tools"
+          data-testid="toolbar-freedraw"
           onSelect={() => {
             setIsPopupOpen((v) => !v);
+            handleSelect(lastDrawingTool);
           }}
         />
       </Popover.Trigger>

@@ -263,7 +263,7 @@ describe("props.activeTool (forced tool)", () => {
     );
     fireEvent.click(
       GlobalTestState.renderResult.container.querySelector(
-        '[data-testid="toolbar-drawing-tools"]',
+        '[data-testid="toolbar-freedraw"]',
       )!,
     );
     await waitFor(() =>
