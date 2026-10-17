@@ -30,7 +30,10 @@ export const ActivityPage = () => {
       <h1 style={{ margin: "0 0 4px", fontSize: 22 }}>{t("activity.title")}</h1>
 
       {rows.length === 0 ? (
-        <p style={{ color: "var(--color-text-muted)" }} data-testid="activity-empty">
+        <p
+          style={{ color: "var(--color-text-muted)" }}
+          data-testid="activity-empty"
+        >
           {t("activity.empty")}
         </p>
       ) : (

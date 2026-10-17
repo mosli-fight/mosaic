@@ -27,7 +27,13 @@ export const SettingsPage = () => {
         <h2 style={{ fontSize: 15, margin: "0 0 6px" }}>
           {t("settings.storage")}
         </h2>
-        <p style={{ color: "var(--color-text-muted)", fontSize: 13, margin: "0 0 16px" }}>
+        <p
+          style={{
+            color: "var(--color-text-muted)",
+            fontSize: 13,
+            margin: "0 0 16px",
+          }}
+        >
           {t("settings.usage", {
             // pluralize supplies the noun and the correct "1 board" / "2 boards"
             // inflection; the template deliberately has no hard-coded plural.

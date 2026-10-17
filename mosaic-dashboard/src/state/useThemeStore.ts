@@ -76,7 +76,10 @@ function readStoredPreference(): ThemePreference {
 
 function systemPrefersDark(): boolean {
   try {
-    return globalThis.window?.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
+    return (
+      globalThis.window?.matchMedia?.("(prefers-color-scheme: dark)")
+        ?.matches ?? false
+    );
   } catch {
     return false;
   }
@@ -149,7 +152,9 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 }));
 
 // Live-update when the OS color scheme changes while preference is "system".
-const mediaQuery = globalThis.window?.matchMedia?.("(prefers-color-scheme: dark)");
+const mediaQuery = globalThis.window?.matchMedia?.(
+  "(prefers-color-scheme: dark)",
+);
 const handleMediaChange = (): void => {
   const { preference } = useThemeStore.getState();
   if (preference !== "system") {
