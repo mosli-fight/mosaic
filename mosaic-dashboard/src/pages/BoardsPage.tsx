@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
+import styles from "./BoardsPage.module.scss";
+
 import {
   BoardGridSkeleton,
   LOADING_BOARDS_LABEL,
@@ -12,8 +14,6 @@ import { Modal } from "@/components/common/Modal";
 import { t } from "@/lib/i18n";
 import { pluralize, selectBoards } from "@/lib/selectors";
 import { useDashboardStore } from "@/state/useDashboardStore";
-
-import styles from "./BoardsPage.module.scss";
 
 /**
  * The board list route (STEP 2).
@@ -179,10 +179,7 @@ export const BoardsPage = () => {
                 navigate(`/board/${board.id}`);
               }}
             >
-              <span
-                style={{ fontSize: 18, lineHeight: 1 }}
-                aria-hidden="true"
-              >
+              <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden="true">
                 +
               </span>
               {t("board.empty.action")}
@@ -206,10 +203,7 @@ const TrashHeader = ({ onEmpty }: { onEmpty: () => Promise<void> }) => {
   const trashedCount = boards.filter((b) => b.trashedAt !== null).length;
 
   return (
-    <div
-      className={styles.trashHeader}
-      data-testid="trash-header"
-    >
+    <div className={styles.trashHeader} data-testid="trash-header">
       <p className={styles.trashNote}>{t("trash.empty")}</p>
       {trashedCount > 0 ? (
         <button
