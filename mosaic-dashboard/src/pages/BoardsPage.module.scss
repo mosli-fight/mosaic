@@ -1,4 +1,6 @@
-@use "../styles/tokens" as t with ($emit-color-vars: false);
+@use "../styles/tokens" as t with (
+  $emit-color-vars: false
+);
 
 /**
  * Visual polish for the boards page: header hierarchy, toolbar area and the
@@ -230,7 +232,11 @@
   border-radius: 12px;
   cursor: pointer;
   color: var(--color-text-inverse);
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-hover)
+  );
   box-shadow: 0 6px 18px rgba(57, 119, 223, 0.35);
   transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
 

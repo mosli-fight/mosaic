@@ -10,7 +10,11 @@
   gap: t.$space-md;
   padding: t.$space-lg t.$space-md;
   border-right: 1px solid var(--color-border);
-  background: linear-gradient(180deg, var(--color-surface-raised), var(--color-surface));
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-raised),
+    var(--color-surface)
+  );
   overflow-y: auto;
 }
 
@@ -140,13 +144,21 @@
   font-weight: 700;
   font-size: 14px;
   letter-spacing: -0.01em;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-hover)
+  );
   box-shadow: 0 3px 10px rgba(57, 119, 223, 0.32);
   cursor: pointer;
   transition: filter 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 
   &:hover {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    background: linear-gradient(
+      135deg,
+      var(--color-primary),
+      var(--color-primary-hover)
+    );
     box-shadow: 0 5px 14px rgba(57, 119, 223, 0.4);
     transform: translateY(-1px);
   }

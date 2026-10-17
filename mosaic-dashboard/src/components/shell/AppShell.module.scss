@@ -1,4 +1,6 @@
-@use "../../styles/tokens" as t with ($emit-color-vars: false);
+@use "../../styles/tokens" as t with (
+  $emit-color-vars: false
+);
 
 .shell {
   display: flex;
