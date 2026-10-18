@@ -16,11 +16,6 @@ import {
   useDrawingToolPresets,
 } from "./drawingToolPresets";
 
-import type {
-  DrawingToolPreset,
-  DrawingToolPresetKind,
-} from "./drawingToolPresets";
-
 import "./ToolPopover.scss";
 import "./DrawingToolsPopover.scss";
 
@@ -32,6 +27,11 @@ import {
   laserPointerToolIcon,
   createIcon,
 } from "./icons";
+
+import type {
+  DrawingToolPreset,
+  DrawingToolPresetKind,
+} from "./drawingToolPresets";
 
 import type { AppClassProperties, AppState, UIAppState } from "../types";
 

@@ -1,6 +1,5 @@
 import React from "react";
 
-import { fireEvent, render, waitFor } from "./test-utils";
 import { Excalidraw } from "../index";
 
 import {
@@ -10,6 +9,8 @@ import {
   loadDrawingToolPresets,
   sanitizeDrawingToolPresets,
 } from "../components/drawingToolPresets";
+
+import { fireEvent, render, waitFor } from "./test-utils";
 
 const openPopover = async (container: HTMLElement) => {
   fireEvent.click(container.querySelector('[data-testid="toolbar-freedraw"]')!);
@@ -237,7 +238,9 @@ describe("drawing tool presets in the popover", () => {
       document.querySelector('[data-testid="drawing-tool-presets-pen"]'),
     ).not.toBe(null);
     expect(
-      document.querySelector('[data-testid="drawing-tool-presets-highlighter"]'),
+      document.querySelector(
+        '[data-testid="drawing-tool-presets-highlighter"]',
+      ),
     ).toBe(null);
   });
 
