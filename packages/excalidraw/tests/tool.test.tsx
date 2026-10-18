@@ -13,7 +13,7 @@ import { findShapeByKey } from "../components/Tools";
 
 import { API } from "./helpers/api";
 import { Pointer } from "./helpers/ui";
-import { act, fireEvent, GlobalTestState, render } from "./test-utils";
+import { act, fireEvent, GlobalTestState, render, waitFor } from "./test-utils";
 
 import type { AppClassProperties, ExcalidrawImperativeAPI } from "../types";
 
@@ -253,7 +253,25 @@ describe("props.activeTool (forced tool)", () => {
   });
 
   it("renders non-forced toolbar buttons disabled and gates the tool lock", async () => {
-    await render(
+    // the drawing-tools popover is opened before the tool gets forced: its
+    // trigger renders disabled once every option in it would be disabled
+    // (same gating as ToolPopover), so the options can only be inspected
+    // while the tool is still host-uncontrolled — then the forced tool is
+    // applied and the options are asserted disabled
+    const { rerender } = await render(
+      <Excalidraw handleKeyboardGlobally={true} />,
+    );
+    fireEvent.click(
+      GlobalTestState.renderResult.container.querySelector(
+        '[data-testid="toolbar-freedraw"]',
+      )!,
+    );
+    await waitFor(() =>
+      expect(document.querySelector(".drawing-tools-popover-content")).not.toBe(
+        null,
+      ),
+    );
+    rerender(
       <Excalidraw
         activeTool={{ type: "rectangle" }}
         handleKeyboardGlobally={true}
@@ -264,9 +282,21 @@ describe("props.activeTool (forced tool)", () => {
     expect(queryToolButton("rectangle")!.getAttribute("aria-pressed")).toBe(
       "true",
     );
-    expect(queryToolButton("freedraw")!.disabled).toBe(true);
-    expect(queryToolButton("eraser")!.disabled).toBe(true);
     expect(queryToolButton("lock")).toBe(null);
+
+    // the drawing-tools popover options are disabled as well — freedraw,
+    // eraser and laser live in the popover now instead of the toolbar /
+    // extra-tools dropdown (laser moved there from the extra-tools dropdown)
+    for (const type of ["freedraw", "eraser", "laser"]) {
+      const option = await waitFor(() => {
+        const item = document.querySelector<HTMLButtonElement>(
+          `.drawing-tools-popover-content [data-testid="toolbar-${type}"]`,
+        );
+        expect(item).not.toBe(null);
+        return item!;
+      });
+      expect(option.disabled).toBe(true);
+    }
 
     // the extra-tools dropdown items are disabled as well
     fireEvent.click(
@@ -279,10 +309,6 @@ describe("props.activeTool (forced tool)", () => {
     );
     expect(frameItem).not.toBe(null);
     expect(frameItem!.disabled).toBe(true);
-    const laserItem = document.querySelector<HTMLButtonElement>(
-      '[data-testid="toolbar-laser"]',
-    );
-    expect(laserItem!.disabled).toBe(true);
 
     // Q (toggle tool lock) is ignored — locking is implied while forced
     expect(h.state.activeTool.locked).toBe(false);
@@ -383,6 +409,8 @@ describe("toolbar", () => {
     expect(badge("rectangle")).toBe("R");
     expect(badge("text")).toBe("T");
     expect(badge("stickynote")).toBe("N");
-    expect(badge("eraser")).toBe("E");
+    // eraser has no toolbar-level button anymore — it's an option inside the
+    // drawing-tools popover, which renders no keybinding badge
+    expect(queryTool("eraser")).toBe(null);
   });
 });

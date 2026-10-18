@@ -18,6 +18,11 @@ import {
 
 const { h } = window;
 
+// Normalize volatile Radix UI IDs (e.g. radix-:r85:, radix-_r_91_) so snapshots
+// are stable across runs. Radix generates these IDs non-deterministically.
+const normalizeRadixIds = (html: string) =>
+  html.replace(/radix-:r[\w]+:|radix-_r_[\w]+_/g, "radix-TEST-ID");
+
 describe("<Excalidraw/>", () => {
   afterEach(() => {
     const menu = document.querySelector(".dropdown-menu");
@@ -147,7 +152,11 @@ describe("<Excalidraw/>", () => {
         );
         //open menu
         toggleMenu(container);
-        expect(queryByTestId(container, "dropdown-menu")).toMatchSnapshot();
+        expect(
+          normalizeRadixIds(
+            queryByTestId(container, "dropdown-menu")!.outerHTML,
+          ),
+        ).toMatchSnapshot();
       });
 
       it("should hide clear canvas button when clearCanvas is false", async () => {
@@ -427,7 +436,9 @@ describe("<Excalidraw/>", () => {
       );
       //open menu
       toggleMenu(container);
-      expect(queryByTestId(container, "dropdown-menu")).toMatchSnapshot();
+      expect(
+        normalizeRadixIds(queryByTestId(container, "dropdown-menu")!.outerHTML),
+      ).toMatchSnapshot();
     });
 
     it("should update themeToggle text even if MainMenu memoized", async () => {

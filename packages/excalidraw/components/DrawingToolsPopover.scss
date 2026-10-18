@@ -1,0 +1,28 @@
+@use "../css/variables.module" as *;
+
+.excalidraw {
+  // vertical variant of the tool popover — the drawing-tools popover renders
+  // its options as a column. Higher specificity than `.tool-popover-content`
+  // to win over its `flex-direction: row`.
+  .tool-popover-content.drawing-tools-popover-content {
+    flex-direction: column;
+    gap: 0.25rem;
+    border-radius: 0.5rem;
+    background: var(--island-bg-color);
+    box-shadow: var(--shadow-island);
+    padding: 0.5rem;
+
+    @keyframes DrawingToolsPopover-fade-scale-in {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    animation: DrawingToolsPopover-fade-scale-in 120ms ease;
+  }
+}

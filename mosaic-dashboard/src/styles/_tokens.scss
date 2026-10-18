@@ -58,6 +58,13 @@ $header-height: 60px;
     --color-surface: #ffffff;
     --color-surface-raised: #f8f9fb;
     --color-surface-sunken: #f1f3f7;
+    // `surface-muted`/`success` were previously referenced only as literals
+    // (`var(--color-surface-muted, #f1f3f5)`, `var(--color-success, #1a7f47)`)
+    // by the board/share pages, which sit outside `.dashboardRoot` and only now
+    // inherit the palette from `:root`. Declaring them keeps those pages
+    // readable in dark mode instead of leaving the fallback literals behind;
+    // the light values ARE those literals, so light mode is unchanged.
+    --color-surface-muted: #f1f3f5;
     --color-border: #e3e7ef;
     --color-border-strong: #cbd3e1;
 
@@ -74,6 +81,7 @@ $header-height: 60px;
     --color-danger-bg: #fdecec;
     --color-danger-text: #8f2626;
     --color-warning: #e08c2b;
+    --color-success: #1a7f47;
   }
 
   :root[data-theme="dark"],
@@ -87,6 +95,10 @@ $header-height: 60px;
     --color-surface: #161b24;
     --color-surface-raised: #1f2733;
     --color-surface-sunken: #13171f;
+    // Matches `raised` on purpose: the badge that uses `surface-muted` has to
+    // separate from the `surface` header behind it while keeping its
+    // `text-muted` label readable (≈5.5:1).
+    --color-surface-muted: #1f2733;
     --color-border: #2a3342;
     --color-border-strong: #3a4556;
 
@@ -103,5 +115,8 @@ $header-height: 60px;
     --color-danger-bg: #2a1f21;
     --color-danger-text: #f08a8a;
     --color-warning: #e8a34a;
+    // Lightened like the rest of the palette is in dark mode so the "Saved"
+    // status stays legible on `--color-surface` (≈7.6:1).
+    --color-success: #4fbf8b;
   }
 }
