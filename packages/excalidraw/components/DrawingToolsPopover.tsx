@@ -7,8 +7,14 @@ import { trackEvent } from "../analytics";
 
 import { t } from "../i18n";
 
+import { DrawingToolPresetRow } from "./DrawingToolPresetRow";
 import { IconButton } from "./IconButton";
 import { isToolButtonDisabled } from "./Tools";
+
+import {
+  findActivePresetIndex,
+  useDrawingToolPresets,
+} from "./drawingToolPresets";
 
 import "./ToolPopover.scss";
 import "./DrawingToolsPopover.scss";
@@ -21,6 +27,11 @@ import {
   laserPointerToolIcon,
   createIcon,
 } from "./icons";
+
+import type {
+  DrawingToolPreset,
+  DrawingToolPresetKind,
+} from "./drawingToolPresets";
 
 import type { AppClassProperties, AppState, UIAppState } from "../types";
 
@@ -40,11 +51,6 @@ export const HighlighterIcon = createIcon(
     strokeLinejoin: "round",
   },
 );
-
-/** the stroke the highlighter pseudo-tool applies on top of freedraw */
-const HIGHLIGHTER_STROKE_COLOR = "#ffd60a";
-const HIGHLIGHTER_STROKE_WIDTH_KEY = "bold";
-const HIGHLIGHTER_OPACITY = 60;
 
 type DrawingToolOption = {
   type: string;
@@ -80,13 +86,86 @@ export const DrawingToolsPopover = ({
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [lastDrawingTool, setLastDrawingTool] = useState<string>("freedraw");
+  // which preset each option re-applies when picked from the tool list — the
+  // rows update these whenever the user picks one. Without this the pen and
+  // highlighter options would be one-way: a highlighter stroke stays a
+  // highlighter stroke no matter which of the two you click.
+  const [lastHighlighterPreset, setLastHighlighterPreset] = useState(0);
+  const [lastPenPreset, setLastPenPreset] = useState(0);
   const { container } = useExcalidrawContainer();
+  const { presets, updatePreset } = useDrawingToolPresets();
 
-  // the highlighter is a pseudo-tool: freedraw with a bold yellow stroke
+  const currentPreset: DrawingToolPreset | null =
+    activeTool.type === "freedraw"
+      ? {
+          strokeColor: app.state.currentItemStrokeColor,
+          strokeWidthKey: app.state.currentItemStrokeWidthKey,
+          opacity: app.state.currentItemOpacity,
+        }
+      : null;
+
+  // the highlighter is a pseudo-tool: freedraw with a marker stroke. Matching
+  // against the (user-customizable) highlighter presets subsumes the original
+  // hardcoded yellow/bold/60 check, since that is the default first preset.
+  const activeHighlighterIndex = findActivePresetIndex(
+    presets.highlighter,
+    currentPreset,
+  );
   const isHighlighterActive =
-    activeTool.type === "freedraw" &&
-    app.state.currentItemStrokeWidthKey === HIGHLIGHTER_STROKE_WIDTH_KEY &&
-    app.state.currentItemStrokeColor === HIGHLIGHTER_STROKE_COLOR;
+    activeTool.type === "freedraw" && activeHighlighterIndex >= 0;
+
+  // the pen presets only describe pen strokes — a highlighter stroke must not
+  // light up a pen preset that happens to share its color and width
+  const activePenIndex = isHighlighterActive
+    ? -1
+    : findActivePresetIndex(presets.pen, currentPreset);
+
+  const presetKind: DrawingToolPresetKind = isHighlighterActive
+    ? "highlighter"
+    : "pen";
+
+  const applyPreset = (preset: DrawingToolPreset) => {
+    app.setActiveTool({ type: "freedraw" as any });
+    setAppState({
+      currentItemStrokeColor: preset.strokeColor,
+      currentItemStrokeWidthKey: preset.strokeWidthKey,
+      currentItemOpacity: preset.opacity,
+    });
+  };
+
+  const handlePresetSelect = (
+    kind: DrawingToolPresetKind,
+    preset: DrawingToolPreset,
+    index: number,
+  ) => {
+    trackEvent("toolbar", `${kind}-preset`, "ui");
+    applyPreset(preset);
+    setLastDrawingTool(kind === "highlighter" ? "highlighter" : "freedraw");
+    if (kind === "highlighter") {
+      setLastHighlighterPreset(index);
+    } else {
+      setLastPenPreset(index);
+    }
+  };
+
+  const handlePresetChange = (
+    kind: DrawingToolPresetKind,
+    index: number,
+    patch: Partial<DrawingToolPreset>,
+  ) => {
+    updatePreset(kind, index, patch);
+
+    // the preset being customized becomes the active brush — otherwise
+    // adjusting a preset that isn't currently applied would appear to do
+    // nothing on canvas
+    applyPreset({ ...presets[kind][index], ...patch });
+    setLastDrawingTool(kind === "highlighter" ? "highlighter" : "freedraw");
+    if (kind === "highlighter") {
+      setLastHighlighterPreset(index);
+    } else {
+      setLastPenPreset(index);
+    }
+  };
 
   useEffect(() => {
     if (
@@ -126,15 +205,35 @@ export const DrawingToolsPopover = ({
   };
 
   const handleSelect = (type: string) => {
-    if (type === "highlighter") {
-      trackEvent("toolbar", "highlighter", "ui");
+    // pen and highlighter are both freedraw, so switching between them has to
+    // restore the other one's stroke — otherwise clicking "Pen" over a
+    // highlighter preset would leave you stuck with marker styling. Picking
+    // the one already active is a no-op: it must not clobber a stroke the
+    // user set by hand (the trigger re-selects on every open).
+    if (type === "highlighter" || type === "freedraw") {
+      const kind: DrawingToolPresetKind =
+        type === "highlighter" ? "highlighter" : "pen";
+
+      // only a genuine flavor switch re-applies a preset — picking the flavor
+      // already in effect must leave a hand-tuned stroke alone (the trigger
+      // re-selects on every popover open)
+      const isSwitching =
+        kind === "highlighter" ? !isHighlighterActive : isHighlighterActive;
+
       app.setActiveTool({ type: "freedraw" as any });
-      setAppState({
-        currentItemStrokeWidthKey: HIGHLIGHTER_STROKE_WIDTH_KEY,
-        currentItemStrokeColor: HIGHLIGHTER_STROKE_COLOR,
-        currentItemOpacity: HIGHLIGHTER_OPACITY,
-      });
-      setLastDrawingTool("highlighter");
+
+      if (isSwitching) {
+        trackEvent("toolbar", type, "ui");
+        const lastIndex =
+          kind === "highlighter" ? lastHighlighterPreset : lastPenPreset;
+        setAppState({
+          currentItemStrokeColor: presets[kind][lastIndex].strokeColor,
+          currentItemStrokeWidthKey: presets[kind][lastIndex].strokeWidthKey,
+          currentItemOpacity: presets[kind][lastIndex].opacity,
+        });
+      }
+
+      setLastDrawingTool(kind === "highlighter" ? "highlighter" : "freedraw");
       return;
     }
 
@@ -190,6 +289,30 @@ export const DrawingToolsPopover = ({
             onSelect={() => handleSelect(type)}
           />
         ))}
+
+        {/* presets only apply to the two freedraw-based tools (pen and
+            highlighter) — laser and eraser have no stroke style to preset */}
+        {activeTool.type === "freedraw" && (
+          <>
+            <div className="drawing-tools-popover__separator" />
+            <DrawingToolPresetRow
+              kind={presetKind}
+              presets={presets[presetKind]}
+              activeIndex={
+                presetKind === "highlighter"
+                  ? activeHighlighterIndex
+                  : activePenIndex
+              }
+              theme={app.state.theme}
+              onSelect={(preset, index) =>
+                handlePresetSelect(presetKind, preset, index)
+              }
+              onChange={(index, patch) =>
+                handlePresetChange(presetKind, index, patch)
+              }
+            />
+          </>
+        )}
       </Popover.Content>
     </Popover.Root>
   );
