@@ -100,7 +100,10 @@ const normalizeDialogSnapshot = (dialog: Element) => {
       }
     });
 
-  return dialogClone.outerHTML;
+  return dialogClone.outerHTML.replace(
+    /radix-:r[\w]+:|radix-_r_[\w]+_/g,
+    "radix-TEST-ID",
+  );
 };
 
 describe("Test <MermaidToExcalidraw/>", () => {
