@@ -153,9 +153,7 @@ describe("<Excalidraw/>", () => {
         //open menu
         toggleMenu(container);
         expect(
-          normalizeRadixIds(
-            queryByTestId(container, "dropdown-menu")!.outerHTML,
-          ),
+          normalizeRadixIds(queryByTestId(container, "dropdown-menu")!.outerHTML),
         ).toMatchSnapshot();
       });
 
@@ -437,9 +435,7 @@ describe("<Excalidraw/>", () => {
       //open menu
       toggleMenu(container);
       expect(
-        normalizeRadixIds(
-          queryByTestId(container, "dropdown-menu")!.outerHTML,
-        ),
+        normalizeRadixIds(queryByTestId(container, "dropdown-menu")!.outerHTML),
       ).toMatchSnapshot();
     });
 
