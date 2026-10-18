@@ -438,6 +438,13 @@ export interface AppState {
     type: "selection" | "lasso";
     initialized: boolean;
   };
+  /**
+   * Whether the eraser tool is in its precision mode (erase the touched
+   * segment of a stroke, splitting it) rather than its default whole-stroke
+   * mode. Only meaningful while `activeTool.type === "eraser"` — see
+   * `isPrecisionEraserActive`.
+   */
+  precisionEraserActive: boolean;
 
   // Pen handling
   penMode: boolean;

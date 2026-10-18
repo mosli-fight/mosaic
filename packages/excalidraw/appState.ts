@@ -59,6 +59,7 @@ export const getDefaultAppState = (): Omit<
       fromSelection: false,
       lastActiveTool: null,
     },
+    precisionEraserActive: false,
     preferredSelectionTool: {
       type: "selection",
       initialized: false,
@@ -209,6 +210,10 @@ const APP_STATE_STORAGE_CONF = (<
   editingTextElement: { browser: false, export: false, server: false },
   editingGroupId: { browser: true, export: false, server: false },
   activeTool: { browser: true, export: false, server: false },
+  // not persisted: the eraser tool itself isn't restorable (see
+  // `AllowedExcalidrawActiveTools`), so a stored mode would outlive the tool
+  // that gives it meaning and silently reappear the next time E is pressed
+  precisionEraserActive: { browser: false, export: false, server: false },
   preferredSelectionTool: { browser: true, export: false, server: false },
   penMode: { browser: true, export: false, server: false },
   penDetected: { browser: true, export: false, server: false },
@@ -331,6 +336,25 @@ export const isEraserActive = ({
 }: {
   activeTool: AppState["activeTool"];
 }) => activeTool.type === "eraser";
+
+/**
+ * The precision eraser is a *mode* of the eraser tool, not a tool of its own:
+ * it rides on `activeTool.type === "eraser"` so that every existing
+ * `isEraserActive` branch (cursor, hints, pointer capture, tool revert) keeps
+ * working, and this flag only picks which of the two behaviors runs.
+ *
+ * Keeping it out of `ToolType` is deliberate — that union is public API and
+ * is persisted, so a pseudo-tool there would leak into host apps and the
+ * restore path. `precisionEraserActive` is meaningless unless an eraser is
+ * active; `isPrecisionEraserActive` enforces that pairing.
+ */
+export const isPrecisionEraserActive = ({
+  activeTool,
+  precisionEraserActive,
+}: {
+  activeTool: AppState["activeTool"];
+  precisionEraserActive: AppState["precisionEraserActive"];
+}) => activeTool.type === "eraser" && precisionEraserActive;
 
 export const isHandToolActive = ({
   activeTool,

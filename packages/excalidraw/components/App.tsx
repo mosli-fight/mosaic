@@ -323,7 +323,11 @@ import { ActionManager } from "../actions/manager";
 import { actions } from "../actions/register";
 import { getShortcutFromShortcutName } from "../actions/shortcuts";
 import { trackEvent } from "../analytics";
-import { getDefaultAppState, isEraserActive } from "../appState";
+import {
+  getDefaultAppState,
+  isEraserActive,
+  isPrecisionEraserActive,
+} from "../appState";
 import {
   copyTextToSystemClipboard,
   parseDataTransferEvent,
@@ -395,6 +399,11 @@ import { withBatchedUpdates, withBatchedUpdatesThrottled } from "../reactUtils";
 import { isOverScrollBars } from "../scene/scrollbars";
 import { LassoTrail } from "../lasso";
 import { EraserTrail } from "../eraser";
+import {
+  PrecisionEraserTrail,
+  applyPrecisionErase,
+} from "../eraser/precisionEraser";
+import { getPrecisionEraserRadius } from "../eraser/precision";
 import { getShortcutKey } from "../shortcut";
 
 import {
@@ -734,6 +743,7 @@ class App extends React.Component<AppProps, AppState> {
   drawShape = new AppDrawShape(this);
   laserTrails = new LaserTrails(this);
   eraserTrail = new EraserTrail(this);
+  precisionEraserTrail = new PrecisionEraserTrail(this);
   lassoTrail = new LassoTrail(this);
   cursorHints = new CursorHints(this);
 
@@ -2490,6 +2500,7 @@ class App extends React.Component<AppProps, AppState> {
                               this.laserTrails,
                               this.lassoTrail,
                               this.eraserTrail,
+                              this.precisionEraserTrail,
                               this.drawShape.trail,
                             ]}
                           />
@@ -3921,6 +3932,7 @@ class App extends React.Component<AppProps, AppState> {
     this.drawShape.stop();
     this.toolDrag.cancel();
     this.eraserTrail.stop();
+    this.precisionEraserTrail.stop();
     this.onChangeEmitter.clear();
     this.store.onStoreIncrementEmitter.clear();
     this.store.onDurableIncrementEmitter.clear();
@@ -4369,6 +4381,22 @@ class App extends React.Component<AppProps, AppState> {
 
     if (isEraserActive(prevState) && !isEraserActive(this.state)) {
       this.eraserTrail.endPath();
+      this.precisionEraserTrail.endPath();
+
+      // the precision mode belongs to the eraser tool, so leaving the tool
+      // drops it — otherwise pressing E later would silently hand back the
+      // precision eraser instead of the plain one
+      if (this.state.precisionEraserActive) {
+        this.setState({ precisionEraserActive: false });
+      }
+    } else if (
+      // switching between the two eraser modes leaves `activeTool.type` alone,
+      // so nothing else repaints the cursor — and the two modes have
+      // different-sized circles
+      isEraserActive(this.state) &&
+      prevState.precisionEraserActive !== this.state.precisionEraserActive
+    ) {
+      this.cursor.applyForTool();
     }
 
     // cleanup
@@ -7374,6 +7402,13 @@ class App extends React.Component<AppProps, AppState> {
     event: PointerEvent,
     scenePointer: { x: number; y: number },
   ) => {
+    if (isPrecisionEraserActive(this.state)) {
+      // nothing is marked for deletion until pointer up — the gesture only
+      // records the path, so there is no pending-erasure preview to update
+      this.precisionEraserTrail.addPointToPath(scenePointer.x, scenePointer.y);
+      return;
+    }
+
     const elementsToErase = this.eraserTrail.addPointToPath(
       scenePointer.x,
       scenePointer.y,
@@ -8001,7 +8036,13 @@ class App extends React.Component<AppProps, AppState> {
     );
 
     if (this.state.activeTool.type === "eraser") {
-      this.eraserTrail.startPath(
+      // both eraser modes draw the same swipe; only the erase on pointer up
+      // differs, so arm whichever trail belongs to the active mode
+      const trail = isPrecisionEraserActive(this.state)
+        ? this.precisionEraserTrail
+        : this.eraserTrail;
+
+      trail.startPath(
         pointerDownState.lastCoords.x,
         pointerDownState.lastCoords.y,
       );
@@ -11120,6 +11161,11 @@ class App extends React.Component<AppProps, AppState> {
       const pointerEnd = this.lastPointerUpEvent || this.lastPointerMoveEvent;
 
       if (isEraserActive(this.state) && pointerStart && pointerEnd) {
+        if (isPrecisionEraserActive(this.state)) {
+          this.commitPrecisionErase();
+          return;
+        }
+
         this.eraserTrail.endPath();
 
         const draggedDistance = pointDistance(
@@ -11498,6 +11544,31 @@ class App extends React.Component<AppProps, AppState> {
   private restoreReadyToEraseElements = () => {
     this.elementsPendingErasure = new Set();
     this.triggerRender();
+  };
+
+  /**
+   * Commits a precision-erase gesture: the recorded path is replayed against
+   * the scene, splitting every freedraw stroke it crossed. The whole gesture
+   * is one undoable step, so it uses the same capture-then-replace shape as
+   * `eraseElements` — except it bails out entirely when nothing was touched,
+   * so a stray click on empty canvas doesn't push an undo entry.
+   */
+  private commitPrecisionErase = () => {
+    const eraserPath = this.precisionEraserTrail.getScenePath();
+    this.precisionEraserTrail.endPath();
+
+    const nextElements = applyPrecisionErase(
+      this.scene.getElementsIncludingDeleted(),
+      eraserPath,
+      getPrecisionEraserRadius(this.state.zoom.value),
+    );
+
+    if (!nextElements) {
+      return;
+    }
+
+    this.store.scheduleCapture();
+    this.scene.replaceAllElements(nextElements);
   };
 
   private eraseElements = () => {
