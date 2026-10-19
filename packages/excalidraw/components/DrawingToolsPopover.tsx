@@ -25,6 +25,7 @@ import {
   FreedrawIcon,
   EraserIcon,
   PrecisionEraserIcon,
+  LassoIcon,
   laserPointerToolIcon,
   createIcon,
 } from "./icons";
@@ -95,6 +96,7 @@ export const DrawingToolsPopover = ({
       icon: PrecisionEraserIcon,
       title: t("toolBar.precisionEraser"),
     },
+    { type: "lasso", icon: LassoIcon, title: t("toolBar.lasso") },
   ];
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -184,7 +186,8 @@ export const DrawingToolsPopover = ({
     if (
       activeTool.type === "laser" ||
       activeTool.type === "eraser" ||
-      activeTool.type === "freedraw"
+      activeTool.type === "freedraw" ||
+      activeTool.type === "lasso"
     ) {
       if (activeTool.type === "eraser") {
         // the two eraser entries share the tool, so the mode decides which
