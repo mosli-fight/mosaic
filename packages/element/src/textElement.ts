@@ -3,11 +3,11 @@ import {
   ARROW_LABEL_WIDTH_FRACTION,
   BOUND_TEXT_PADDING,
   DEFAULT_FONT_SIZE,
-  STICKY_NOTE_BODY_INSET_Y,
   STICKY_NOTE_PADDING,
   TEXT_ALIGN,
   VERTICAL_ALIGN,
   getFontString,
+  getStickyNoteBodyInsetY,
   isProdEnv,
   invariant,
 } from "@excalidraw/common";
@@ -574,8 +574,11 @@ export const getBoundTextMaxHeight = (
 ) => {
   const { height } = container;
   if (isStickyNoteElement(container)) {
-    // the label body ends above the creation-date footer
-    return Math.max(0, height - STICKY_NOTE_BODY_INSET_Y);
+    // the label body ends above the tag row and the creation-date footer
+    return Math.max(
+      0,
+      height - getStickyNoteBodyInsetY(container.tags?.length ?? 0),
+    );
   }
   if (isArrowElement(container)) {
     const containerHeight = height - BOUND_TEXT_PADDING * 8 * 2;

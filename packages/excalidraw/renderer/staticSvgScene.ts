@@ -15,6 +15,7 @@ import {
   STICKY_NOTE_EDGE_SHADOW_WIDTH,
   STICKY_NOTE_FOOTER,
   STICKY_NOTE_SHADOW_OPACITY,
+  STICKY_NOTE_TAG,
 } from "@excalidraw/common";
 import { normalizeLink, toValidURL } from "@excalidraw/common";
 import { hashString } from "@excalidraw/element";
@@ -39,7 +40,7 @@ import { getCornerRadius, isPathALoop } from "@excalidraw/element";
 
 import { ShapeCache } from "@excalidraw/element";
 import {
-  getStickyNoteFooter,
+  getStickyNoteFooterContent,
   getStickyNotePathCommands,
   type StickyNotePathCommand,
 } from "@excalidraw/element";
@@ -234,27 +235,77 @@ const renderElementToSvg = (
       group.appendChild(rect);
       group.appendChild(edgeShadow);
 
-      const footer = getStickyNoteFooter(element);
-      if (footer) {
-        const dateText = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
-        dateText.setAttribute("x", `${footer.x}`);
-        dateText.setAttribute("y", `${footer.y}`);
-        dateText.setAttribute("font-family", STICKY_NOTE_FOOTER.fontFamily);
-        dateText.setAttribute("font-size", `${STICKY_NOTE_FOOTER.fontSize}px`);
+      const footer = getStickyNoteFooterContent(element);
+      const ink = applyDarkModeFilter(
+        element.strokeColor,
+        renderConfig.theme === THEME.DARK,
+      );
+
+      const createFooterText = (
+        text: string,
+        x: number,
+        y: number,
+        anchor: "start" | "end",
+      ) => {
+        const node = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
+        node.setAttribute("x", `${x}`);
+        node.setAttribute("y", `${y}`);
+        node.setAttribute("font-family", STICKY_NOTE_FOOTER.fontFamily);
+        node.setAttribute("font-size", `${STICKY_NOTE_FOOTER.fontSize}px`);
         // `text-anchor` is logical in SVG: pin the direction so an RTL host
         // page can't flip the label to the left edge
-        dateText.setAttribute("text-anchor", "end");
-        dateText.setAttribute("direction", "ltr");
-        dateText.setAttribute(
-          "fill",
-          applyDarkModeFilter(
-            element.strokeColor,
-            renderConfig.theme === THEME.DARK,
+        node.setAttribute("text-anchor", anchor);
+        node.setAttribute("direction", "ltr");
+        node.setAttribute("fill", ink);
+        node.setAttribute("fill-opacity", `${STICKY_NOTE_FOOTER.opacity}`);
+        node.textContent = text;
+        return node;
+      };
+
+      if (footer.date) {
+        group.appendChild(
+          createFooterText(
+            footer.date.text,
+            footer.date.x,
+            footer.date.y,
+            "end",
           ),
         );
-        dateText.setAttribute("fill-opacity", `${STICKY_NOTE_FOOTER.opacity}`);
-        dateText.textContent = footer.text;
-        group.appendChild(dateText);
+      }
+
+      if (footer.author) {
+        group.appendChild(
+          createFooterText(
+            footer.author.text,
+            footer.author.x,
+            footer.author.y,
+            "start",
+          ),
+        );
+      }
+
+      for (const pill of footer.tags) {
+        const pillNode = svgRoot.ownerDocument.createElementNS(SVG_NS, "rect");
+        pillNode.setAttribute("x", `${pill.x}`);
+        pillNode.setAttribute("y", `${pill.y}`);
+        pillNode.setAttribute("width", `${pill.width}`);
+        pillNode.setAttribute("height", `${pill.height}`);
+        pillNode.setAttribute("rx", `${STICKY_NOTE_TAG.radius}`);
+        pillNode.setAttribute("fill", ink);
+        pillNode.setAttribute("fill-opacity", `${STICKY_NOTE_TAG.opacity}`);
+        group.appendChild(pillNode);
+
+        const tagText = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
+        tagText.setAttribute("x", `${pill.x + STICKY_NOTE_TAG.paddingX}`);
+        tagText.setAttribute("y", `${pill.baseline}`);
+        tagText.setAttribute("font-family", STICKY_NOTE_TAG.fontFamily);
+        tagText.setAttribute("font-size", `${STICKY_NOTE_TAG.fontSize}px`);
+        tagText.setAttribute("text-anchor", "start");
+        tagText.setAttribute("direction", "ltr");
+        tagText.setAttribute("fill", ink);
+        tagText.setAttribute("fill-opacity", `${STICKY_NOTE_FOOTER.opacity}`);
+        tagText.textContent = pill.text;
+        group.appendChild(tagText);
       }
 
       const g = maybeWrapNodesInFrameClipPath(
@@ -816,6 +867,14 @@ const renderElementToSvg = (
           text.setAttribute("y", `${i * lineHeightPx + verticalOffset}`);
           text.setAttribute("font-family", getFontFamilyString(element));
           text.setAttribute("font-size", `${element.fontSize}px`);
+          // a sticky note's label can be bold and/or italic; the canvas
+          // renderer carries the same in its font string
+          if (element.fontStyle?.bold) {
+            text.setAttribute("font-weight", "bold");
+          }
+          if (element.fontStyle?.italic) {
+            text.setAttribute("font-style", "italic");
+          }
           text.setAttribute(
             "fill",
             applyDarkModeFilter(

@@ -142,7 +142,16 @@ export type ActionName =
   | "cropEditor"
   | "wrapSelectionInFrame"
   | "toggleShapeSwitch"
-  | "togglePolygon";
+  | "togglePolygon"
+  | "changeStickyNoteFill"
+  | "changeStickyNoteSize"
+  | "changeStickyNoteFontSize"
+  | "changeStickyNoteFontFamily"
+  | "changeStickyNoteTextAlign"
+  | "toggleStickyNoteFontStyle"
+  | "addStickyNoteTag"
+  | "removeStickyNoteTag"
+  | "insertStickyNoteEmoji";
 
 export type PanelComponentProps = {
   elements: readonly ExcalidrawElement[];

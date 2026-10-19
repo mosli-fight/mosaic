@@ -29,6 +29,7 @@ import {
   STICKY_NOTE_EDGE_SHADOW_WIDTH,
   STICKY_NOTE_FOOTER,
   STICKY_NOTE_SHADOW_OPACITY,
+  STICKY_NOTE_TAG,
   DEFAULT_ZOOM,
 } from "@excalidraw/common";
 
@@ -73,7 +74,7 @@ import { getCornerRadius } from "./utils";
 
 import { ShapeCache } from "./shape";
 import {
-  getStickyNoteFooter,
+  getStickyNoteFooterContent,
   getStickyNotePathCommands,
   type StickyNotePathCommand,
 } from "./stickyNote";
@@ -454,17 +455,66 @@ const drawElementOnCanvas = (
       // the label is absolute, so this cached canvas only goes stale at a
       // year boundary — and is regenerated on the next zoom, theme or
       // element change anyway
-      const footer = getStickyNoteFooter(element);
-      if (footer) {
+      const footer = getStickyNoteFooterContent(element);
+      const ink = applyDarkModeFilter(
+        element.strokeColor,
+        renderConfig.theme === THEME.DARK,
+      );
+
+      if (footer.date) {
         context.font = `${STICKY_NOTE_FOOTER.fontSize}px ${STICKY_NOTE_FOOTER.fontFamily}`;
         context.textAlign = "right";
         context.textBaseline = "alphabetic";
-        context.fillStyle = applyDarkModeFilter(
-          element.strokeColor,
-          renderConfig.theme === THEME.DARK,
-        );
+        context.fillStyle = ink;
         context.globalAlpha *= STICKY_NOTE_FOOTER.opacity;
-        context.fillText(footer.text, footer.x, footer.y);
+        context.fillText(footer.date.text, footer.date.x, footer.date.y);
+        context.globalAlpha /= STICKY_NOTE_FOOTER.opacity;
+      }
+
+      if (footer.author) {
+        context.font = `${STICKY_NOTE_FOOTER.fontSize}px ${STICKY_NOTE_FOOTER.fontFamily}`;
+        context.textAlign = "left";
+        context.textBaseline = "alphabetic";
+        context.fillStyle = ink;
+        context.globalAlpha *= STICKY_NOTE_FOOTER.opacity;
+        context.fillText(footer.author.text, footer.author.x, footer.author.y);
+        context.globalAlpha /= STICKY_NOTE_FOOTER.opacity;
+      }
+
+      if (footer.tags.length) {
+        context.font = `${STICKY_NOTE_TAG.fontSize}px ${STICKY_NOTE_TAG.fontFamily}`;
+        context.textAlign = "left";
+        context.textBaseline = "alphabetic";
+        for (const pill of footer.tags) {
+          // the pill is a wash of the note's own ink, so it reads as part of
+          // the paper rather than as another element on top of it
+          context.save();
+          context.globalAlpha *= STICKY_NOTE_TAG.opacity;
+          context.fillStyle = ink;
+          context.beginPath();
+          if (context.roundRect) {
+            context.roundRect(
+              pill.x,
+              pill.y,
+              pill.width,
+              pill.height,
+              STICKY_NOTE_TAG.radius,
+            );
+          } else {
+            context.rect(pill.x, pill.y, pill.width, pill.height);
+          }
+          context.fill();
+          context.restore();
+
+          context.fillStyle = ink;
+          context.globalAlpha *= STICKY_NOTE_FOOTER.opacity;
+          context.fillText(
+            pill.text,
+            pill.x + STICKY_NOTE_TAG.paddingX,
+            pill.baseline,
+          );
+          context.globalAlpha /= STICKY_NOTE_FOOTER.opacity;
+        }
       }
 
       context.restore();

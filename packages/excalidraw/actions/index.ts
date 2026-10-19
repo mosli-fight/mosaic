@@ -93,3 +93,15 @@ export { actionToggleLinearEditor } from "./actionLinearEditor";
 export { actionToggleSearchMenu } from "./actionToggleSearchMenu";
 
 export { actionToggleCropEditor } from "./actionCropEditor";
+
+export {
+  actionChangeStickyNoteFill,
+  actionChangeStickyNoteSize,
+  actionChangeStickyNoteFontSize,
+  actionChangeStickyNoteFontFamily,
+  actionChangeStickyNoteTextAlign,
+  actionToggleStickyNoteFontStyle,
+  actionAddStickyNoteTag,
+  actionRemoveStickyNoteTag,
+  actionInsertStickyNoteEmoji,
+} from "./actionStickyNote";

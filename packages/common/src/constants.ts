@@ -266,6 +266,20 @@ export const STICKY_NOTE_FOOTER = {
  */
 export const STICKY_NOTE_BODY_INSET_Y =
   STICKY_NOTE_PADDING * 2 + STICKY_NOTE_FOOTER.height;
+/**
+ * The height of the tag row, when a note carries tags. The row sits between
+ * the label body and the footer, so a tagged note reserves this much more
+ * room for its label.
+ */
+export const STICKY_NOTE_TAG_ROW_HEIGHT = 18;
+/**
+ * outer height → label body height, for a note with the given number of
+ * tags: the base inset plus the tag row when the note has any. The body is
+ * what the label is fitted into; a middle-aligned label is still centered in
+ * the whole padded note when it fits (see `computeBoundTextPosition`).
+ */
+export const getStickyNoteBodyInsetY = (tagCount: number) =>
+  STICKY_NOTE_BODY_INSET_Y + (tagCount > 0 ? STICKY_NOTE_TAG_ROW_HEIGHT : 0);
 export const DEFAULT_STICKY_NOTE_SIZE = 250;
 // floor for a finalized note's width and base height; the UI floor is font-aware
 // on top of it (see `getStickyNoteMinSize`)

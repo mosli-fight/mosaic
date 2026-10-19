@@ -16,6 +16,8 @@ import type {
 
 import { trackEvent } from "../analytics";
 
+import { getStickyNoteAuthor } from "./sticky-note/stickyNoteAuthor";
+
 import type App from "./App";
 import type { ToolType } from "../types";
 
@@ -65,6 +67,7 @@ export const DRAGGABLE_TOOLS: Partial<Record<ToolType, DraggableTool>> = {
         roundness: app.getCurrentItemRoundness("stickynote"),
         locked: false,
         frameId: app.getTopLayerFrameAtSceneCoords(center)?.id ?? null,
+        author: getStickyNoteAuthor(state),
       });
     },
     onDrop: (app, element) => {
