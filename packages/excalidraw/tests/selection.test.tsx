@@ -1386,7 +1386,8 @@ describe("tool locking & selection", () => {
         value !== "arrow" &&
         value !== "hand" &&
         value !== "laser" &&
-        // no top-level toolbar button (rendered in the extra-tools dropdown)
+        // no top-level toolbar button (rendered in the extra-tools dropdown,
+        // or — for autoshape — in the drawing-tools popover)
         value !== "frame" &&
         value !== "embeddable" &&
         value !== "autoshape" &&

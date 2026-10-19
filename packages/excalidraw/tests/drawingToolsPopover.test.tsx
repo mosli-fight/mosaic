@@ -48,6 +48,7 @@ describe("lasso in the drawing-tools popover", () => {
     expect(optionIds).toEqual([
       "toolbar-freedraw",
       "toolbar-highlighter",
+      "toolbar-autoshape",
       "toolbar-laser",
       "toolbar-eraser",
       "toolbar-precisionEraser",
@@ -134,5 +135,68 @@ describe("lasso in the drawing-tools popover", () => {
     rerender(<Excalidraw activeTool={{ type: "rectangle" }} />);
 
     await waitFor(() => expect(option("lasso").disabled).toBe(true));
+  });
+});
+
+describe("smart drawing in the drawing-tools popover", () => {
+  it("renders the smart-drawing option 3rd, after the highlighter", async () => {
+    const { container } = await render(<Excalidraw />);
+    await openPopover(container);
+
+    const optionIds = Array.from(
+      document.querySelectorAll(
+        '.drawing-tools-popover-content [data-testid^="toolbar-"]',
+      ),
+    ).map((entry) => entry.getAttribute("data-testid"));
+
+    expect(optionIds.indexOf("toolbar-autoshape")).toBe(2);
+    expect(optionIds[1]).toBe("toolbar-highlighter");
+    expect(optionIds[3]).toBe("toolbar-laser");
+  });
+
+  it("activates the autoshape tool when picked", async () => {
+    const { container } = await render(<Excalidraw />);
+    await openPopover(container);
+
+    const setActiveTool = vi.spyOn(window.h.app, "setActiveTool");
+
+    try {
+      fireEvent.click(option("autoshape"));
+
+      expect(setActiveTool).toHaveBeenCalledWith({ type: "autoshape" });
+      expect(window.h.state.activeTool.type).toBe("autoshape");
+    } finally {
+      setActiveTool.mockRestore();
+    }
+  });
+
+  it("checks the smart-drawing option and shows it on the trigger", async () => {
+    const { container } = await render(<Excalidraw />);
+    await openPopover(container);
+
+    const autoshapeIcon = iconPaths(option("autoshape"));
+    expect(option("autoshape").getAttribute("aria-pressed")).toBe("false");
+    expect(triggerIcon(container)).not.toEqual(autoshapeIcon);
+
+    fireEvent.click(option("autoshape"));
+
+    await waitFor(() =>
+      expect(option("autoshape").getAttribute("aria-pressed")).toBe("true"),
+    );
+    // the trigger remembers smart drawing as the last-used drawing tool
+    expect(triggerIcon(container)).toEqual(autoshapeIcon);
+    expect(trigger(container).getAttribute("aria-pressed")).toBe("true");
+    // and the other options are unchecked
+    expect(option("freedraw").getAttribute("aria-pressed")).toBe("false");
+    expect(option("highlighter").getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("disables the smart-drawing option while another tool is host-forced", async () => {
+    const { container, rerender } = await render(<Excalidraw />);
+    await openPopover(container);
+
+    rerender(<Excalidraw activeTool={{ type: "rectangle" }} />);
+
+    await waitFor(() => expect(option("autoshape").disabled).toBe(true));
   });
 });
