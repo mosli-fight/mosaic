@@ -19,7 +19,6 @@ import {
   EmbedIcon,
   frameToolIcon,
   ImageIcon,
-  LassoIcon,
   bucketFillIcon,
   MagicIcon,
   mermaidLogoIcon,
@@ -68,10 +67,6 @@ const ExtraToolsDropdown = ({
   const frameToolSelected = activeTool.type === "frame";
   const drawShapeToolSelected = activeTool.type === "autoshape";
   const bucketFillToolSelected = activeTool.type === "bucketfill";
-  const lassoToolSelected =
-    isFullStylesPanel &&
-    activeTool.type === "lasso" &&
-    app.state.preferredSelectionTool.type !== "lasso";
   const embeddableToolSelected = activeTool.type === "embeddable";
 
   return (
@@ -83,7 +78,6 @@ const ExtraToolsDropdown = ({
             frameToolSelected ||
             embeddableToolSelected ||
             (isFullStylesPanel && drawShapeToolSelected) ||
-            lassoToolSelected ||
             bucketFillToolSelected,
         })}
         onToggle={() => {
@@ -100,8 +94,6 @@ const ExtraToolsDropdown = ({
           ? EmbedIcon
           : isFullStylesPanel && drawShapeToolSelected
           ? drawShapeToolIcon
-          : lassoToolSelected
-          ? LassoIcon
           : bucketFillToolSelected
           ? bucketFillIcon
           : DotsIcon}
@@ -162,17 +154,6 @@ const ExtraToolsDropdown = ({
         >
           {t("toolBar.bucketfill")}
         </DropdownMenu.Item>
-        {isFullStylesPanel && (
-          <DropdownMenu.Item
-            onSelect={() => app.setActiveTool({ type: "lasso" })}
-            icon={LassoIcon}
-            data-testid="toolbar-lasso"
-            selected={lassoToolSelected}
-            disabled={isToolButtonDisabled(app, "lasso")}
-          >
-            {t("toolBar.lasso")}
-          </DropdownMenu.Item>
-        )}
         <div style={{ margin: "6px 0", fontSize: 14, fontWeight: 600 }}>
           Generate
         </div>
