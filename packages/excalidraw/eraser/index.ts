@@ -1,4 +1,4 @@
-import { arrayToMap, easeOut, THEME } from "@excalidraw/common";
+import { arrayToMap } from "@excalidraw/common";
 
 import {
   computeBoundTextPosition,
@@ -35,36 +35,18 @@ import type { ElementsMap, ExcalidrawElement } from "@excalidraw/element/types";
 
 import { AnimatedTrail } from "../animatedTrail";
 
+import { ERASER_TRAIL_SIZE, getEraserTrailOptions } from "./trailOptions";
+
 import type App from "../components/App";
+
+export { ERASER_CURSOR_RADIUS } from "./trailOptions";
 
 export class EraserTrail extends AnimatedTrail {
   private elementsToErase: Set<ExcalidrawElement["id"]> = new Set();
   private groupsToErase: Set<ExcalidrawElement["id"]> = new Set();
 
   constructor(app: App) {
-    super(app, {
-      streamline: 0.2,
-      size: 5,
-      keepHead: true,
-      sizeMapping: (c) => {
-        const DECAY_TIME = 200;
-        const DECAY_LENGTH = 10;
-        const t = Math.max(
-          0,
-          1 - (performance.now() - c.pressure) / DECAY_TIME,
-        );
-        const l =
-          (DECAY_LENGTH -
-            Math.min(DECAY_LENGTH, c.totalLength - c.currentIndex)) /
-          DECAY_LENGTH;
-
-        return Math.min(easeOut(l), easeOut(t));
-      },
-      fill: () =>
-        app.state.theme === THEME.LIGHT
-          ? "rgba(0, 0, 0, 0.2)"
-          : "rgba(255, 255, 255, 0.2)",
-    });
+    super(app, getEraserTrailOptions(app, ERASER_TRAIL_SIZE));
   }
 
   startPath(x: number, y: number): void {

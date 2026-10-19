@@ -445,6 +445,24 @@ export const EraserIcon = createIcon(
   tablerIconProps,
 );
 
+/**
+ * Precision eraser — a stroke running through the eraser, broken where the
+ * eraser body crosses it: "this removes part of a line", as opposed to
+ * `EraserIcon`'s "this removes the line".
+ */
+export const PrecisionEraserIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    {/* the stroke being nibbled, with the gap the eraser sits in */}
+    <path d="M3 18h4" />
+    <path d="M17 18h4" />
+    {/* eraser body: a tilted rectangle whose lower end sits in that gap */}
+    <path d="M9.8 18l-3.2 -3.2l6.5 -6.5l3.2 3.2z" />
+    <path d="M11.6 16.2l-3.2 -3.2" />
+  </g>,
+  tablerIconProps,
+);
+
 export const ZoomInIcon = createIcon(
   <path strokeWidth="1.25" d="M10 4.167v11.666M4.167 10h11.666" />,
   modifiedTablerIconProps,

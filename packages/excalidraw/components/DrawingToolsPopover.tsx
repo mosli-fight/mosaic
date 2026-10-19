@@ -24,6 +24,7 @@ import { useExcalidrawContainer } from "./App";
 import {
   FreedrawIcon,
   EraserIcon,
+  PrecisionEraserIcon,
   laserPointerToolIcon,
   createIcon,
 } from "./icons";
@@ -58,6 +59,13 @@ type DrawingToolOption = {
   title: string;
 };
 
+/**
+ * Popover-only id for the precision eraser. It is not a `ToolType`: picking
+ * it activates the `eraser` tool with `precisionEraserActive` set, so the
+ * two eraser entries share one tool and only their behavior differs.
+ */
+const PRECISION_ERASER_OPTION = "precisionEraser";
+
 type DrawingToolsPopoverProps = {
   app: AppClassProperties;
   activeTool: UIAppState["activeTool"];
@@ -82,6 +90,11 @@ export const DrawingToolsPopover = ({
     },
     { type: "laser", icon: laserPointerToolIcon, title: t("toolBar.laser") },
     { type: "eraser", icon: EraserIcon, title: t("toolBar.eraser") },
+    {
+      type: PRECISION_ERASER_OPTION,
+      icon: PrecisionEraserIcon,
+      title: t("toolBar.precisionEraser"),
+    },
   ];
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -173,13 +186,22 @@ export const DrawingToolsPopover = ({
       activeTool.type === "eraser" ||
       activeTool.type === "freedraw"
     ) {
+      if (activeTool.type === "eraser") {
+        // the two eraser entries share the tool, so the mode decides which
+        // one the trigger shows
+        setLastDrawingTool(
+          app.state.precisionEraserActive ? PRECISION_ERASER_OPTION : "eraser",
+        );
+        return;
+      }
+
       setLastDrawingTool(
         activeTool.type === "freedraw" && isHighlighterActive
           ? "highlighter"
           : activeTool.type,
       );
     }
-  }, [activeTool.type, isHighlighterActive]);
+  }, [activeTool.type, isHighlighterActive, app.state.precisionEraserActive]);
 
   // Close popover when user starts interacting with the canvas (pointer down)
   useEffect(() => {
@@ -200,6 +222,14 @@ export const DrawingToolsPopover = ({
     }
     if (type === "freedraw") {
       return activeTool.type === "freedraw" && !isHighlighterActive;
+    }
+    if (type === PRECISION_ERASER_OPTION) {
+      return activeTool.type === "eraser" && app.state.precisionEraserActive;
+    }
+    if (type === "eraser") {
+      // the plain eraser is checked only in its own mode — otherwise both
+      // eraser entries would light up at once
+      return activeTool.type === "eraser" && !app.state.precisionEraserActive;
     }
     return activeTool.type === type;
   };
@@ -237,6 +267,23 @@ export const DrawingToolsPopover = ({
       return;
     }
 
+    // the two eraser entries are one tool in two modes: activate the tool,
+    // then set the mode. Both share `activeTool.type`, so an already-active
+    // eraser still needs the mode flip — but re-picking the mode already in
+    // effect is a no-op, since the trigger re-selects on every popover open.
+    if (type === "eraser" || type === PRECISION_ERASER_OPTION) {
+      const isPrecision = type === PRECISION_ERASER_OPTION;
+
+      if (app.state.precisionEraserActive !== isPrecision) {
+        trackEvent("toolbar", type, "ui");
+        setAppState({ precisionEraserActive: isPrecision });
+      }
+
+      app.setActiveTool({ type: "eraser" as any });
+      setLastDrawingTool(type);
+      return;
+    }
+
     if (app.state.activeTool.type !== type) {
       trackEvent("toolbar", type, "ui");
       app.setActiveTool({ type: type as any });
@@ -244,9 +291,17 @@ export const DrawingToolsPopover = ({
     setLastDrawingTool(type);
   };
 
-  // the highlighter activates freedraw, so it's disabled alongside it
+  // the highlighter activates freedraw, so it's disabled alongside it; both
+  // eraser entries activate the eraser tool
   const isOptionDisabled = (type: string) =>
-    isToolButtonDisabled(app, type === "highlighter" ? "freedraw" : type);
+    isToolButtonDisabled(
+      app,
+      type === "highlighter"
+        ? "freedraw"
+        : type === PRECISION_ERASER_OPTION
+        ? "eraser"
+        : type,
+    );
 
   return (
     <Popover.Root open={isPopupOpen}>

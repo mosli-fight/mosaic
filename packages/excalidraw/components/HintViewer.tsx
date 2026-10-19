@@ -17,7 +17,7 @@ import type { EditorInterface } from "@excalidraw/common";
 
 import { t } from "../i18n";
 import { getShortcutKey } from "../shortcut";
-import { isEraserActive } from "../appState";
+import { isEraserActive, isPrecisionEraserActive } from "../appState";
 import { isGridModeEnabled } from "../snapping";
 
 import "./HintViewer.scss";
@@ -60,6 +60,12 @@ const getHints = ({
   }
 
   if (isEraserActive(appState)) {
+    // the precision eraser has no revert modifier — it only ever removes
+    // points, and there is nothing marked for deletion to take back
+    if (isPrecisionEraserActive(appState)) {
+      return t("hints.precisionEraser");
+    }
+
     return t("hints.eraserRevert", {
       shortcut: getTaggedShortcutKey("Alt"),
     });
