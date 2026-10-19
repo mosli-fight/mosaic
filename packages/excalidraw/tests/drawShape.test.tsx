@@ -790,16 +790,16 @@ describe("autoshape tool activation", () => {
     expect(h.state.activeTool.type).toBe("freedraw");
   });
 
-  it("activates from the extra tools dropdown", () => {
+  it("activates from the drawing-tools popover", () => {
     fireEvent.click(
       GlobalTestState.renderResult.container.querySelector(
-        ".App-toolbar__extra-tools-trigger",
+        '[data-testid="toolbar-freedraw"]',
       )!,
     );
 
     fireEvent.click(
       document.querySelector<HTMLButtonElement>(
-        '[data-testid="toolbar-autoshape"]',
+        '.drawing-tools-popover-content [data-testid="toolbar-autoshape"]',
       )!,
     );
 
@@ -835,24 +835,14 @@ describe("autoshape compact toolbar placement", () => {
       expect(h.state.activeTool.type).toBe("autoshape");
       expect(freedrawTrigger).toHaveAttribute("aria-pressed", "true");
 
+      // autoshape no longer lives in the extra-tools menu, so activating it
+      // must not mark that trigger as selected
       const extraToolsTrigger = container.querySelector(
         ".App-toolbar__extra-tools-trigger",
       )!;
       expect(extraToolsTrigger).not.toHaveClass(
         "App-toolbar__extra-tools-trigger--selected",
       );
-
-      fireEvent.click(extraToolsTrigger);
-      const extraTools = await waitFor(() => {
-        const menu = document.querySelector(
-          ".App-toolbar__extra-tools-dropdown",
-        );
-        expect(menu).not.toBeNull();
-        return menu!;
-      });
-      expect(
-        extraTools.querySelector('[data-testid="toolbar-autoshape"]'),
-      ).not.toBeNull();
     },
   );
 });

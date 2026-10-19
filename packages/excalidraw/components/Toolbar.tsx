@@ -15,7 +15,6 @@ import { PenModeButton } from "./PenModeButton";
 import Stack from "./Stack";
 import DropdownMenu from "./dropdownMenu/DropdownMenu";
 import {
-  drawShapeToolIcon,
   EmbedIcon,
   frameToolIcon,
   ImageIcon,
@@ -29,7 +28,6 @@ import {
   DiamondToolButton,
   EllipseToolButton,
   FreedrawToolPopover,
-  getToolShortcut,
   HandToolButton,
   isToolButtonDisabled,
   LassoToolButton,
@@ -60,12 +58,10 @@ const ExtraToolsDropdown = ({
   UIOptions: AppProps["UIOptions"];
 }) => {
   const [isExtraToolsMenuOpen, setIsExtraToolsMenuOpen] = useState(false);
-  const isFullStylesPanel = useStylesPanelMode() === "full";
   const { TTDDialogTriggerTunnel } = useTunnels();
 
   const imageToolSelected = activeTool.type === "image";
   const frameToolSelected = activeTool.type === "frame";
-  const drawShapeToolSelected = activeTool.type === "autoshape";
   const bucketFillToolSelected = activeTool.type === "bucketfill";
   const embeddableToolSelected = activeTool.type === "embeddable";
 
@@ -77,7 +73,6 @@ const ExtraToolsDropdown = ({
             imageToolSelected ||
             frameToolSelected ||
             embeddableToolSelected ||
-            (isFullStylesPanel && drawShapeToolSelected) ||
             bucketFillToolSelected,
         })}
         onToggle={() => {
@@ -92,8 +87,6 @@ const ExtraToolsDropdown = ({
           ? frameToolIcon
           : embeddableToolSelected
           ? EmbedIcon
-          : isFullStylesPanel && drawShapeToolSelected
-          ? drawShapeToolIcon
           : bucketFillToolSelected
           ? bucketFillIcon
           : DotsIcon}
@@ -133,16 +126,6 @@ const ExtraToolsDropdown = ({
           disabled={isToolButtonDisabled(app, "embeddable")}
         >
           {t("toolBar.embeddable")}
-        </DropdownMenu.Item>
-        <DropdownMenu.Item
-          onSelect={() => app.setActiveTool({ type: "autoshape" })}
-          icon={drawShapeToolIcon}
-          shortcut={getToolShortcut("autoshape")}
-          data-testid="toolbar-autoshape"
-          selected={drawShapeToolSelected}
-          disabled={isToolButtonDisabled(app, "autoshape")}
-        >
-          {t("toolBar.autoshape")}
         </DropdownMenu.Item>
         <DropdownMenu.Item
           onSelect={() => app.setActiveTool({ type: "bucketfill" })}
