@@ -203,11 +203,27 @@ export type InitializedExcalidrawImageElement = MarkNonNullable<
 export type ExcalidrawFrameElement = _ExcalidrawElementBase & {
   type: "frame";
   name: string | null;
+  /**
+   * Whether the frame is hidden from the board.
+   *
+   * A hidden frame is not drawn and cannot be pointed at, and neither can
+   * the objects it contains — hiding a frame hides what is on it, which is
+   * the point of hiding it. A hidden frame is still in the document: it can
+   * be unhidden from the frames panel.
+   */
+  hidden?: boolean;
+  /**
+   * The presenter's note for this frame — shown in present mode next to the
+   * slide, for the presenter to read rather than the audience to see.
+   */
+  notes?: string;
 };
 
 export type ExcalidrawMagicFrameElement = _ExcalidrawElementBase & {
   type: "magicframe";
   name: string | null;
+  hidden?: boolean;
+  notes?: string;
 };
 
 export type ExcalidrawFrameLikeElement =

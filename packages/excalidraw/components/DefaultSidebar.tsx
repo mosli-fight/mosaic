@@ -3,6 +3,7 @@ import clsx from "clsx";
 import {
   CANVAS_SEARCH_TAB,
   DEFAULT_SIDEBAR,
+  FRAMES_SIDEBAR_TAB,
   LIBRARY_SIDEBAR_TAB,
   composeEventHandlers,
 } from "@excalidraw/common";
@@ -15,11 +16,12 @@ import { useUIAppState } from "../context/ui-appState";
 import "../components/dropdownMenu/DropdownMenu.scss";
 
 import { useExcalidrawSetAppState } from "./App";
+import { FramesPanel } from "./frames/FramesPanel";
 import { LibraryMenu } from "./LibraryMenu";
 import { SearchMenu } from "./SearchMenu";
 import { Sidebar } from "./Sidebar/Sidebar";
 import { withInternalFallback } from "./hoc/withInternalFallback";
-import { LibraryIcon, searchIcon } from "./icons";
+import { frameToolIcon, LibraryIcon, searchIcon } from "./icons";
 
 import type { SidebarProps, SidebarTriggerProps } from "./Sidebar/common";
 
@@ -105,11 +107,17 @@ export const DefaultSidebar = Object.assign(
                 <Sidebar.TabTrigger tab={LIBRARY_SIDEBAR_TAB}>
                   {LibraryIcon}
                 </Sidebar.TabTrigger>
+                <Sidebar.TabTrigger tab={FRAMES_SIDEBAR_TAB}>
+                  {frameToolIcon}
+                </Sidebar.TabTrigger>
                 <DefaultSidebarTabTriggersTunnel.Out />
               </Sidebar.TabTriggers>
             </Sidebar.Header>
             <Sidebar.Tab tab={LIBRARY_SIDEBAR_TAB}>
               <LibraryMenu />
+            </Sidebar.Tab>
+            <Sidebar.Tab tab={FRAMES_SIDEBAR_TAB}>
+              <FramesPanel />
             </Sidebar.Tab>
             <Sidebar.Tab tab={CANVAS_SEARCH_TAB}>
               <SearchMenu />

@@ -9,6 +9,7 @@ import { t } from "../i18n";
 import { useEditorInterface, useStylesPanelMode } from "./App";
 import { HintViewer } from "./HintViewer";
 import { DrawingToolsPopover } from "./DrawingToolsPopover";
+import { FrameFormatPicker } from "./frames/FrameFormatPicker";
 import { Island } from "./Island";
 import { LockButton } from "./LockButton";
 import { PenModeButton } from "./PenModeButton";
@@ -112,7 +113,7 @@ const ExtraToolsDropdown = ({
           onSelect={() => app.setActiveTool({ type: "frame" })}
           icon={frameToolIcon}
           shortcut={KEYS.F.toLocaleUpperCase()}
-          data-testid="toolbar-frame"
+          data-testid="toolbar-frame-extra"
           selected={frameToolSelected}
           disabled={isToolButtonDisabled(app, "frame")}
         >
@@ -256,6 +257,11 @@ export const Toolbar = ({
         )}
         <TextToolButton {...toolProps} />
         <StickyNoteToolButton {...toolProps} />
+        <FrameFormatPicker
+          app={app}
+          activeTool={activeTool}
+          setAppState={setAppState}
+        />
 
         <div
           className="App-toolbar__divider"

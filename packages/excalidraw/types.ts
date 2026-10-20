@@ -5,6 +5,7 @@ import type {
   MIME_TYPES,
   EditorInterface,
   StrokeWidthKey,
+  FrameFormatId,
 } from "@excalidraw/common";
 
 import type { LinearElementEditor } from "@excalidraw/element";
@@ -415,6 +416,29 @@ export interface AppState {
    * frame-like element whose name is currently being edited
    */
   editingFrame: ExcalidrawFrameLikeElement["id"] | null;
+  /**
+   * The paper format the frame tool creates — the size a new frame is born
+   * with. `custom` is the free-form frame, sized by dragging.
+   */
+  currentItemFrameFormat: FrameFormatId;
+  /**
+   * Present mode — the fullscreen walkthrough of the board's frames.
+   *
+   * The viewport is moved to the frame being presented, so the canvas shows
+   * the frame as the audience would; the viewport it had before present
+   * mode started is kept here, to be put back when it ends.
+   */
+  presentMode: {
+    active: boolean;
+    /** the frame being presented */
+    currentFrameId: ExcalidrawElement["id"] | null;
+    /** the viewport to restore when present mode ends */
+    previousViewport: {
+      scrollX: number;
+      scrollY: number;
+      zoom: Zoom;
+    } | null;
+  };
   /**
    * Elements the UI highlights with a bounding-box outline — those that
    * would get added to a frame being dragged/resized.

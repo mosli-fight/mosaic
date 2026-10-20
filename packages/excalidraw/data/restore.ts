@@ -753,6 +753,8 @@ export const restoreElement = (
     case "frame":
       return restoreElementWithProperties(element, {
         name: element.name ?? null,
+        hidden: element.hidden === true,
+        notes: element.notes ?? "",
       });
 
     // Don't use default case so as to catch a missing an element type case.
@@ -1379,6 +1381,13 @@ export const restoreAppState = (
       nextAppState.currentItemStickynoteBackgroundColor,
     ),
     editingFrame: null,
+    // present mode is a view, not document state: a restored document is
+    // never presented
+    presentMode: {
+      active: false,
+      currentFrameId: null,
+      previousViewport: null,
+    },
   };
 };
 

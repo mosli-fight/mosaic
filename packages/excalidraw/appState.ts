@@ -7,6 +7,7 @@ import {
   DEFAULT_ELEMENT_STROKE_WIDTH_KEY,
   DEFAULT_TEXT_ALIGN,
   DEFAULT_GRID_SIZE,
+  DEFAULT_FRAME_FORMAT,
   EXPORT_SCALES,
   STATS_PANELS,
   THEME,
@@ -113,6 +114,12 @@ export const getDefaultAppState = (): Omit<
     frameRendering: { enabled: true, clip: true, name: true, outline: true },
     frameToHighlight: null,
     editingFrame: null,
+    currentItemFrameFormat: DEFAULT_FRAME_FORMAT,
+    presentMode: {
+      active: false,
+      currentFrameId: null,
+      previousViewport: null,
+    },
     elementsToHighlight: null,
     toast: null,
     viewBackgroundColor: COLOR_PALETTE.white,
@@ -273,6 +280,11 @@ const APP_STATE_STORAGE_CONF = (<
   frameRendering: { browser: false, export: false, server: false },
   frameToHighlight: { browser: false, export: false, server: false },
   editingFrame: { browser: false, export: false, server: false },
+  // the frame format is a preference (like the current item's colors), not
+  // document state — it is kept across sessions but never exported
+  currentItemFrameFormat: { browser: true, export: false, server: false },
+  // present mode is a transient view: it is never persisted
+  presentMode: { browser: false, export: false, server: false },
   elementsToHighlight: { browser: false, export: false, server: false },
   toast: { browser: false, export: false, server: false },
   viewBackgroundColor: { browser: true, export: true, server: true },

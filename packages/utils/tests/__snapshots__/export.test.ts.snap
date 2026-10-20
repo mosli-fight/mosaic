@@ -31,6 +31,7 @@ exports[`exportToSvg > with default arguments 1`] = `
   "currentItemFillStyle": "solid",
   "currentItemFontFamily": 5,
   "currentItemFontSize": 20,
+  "currentItemFrameFormat": "custom",
   "currentItemOpacity": 100,
   "currentItemRoughness": 1,
   "currentItemRoundness": "sharp",
@@ -94,6 +95,11 @@ exports[`exportToSvg > with default arguments 1`] = `
   "preferredSelectionTool": {
     "initialized": false,
     "type": "selection",
+  },
+  "presentMode": {
+    "active": false,
+    "currentFrameId": null,
+    "previousViewport": null,
   },
   "previousSelectedElementIds": {},
   "resizingElement": null,

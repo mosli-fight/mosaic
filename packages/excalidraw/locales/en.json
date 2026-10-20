@@ -208,6 +208,48 @@
       "duplicate": "Duplicate note",
       "delete": "Delete note"
     },
+    "frame": {
+      "fill": "Frame color",
+      "hide": "Hide frame",
+      "show": "Show frame",
+      "rename": "Rename frame",
+      "notes": "Presenter notes",
+      "notesPlaceholder": "Notes for the presenter",
+      "moveUp": "Move frame up",
+      "moveDown": "Move frame down",
+      "lock": "Lock frame",
+      "unlock": "Unlock frame",
+      "delete": "Delete frame",
+      "duplicate": "Duplicate frame",
+      "panel": "Frames",
+      "empty": "No frames yet",
+      "emptyHint": "Press F to draw a frame",
+      "contents": {
+        "one": "{{count}} object",
+        "other": "{{count}} objects"
+      },
+      "formats": {
+        "custom": "Custom",
+        "16:9": "16:9",
+        "4:3": "4:3",
+        "1:1": "1:1",
+        "a4": "A4",
+        "letter": "Letter",
+        "mobile": "Mobile",
+        "tablet": "Tablet",
+        "desktop": "Desktop"
+      }
+    },
+    "present": {
+      "start": "Present",
+      "stop": "Stop presenting",
+      "next": "Next frame",
+      "previous": "Previous frame",
+      "noFrames": "No frames to present",
+      "notes": "Presenter notes",
+      "frame": "Frame {{current}} of {{total}}",
+      "exit": "Exit presentation"
+    },
     "statusPublished": "Published",
     "sidebarLock": "Keep sidebar open",
     "selectAllElementsInFrame": "Select all elements in frame",

@@ -91,7 +91,6 @@ export { actionToggleElementLock } from "./actionElementLock";
 export { actionToggleLinearEditor } from "./actionLinearEditor";
 
 export { actionToggleSearchMenu } from "./actionToggleSearchMenu";
-
 export { actionToggleCropEditor } from "./actionCropEditor";
 
 export {
@@ -105,3 +104,15 @@ export {
   actionRemoveStickyNoteTag,
   actionInsertStickyNoteEmoji,
 } from "./actionStickyNote";
+
+export {
+  actionChangeFrameFill,
+  actionToggleFrameHidden,
+  actionRenameFrame,
+  actionSetFrameNotes,
+  actionMoveFrameUp,
+  actionMoveFrameDown,
+  actionTogglePresentMode,
+  actionPresentNextFrame,
+  actionPresentPreviousFrame,
+} from "./actionFrames";
