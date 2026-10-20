@@ -206,6 +206,17 @@ export const resetFacilitationStore = () => {
 };
 
 /**
+ * Generates a participant id WITHOUT consuming the shared `randomId`
+ * sequence — that sequence is seeded deterministically in tests and
+ * drives element ids, so drawing from it on mount would shift every
+ * element id created afterwards.
+ */
+const generateParticipantId = (): string =>
+  `participant-${Date.now().toString(36)}-${Math.floor(
+    Math.random() * 0xffffffff,
+  ).toString(36)}`;
+
+/**
  * The id of the participant using this tab.
  *
  * It is kept in `sessionStorage`, so every tab of the browser is its own
@@ -222,7 +233,7 @@ export const getParticipantId = (): string => {
       cachedParticipantId = stored;
       return stored;
     }
-    const id = randomId();
+    const id = generateParticipantId();
     window.sessionStorage.setItem(PARTICIPANT_KEY, id);
     cachedParticipantId = id;
     return id;
@@ -230,7 +241,7 @@ export const getParticipantId = (): string => {
     // no session storage (private mode, embedded frame): fall back to a
     // per-session id that lives as long as the tab does
     if (!cachedParticipantId) {
-      cachedParticipantId = randomId();
+      cachedParticipantId = generateParticipantId();
     }
     return cachedParticipantId;
   }
