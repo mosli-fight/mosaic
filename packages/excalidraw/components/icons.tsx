@@ -2028,6 +2028,20 @@ export const templatesIcon = createIcon(
   tablerIconProps,
 );
 
+// tabler-icons: photo-plus
+export const mediaIcon = createIcon(
+  <g strokeWidth={1.5}>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <path d="M15 8h6"></path>
+    <path d="M18 5v6"></path>
+    <path d="M17 19h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h6"></path>
+    <path d="M17 15l-3.879 -3.879a2 2 0 0 0 -2.828 0l-4.172 4.172"></path>
+    <path d="M17 15v4"></path>
+    <path d="M7 15h.01"></path>
+  </g>,
+  tablerIconProps,
+);
+
 export const mermaidLogoIcon = createIcon(
   <path
     fill="currentColor"

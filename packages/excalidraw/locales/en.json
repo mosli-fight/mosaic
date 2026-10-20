@@ -267,6 +267,36 @@
         }
       }
     },
+    "media": {
+      "title": "Media",
+      "search": "Search emoji",
+      "noResults": "No emoji match your search",
+      "tabs": {
+        "emoji": "Emoji",
+        "stickers": "Stickers"
+      },
+      "categories": {
+        "smileys": "Smileys & emotion",
+        "people": "People & body",
+        "nature": "Animals & nature",
+        "food": "Food & drink",
+        "activity": "Activity",
+        "travel": "Travel & places",
+        "objects": "Objects",
+        "symbols": "Symbols"
+      },
+      "video": {
+        "add": "Add video",
+        "back": "Back to media",
+        "hint": "Paste a link to a YouTube or Vimeo video and it will be embedded on the board.",
+        "placeholder": "Paste a video link",
+        "errors": {
+          "empty": "Paste a link to a video first",
+          "invalid": "That link cannot be embedded",
+          "unsupported": "Only YouTube and Vimeo videos can be embedded"
+        }
+      }
+    },
     "frame": {
       "fill": "Frame color",
       "hide": "Hide frame",

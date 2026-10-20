@@ -1,0 +1,292 @@
+import clsx from "clsx";
+import { useState } from "react";
+
+import { trackEvent } from "../../analytics";
+import { useUIAppState } from "../../context/ui-appState";
+import { t } from "../../i18n";
+
+import { useApp, useExcalidrawSetAppState } from "../App";
+import { Dialog } from "../Dialog";
+import { TextField } from "../TextField";
+
+import { searchEmojis } from "./emojiData";
+import { insertEmoji, insertSticker, insertVideo } from "./insertMedia";
+import { STICKERS, stickerToSVG } from "./stickers";
+
+import "./mediaPanel.scss";
+
+import type { VideoInsertResult } from "./insertMedia";
+
+/**
+ * The media panel: a Miro-style shelf of things that can be put on a board.
+ *
+ * Two tabs hold the browsing — emoji and stickers — and a third mode, the
+ * video form, is where a link to a YouTube or a Vimeo video is pasted in.
+ *
+ * The panel is a dialog because media is a one-off thing: you reach for it,
+ * you take what you need, and you get back to the board. The panel stays
+ * open while it is being used, so that several stickers can be added in a
+ * row.
+ */
+
+type MediaTab = "emoji" | "stickers";
+type MediaMode = MediaTab | "video";
+
+const getVideoErrorKey = (result: VideoInsertResult) => {
+  if (result.ok) {
+    return null;
+  }
+
+  switch (result.reason) {
+    case "empty":
+      return "labels.media.video.errors.empty";
+    case "invalid":
+      return "labels.media.video.errors.invalid";
+    case "unsupported":
+    default:
+      return "labels.media.video.errors.unsupported";
+  }
+};
+
+const EmojiGrid = ({
+  query,
+  onPick,
+}: {
+  query: string;
+  onPick: (char: string) => void;
+}) => {
+  const groups = searchEmojis(query);
+
+  if (!groups.length) {
+    return (
+      <div className="media-panel__empty" data-testid="media-emoji-empty">
+        {t("labels.media.noResults")}
+      </div>
+    );
+  }
+
+  return (
+    <div className="media-panel__scroll">
+      {groups.map((group) => (
+        <div className="media-panel__group" key={group.category.id}>
+          <h4 className="media-panel__group-title">
+            {t(group.category.labelKey)}
+          </h4>
+          <div className="media-panel__emoji-grid">
+            {group.entries.map((entry) => (
+              <button
+                type="button"
+                key={`${entry.char}-${entry.name}`}
+                className="media-panel__emoji"
+                title={entry.name}
+                aria-label={entry.name}
+                data-testid={`media-emoji-${entry.name.replace(/\s+/g, "-")}`}
+                onClick={() => onPick(entry.char)}
+              >
+                {entry.char}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const StickerGrid = ({ onPick }: { onPick: (id: string) => void }) => {
+  return (
+    <div className="media-panel__scroll">
+      <div className="media-panel__sticker-grid" data-testid="media-stickers">
+        {STICKERS.map((sticker) => (
+          <button
+            type="button"
+            key={sticker.id}
+            className="media-panel__sticker"
+            title={sticker.name}
+            aria-label={sticker.name}
+            data-testid={`media-sticker-${sticker.id}`}
+            onClick={() => onPick(sticker.id)}
+            // the sticker is drawn by the editor itself, so the panel shows
+            // the very same drawing the board will get
+            dangerouslySetInnerHTML={{ __html: stickerToSVG(sticker) }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const MediaPanel = () => {
+  const appState = useUIAppState();
+  const setAppState = useExcalidrawSetAppState();
+  const app = useApp();
+
+  const [tab, setTab] = useState<MediaTab>("emoji");
+  const [mode, setMode] = useState<MediaMode>("emoji");
+  const [query, setQuery] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  if (appState.openDialog?.name !== "media") {
+    return null;
+  }
+
+  const close = () => setAppState({ openDialog: null });
+
+  const addEmoji = (char: string) => {
+    trackEvent("media", "emoji", "panel");
+    insertEmoji(app, char);
+  };
+
+  const addSticker = (id: string) => {
+    const sticker = STICKERS.find((entry) => entry.id === id);
+    if (!sticker) {
+      return;
+    }
+    trackEvent("media", "sticker", sticker.id);
+    insertSticker(app, sticker);
+  };
+
+  const addVideo = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const result = insertVideo(app, videoUrl);
+    const errorKey = getVideoErrorKey(result);
+
+    if (errorKey) {
+      setVideoError(t(errorKey));
+      return;
+    }
+
+    trackEvent("media", "video", "panel");
+    setVideoError(null);
+    setVideoUrl("");
+    close();
+  };
+
+  return (
+    <Dialog
+      onCloseRequest={close}
+      title={t("labels.media.title")}
+      size="regular"
+      className="media-dialog"
+    >
+      <div className="media-panel">
+        {mode === "video" ? (
+          <div className="media-panel__video">
+            <button
+              type="button"
+              className="media-panel__back"
+              data-testid="media-video-back"
+              onClick={() => {
+                setMode(tab);
+                setVideoError(null);
+              }}
+            >
+              {t("labels.media.video.back")}
+            </button>
+
+            <p className="media-panel__hint">{t("labels.media.video.hint")}</p>
+
+            <form onSubmit={addVideo}>
+              <div
+                className="media-panel__video-field"
+                data-testid="media-video-field"
+              >
+                <TextField
+                  value={videoUrl}
+                  placeholder={t("labels.media.video.placeholder")}
+                  onChange={(value) => {
+                    setVideoUrl(value);
+                    setVideoError(null);
+                  }}
+                  selectOnRender
+                />
+              </div>
+
+              {videoError && (
+                <div
+                  className="media-panel__error"
+                  data-testid="media-video-error"
+                >
+                  {videoError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="media-panel__video-submit"
+                data-testid="media-video-submit"
+              >
+                {t("labels.media.video.add")}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <>
+            <div className="media-panel__toolbar">
+              <div className="media-panel__tabs" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === "emoji"}
+                  className={clsx("media-panel__tab", {
+                    "media-panel__tab--active": tab === "emoji",
+                  })}
+                  data-testid="media-tab-emoji"
+                  onClick={() => setTab("emoji")}
+                >
+                  {t("labels.media.tabs.emoji")}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === "stickers"}
+                  className={clsx("media-panel__tab", {
+                    "media-panel__tab--active": tab === "stickers",
+                  })}
+                  data-testid="media-tab-stickers"
+                  onClick={() => setTab("stickers")}
+                >
+                  {t("labels.media.tabs.stickers")}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="media-panel__add-video"
+                data-testid="media-add-video"
+                onClick={() => {
+                  setMode("video");
+                  setVideoError(null);
+                }}
+              >
+                {t("labels.media.video.add")}
+              </button>
+            </div>
+
+            {tab === "emoji" && (
+              <div
+                className="media-panel__search"
+                data-testid="media-panel-search"
+              >
+                <TextField
+                  value={query}
+                  placeholder={t("labels.media.search")}
+                  onChange={setQuery}
+                  selectOnRender
+                />
+              </div>
+            )}
+
+            {tab === "emoji" ? (
+              <EmojiGrid query={query} onPick={addEmoji} />
+            ) : (
+              <StickerGrid onPick={addSticker} />
+            )}
+          </>
+        )}
+      </div>
+    </Dialog>
+  );
+};

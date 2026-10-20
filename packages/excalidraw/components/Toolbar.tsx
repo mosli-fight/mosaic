@@ -14,6 +14,7 @@ import { Island } from "./Island";
 import { LockButton } from "./LockButton";
 import { PenModeButton } from "./PenModeButton";
 import Stack from "./Stack";
+import { MediaButton } from "./media/MediaButton";
 import { TemplatesButton } from "./templates/TemplatesButton";
 import DropdownMenu from "./dropdownMenu/DropdownMenu";
 import {
@@ -265,6 +266,7 @@ export const Toolbar = ({
           setAppState={setAppState}
         />
         <CommentToolButton {...toolProps} />
+        <MediaButton app={app} />
         <TemplatesButton app={app} />
 
         <div
