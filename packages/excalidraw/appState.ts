@@ -151,6 +151,11 @@ export const getDefaultAppState = (): Omit<
       stickyNoteBackground: null,
     },
     fontTopPicks: null,
+    commentThreads: [],
+    openCommentThreadId: null,
+    commentComposerAnchor: null,
+    commentsVisible: true,
+    showResolvedComments: false,
   };
 };
 
@@ -305,6 +310,16 @@ const APP_STATE_STORAGE_CONF = (<
   bindMode: { browser: true, export: false, server: false },
   colorTopPicks: { browser: true, export: false, server: false },
   fontTopPicks: { browser: true, export: false, server: false },
+  // comment threads are part of the scene: they ride along with the file,
+  // the board and the browser storage
+  commentThreads: { browser: true, export: true, server: true },
+  // transient comment UI state — the open thread and the pending composer
+  // are meaningless across a reload
+  openCommentThreadId: { browser: false, export: false, server: false },
+  commentComposerAnchor: { browser: false, export: false, server: false },
+  // the pins' visibility and the panel's filter are user preferences
+  commentsVisible: { browser: true, export: false, server: false },
+  showResolvedComments: { browser: true, export: false, server: false },
 });
 
 const _clearAppStateForStorage = <

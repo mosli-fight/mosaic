@@ -414,6 +414,8 @@ import {
   resolveColorTarget,
 } from "../actions/colorTargets";
 
+import { CommentLayer } from "../comments/CommentLayer";
+
 import ConvertElementTypePopup, {
   getConversionTypeFromElements,
   convertElementTypePopupAtom,
@@ -426,6 +428,7 @@ import { AppClipboard } from "./App.clipboard";
 import { AppText } from "./App.text";
 import { AppTextTool } from "./App.textTool";
 import { AppBucketFill } from "./App.bucketFill";
+import { AppComments } from "./App.comments";
 import { AppToolDrag, TOOL_DRAG_PREVIEW_OPACITY } from "./App.toolDrag";
 import { AppCursor } from "./App.cursor";
 import { AppDrawShape } from "./App.drawshape";
@@ -693,6 +696,7 @@ class App extends React.Component<AppProps, AppState> {
   public onStateChange: OnStateChange = this.appStateObserver.onStateChange;
 
   public bucketFill: AppBucketFill = new AppBucketFill(this);
+  public comments: AppComments = new AppComments(this);
   public duplicate: AppDuplicate = new AppDuplicate(this, {
     getPointerCount: () => gesture.pointers.size,
   });
@@ -2732,6 +2736,7 @@ class App extends React.Component<AppProps, AppState> {
                               />
                             )}
                           {this.renderFrameNames()}
+                          <CommentLayer />
                           {this.isDefaultUIEnabled() &&
                             this.state.activeLockedId && (
                               <UnlockPopup
@@ -7624,6 +7629,12 @@ class App extends React.Component<AppProps, AppState> {
       y: scenePointerY,
     };
 
+    // clicking the canvas dismisses an open comment thread (the popover is
+    // a DOM overlay, so the click never reaches it)
+    if (this.state.openCommentThreadId) {
+      this.setState({ openCommentThreadId: null });
+    }
+
     const target = event.target as HTMLElement;
     // capture subsequent pointer events to the canvas
     // this makes other elements non-interactive until pointer up
@@ -8037,6 +8048,10 @@ class App extends React.Component<AppProps, AppState> {
       // mode this branch is unreachable:
       // `pan.start` swallows the pointer-down.
       this.bucketFill.handlePointerDown(scenePointer);
+    } else if (this.state.activeTool.type === TOOL_TYPE.comment) {
+      // same one-shot shape as bucket fill: the pin is armed on pointer
+      // down and the composer opens on a genuine pointer up
+      this.comments.handlePointerDown(scenePointer);
     } else if (
       this.state.activeTool.type !== "eraser" &&
       this.state.activeTool.type !== "hand" &&
@@ -10461,6 +10476,18 @@ class App extends React.Component<AppProps, AppState> {
       } else {
         this.bucketFill.cancel();
       }
+
+      // the comment pin behaves the same way: a genuine pointer up opens the
+      // composer, anything else (a second finger, a context menu, a
+      // pointercancel) discards the armed pin
+      if (
+        childEvent.type === "pointerup" &&
+        this.state.activeTool.type === TOOL_TYPE.comment
+      ) {
+        this.comments.handlePointerUp();
+      } else {
+        this.comments.cancel();
+      }
       const {
         newElement,
         resizingElement,
@@ -11540,6 +11567,9 @@ class App extends React.Component<AppProps, AppState> {
         // bucket fill stays active for back-to-back fills regardless of the
         // tool lock (paint-bucket UX)
         activeTool.type !== TOOL_TYPE.bucketfill &&
+        // the comment tool likewise stays active, so several comments can
+        // be dropped in a row (Miro-style)
+        activeTool.type !== TOOL_TYPE.comment &&
         (activeTool.type !== "lasso" ||
           // if lasso is turned on but from selection => reset to selection
           (activeTool.type === "lasso" && activeTool.fromSelection))

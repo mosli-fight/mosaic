@@ -34,6 +34,7 @@ import {
   mermaidLogoIcon,
   MagicIcon,
   stickyNoteToolIcon,
+  commentToolIcon,
 } from "./icons";
 
 import "./ToolIcon.scss";
@@ -80,6 +81,7 @@ export const MobileToolbar = ({ app, setAppState }: MobileToolbarProps) => {
   const embeddableToolSelected = activeTool.type === "embeddable";
   const bucketFillToolSelected = activeTool.type === "bucketfill";
   const stickyNoteToolSelected = activeTool.type === "stickynote";
+  const commentToolSelected = activeTool.type === "comment";
 
   const { TTDDialogTriggerTunnel } = useTunnels();
 
@@ -117,6 +119,7 @@ export const MobileToolbar = ({ app, setAppState }: MobileToolbarProps) => {
     [
       "text",
       "stickynote",
+      "comment",
       "frame",
       "embeddable",
       "laser",
@@ -142,6 +145,8 @@ export const MobileToolbar = ({ app, setAppState }: MobileToolbarProps) => {
       ? frameToolIcon
       : activeTool.type === "stickynote"
       ? stickyNoteToolIcon
+      : activeTool.type === "comment"
+      ? commentToolIcon
       : activeTool.type === "embeddable"
       ? EmbedIcon
       : activeTool.type === "laser"
@@ -292,6 +297,16 @@ export const MobileToolbar = ({ app, setAppState }: MobileToolbarProps) => {
             disabled={isToolButtonDisabled(app, "stickynote")}
           >
             {t("toolBar.stickynote")}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            onSelect={() => app.setActiveTool({ type: "comment" })}
+            icon={commentToolIcon}
+            shortcut={KEYS.C.toLocaleUpperCase()}
+            data-testid="toolbar-comment"
+            selected={commentToolSelected}
+            disabled={isToolButtonDisabled(app, "comment")}
+          >
+            {t("toolBar.comment")}
           </DropdownMenu.Item>
 
           {!showFrameToolOutside && (

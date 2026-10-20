@@ -30,6 +30,7 @@ import {
   frameToolIcon,
   EmbedIcon,
   stickyNoteToolIcon,
+  commentToolIcon,
 } from "./icons";
 
 import type {
@@ -156,6 +157,10 @@ export const TOOLS = defineTools({
   lasso: {
     icon: LassoIcon,
     fillable: false,
+  },
+  comment: {
+    icon: commentToolIcon,
+    letterKey: KEYS.C,
   },
 });
 
@@ -337,6 +342,7 @@ export const StickyNoteToolButton = createToolButton("stickynote");
 export const ImageToolButton = createToolButton("image");
 export const EraserToolButton = createToolButton("eraser");
 export const FrameToolButton = createToolButton("frame");
+export const CommentToolButton = createToolButton("comment");
 
 /**
  * The selection tool button — pointer-clicking it while the selection tool

@@ -110,6 +110,7 @@ import type {
 import type { MarkOptional, Mutable } from "@excalidraw/common/utility-types";
 
 import { getDefaultAppState } from "../appState";
+import { restoreCommentThreads } from "../comments/commentUtils";
 
 import {
   getNormalizedGridSize,
@@ -243,6 +244,7 @@ export const AllowedExcalidrawActiveTools: Record<
   autoshape: false,
   magicframe: false,
   bucketfill: true,
+  comment: true,
 };
 
 export type RestoredDataState = {
@@ -1329,6 +1331,11 @@ export const restoreAppState = (
     ),
   };
   nextAppState.fontTopPicks = restoreFontTopPicks(nextAppState.fontTopPicks);
+  // comment threads come from untrusted sources (imported files, shared
+  // links, rehydrated boards) — drop the malformed ones
+  nextAppState.commentThreads = restoreCommentThreads(
+    nextAppState.commentThreads,
+  );
 
   // legacy
   if ((appState as any).currentItemStrokeWidth !== undefined) {
