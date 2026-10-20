@@ -14,6 +14,7 @@ import { Island } from "./Island";
 import { LockButton } from "./LockButton";
 import { PenModeButton } from "./PenModeButton";
 import Stack from "./Stack";
+import { TemplatesButton } from "./templates/TemplatesButton";
 import DropdownMenu from "./dropdownMenu/DropdownMenu";
 import {
   EmbedIcon,
@@ -264,6 +265,7 @@ export const Toolbar = ({
           setAppState={setAppState}
         />
         <CommentToolButton {...toolProps} />
+        <TemplatesButton app={app} />
 
         <div
           className="App-toolbar__divider"

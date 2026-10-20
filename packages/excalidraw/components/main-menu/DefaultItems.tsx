@@ -48,6 +48,7 @@ import {
   XBrandIcon,
   settingsIcon,
   emptyIcon,
+  templatesIcon,
 } from "../icons";
 import {
   boltIcon,
@@ -190,6 +191,27 @@ export const SearchMenu = (opts?: { className?: string }) => {
   );
 };
 SearchMenu.displayName = "SearchMenu";
+
+export const Templates = (opts?: { className?: string }) => {
+  const setAppState = useExcalidrawSetAppState();
+  const { t } = useI18n();
+
+  return (
+    <DropdownMenuItem
+      icon={templatesIcon}
+      data-testid="templates-button"
+      onSelect={() => {
+        trackEvent("templates", "open", "menu");
+        setAppState({ openDialog: { name: "templates" } });
+      }}
+      aria-label={t("labels.templates.title")}
+      className={opts?.className}
+    >
+      {t("labels.templates.title")}
+    </DropdownMenuItem>
+  );
+};
+Templates.displayName = "Templates";
 
 export const Help = () => {
   const { t } = useI18n();

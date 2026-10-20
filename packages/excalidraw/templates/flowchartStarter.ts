@@ -1,0 +1,131 @@
+import { COLOR_PALETTE } from "@excalidraw/common";
+
+import type { ExcalidrawTemplate } from "./types";
+
+/**
+ * The flowchart starter: the shapes a flowchart is made of — a start, a
+ * decision, a step, an end — with the arrows that join them.
+ */
+
+const TOP_Y = 120;
+
+export const flowchartStarterTemplate: ExcalidrawTemplate = {
+  id: "flowchart-starter",
+  nameKey: "labels.templates.items.flowchartStarter.name",
+  descriptionKey: "labels.templates.items.flowchartStarter.description",
+  category: "diagramming",
+  elements: [
+    {
+      kind: "text",
+      id: "title",
+      x: 40,
+      y: 24,
+      width: 600,
+      height: 40,
+      text: "Flowchart",
+      fontSize: 32,
+    },
+    {
+      kind: "ellipse",
+      id: "start",
+      x: 60,
+      y: TOP_Y,
+      width: 170,
+      height: 80,
+      label: "Start",
+      fontSize: 18,
+      backgroundColor: COLOR_PALETTE.green[1],
+      strokeColor: COLOR_PALETTE.green[3],
+    },
+    {
+      kind: "diamond",
+      id: "decision",
+      x: 300,
+      y: TOP_Y - 20,
+      width: 170,
+      height: 120,
+      label: "Decision?",
+      fontSize: 18,
+      backgroundColor: COLOR_PALETTE.yellow[1],
+      strokeColor: COLOR_PALETTE.yellow[3],
+    },
+    {
+      kind: "rectangle",
+      id: "step",
+      x: 540,
+      y: TOP_Y,
+      width: 170,
+      height: 80,
+      label: "Do the thing",
+      fontSize: 18,
+      backgroundColor: COLOR_PALETTE.blue[1],
+      strokeColor: COLOR_PALETTE.blue[3],
+    },
+    {
+      kind: "ellipse",
+      id: "end",
+      x: 540,
+      y: 300,
+      width: 170,
+      height: 80,
+      label: "End",
+      fontSize: 18,
+      backgroundColor: COLOR_PALETTE.red[1],
+      strokeColor: COLOR_PALETTE.red[3],
+    },
+    {
+      kind: "arrow",
+      id: "arrow-start",
+      x: 230,
+      y: TOP_Y + 40,
+      dx: 70,
+      dy: 0,
+    },
+    {
+      kind: "arrow",
+      id: "arrow-decision",
+      x: 470,
+      y: TOP_Y + 40,
+      dx: 70,
+      dy: 0,
+    },
+    {
+      kind: "arrow",
+      id: "arrow-down",
+      x: 625,
+      y: TOP_Y + 80,
+      dx: 0,
+      dy: 220,
+    },
+    {
+      kind: "arrow",
+      id: "arrow-loop",
+      x: 300,
+      y: TOP_Y + 100,
+      dx: -135,
+      dy: 0,
+      strokeColor: COLOR_PALETTE.gray[4],
+      strokeStyle: "dashed",
+    },
+    {
+      kind: "text",
+      id: "label-yes",
+      x: 480,
+      y: TOP_Y + 16,
+      width: 60,
+      height: 20,
+      text: "Yes",
+      fontSize: 14,
+    },
+    {
+      kind: "text",
+      id: "label-no",
+      x: 150,
+      y: TOP_Y + 104,
+      width: 60,
+      height: 20,
+      text: "No",
+      fontSize: 14,
+    },
+  ],
+};
