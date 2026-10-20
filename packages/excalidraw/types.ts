@@ -69,6 +69,7 @@ import type { SetViewportOptions } from "./viewport";
 
 import type { Language } from "./i18n";
 import type { isOverScrollBars } from "./scene/scrollbars";
+import type { CommentComposerAnchor, CommentThread } from "./comments/types";
 import type React from "react";
 import type { JSX } from "react";
 
@@ -168,7 +169,8 @@ export type ToolType =
   | "embeddable"
   | "laser"
   | "autoshape"
-  | "bucketfill";
+  | "bucketfill"
+  | "comment";
 
 export type ElementOrToolType = ExcalidrawElementType | ToolType | "custom";
 
@@ -618,6 +620,25 @@ export interface AppState {
   /** user-customized font-picker top picks (pinned via drag & drop from the
    * font picker popup). `null` means no customization (defaults are used) */
   fontTopPicks: readonly FontFamilyValues[] | null;
+  /**
+   * Mosaic comment threads pinned to the canvas.
+   *
+   * Persisted with the scene (localStorage, `.excalidraw` files, Mosaic
+   * boards) so a comment survives a reload.
+   */
+  commentThreads: CommentThread[];
+  /** id of the thread whose popover is open, if any */
+  openCommentThreadId: string | null;
+  /**
+   * Where the comment composer is about to open (scene coordinates). Set
+   * when the user drops a pin with the comment tool, cleared once the
+   * composer is submitted or dismissed.
+   */
+  commentComposerAnchor: CommentComposerAnchor | null;
+  /** whether comment pins are rendered on the canvas */
+  commentsVisible: boolean;
+  /** whether the resolved threads are revealed (pins and panel listing) */
+  showResolvedComments: boolean;
 }
 
 export type SearchMatch = {

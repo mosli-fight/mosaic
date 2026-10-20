@@ -2609,3 +2609,57 @@ export const settingsIcon = createIcon(
   </g>,
   tablerIconProps,
 );
+
+// tabler-icons: message-plus (Mosaic comment tool)
+export const commentToolIcon = createIcon(
+  <g strokeWidth="1.25">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M8 9h8" />
+    <path d="M8 13h5" />
+    <path d="M18 5a3 3 0 0 1 3 3v4a3 3 0 0 1 -3 3h-1.5l-4.5 4v-4h-4a3 3 0 0 1 -3 -3v-4a3 3 0 0 1 3 -3z" />
+  </g>,
+  tablerIconProps,
+);
+
+// tabler-icons: check (Mosaic comment resolve)
+export const commentResolvedIcon = createIcon(
+  <g strokeWidth="1.75">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M5 12l5 5l10 -10" />
+  </g>,
+  tablerIconProps,
+);
+
+// tabler-icons: eye (Mosaic comment visibility toggle)
+export const commentsVisibleIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+    <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
+  </g>,
+  tablerIconProps,
+);
+
+// tabler-icons: eye-off (Mosaic comment visibility toggle, off)
+export const commentsHiddenIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+    <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
+    <path d="M3 3l18 18" />
+  </g>,
+  tablerIconProps,
+);
+
+// tabler-icons: trash (Mosaic comment delete)
+export const commentDeleteIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M4 7l16 0" />
+    <path d="M10 11l0 6" />
+    <path d="M14 11l0 6" />
+    <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+    <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+  </g>,
+  tablerIconProps,
+);

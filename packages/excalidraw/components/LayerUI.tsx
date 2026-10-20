@@ -33,6 +33,11 @@ import {
   type ColorDefaultKey,
 } from "../actions/colorTargets";
 
+import {
+  CommentsSidebar,
+  COMMENTS_SIDEBAR_NAME,
+} from "../comments/CommentsSidebar";
+
 import { SelectedShapeActions, CompactShapeActions } from "./Actions";
 import { PresentMode } from "./frames/PresentMode";
 import { LoadingMessage } from "./LoadingMessage";
@@ -48,8 +53,9 @@ import MainMenu from "./main-menu/MainMenu";
 import { ActiveConfirmDialog } from "./ActiveConfirmDialog";
 import { useAppProps, useEditorInterface, useStylesPanelMode } from "./App";
 import { OverwriteConfirmDialog } from "./OverwriteConfirm/OverwriteConfirm";
-import { sidebarRightIcon } from "./icons";
+import { messageCircleIcon, sidebarRightIcon } from "./icons";
 import { DefaultSidebar } from "./DefaultSidebar";
+import { Sidebar } from "./Sidebar/Sidebar";
 import { TTDDialog } from "./TTDDialog/TTDDialog";
 import { Stats } from "./Stats";
 import ElementLinkDialog from "./ElementLinkDialog";
@@ -426,6 +432,13 @@ const LayerUI = ({
                 appState.openSidebar?.name !== DEFAULT_SIDEBAR.name) && (
                 <tunnels.DefaultSidebarTriggerTunnel.Out />
               )}
+            {defaultUIEnabled && !appState.viewModeEnabled && (
+              <Sidebar.Trigger
+                name={COMMENTS_SIDEBAR_NAME}
+                icon={messageCircleIcon}
+                title={capitalizeString(t("comment.panelTitle"))}
+              />
+            )}
             {shouldShowStats && (
               <Stats
                 app={app}
@@ -447,18 +460,21 @@ const LayerUI = ({
     }
 
     return (
-      <DefaultSidebar
-        __fallback
-        onDock={(docked) => {
-          trackEvent(
-            "sidebar",
-            `toggleDock (${docked ? "dock" : "undock"})`,
-            `(${
-              editorInterface.formFactor === "phone" ? "mobile" : "desktop"
-            })`,
-          );
-        }}
-      />
+      <>
+        <DefaultSidebar
+          __fallback
+          onDock={(docked) => {
+            trackEvent(
+              "sidebar",
+              `toggleDock (${docked ? "dock" : "undock"})`,
+              `(${
+                editorInterface.formFactor === "phone" ? "mobile" : "desktop"
+              })`,
+            );
+          }}
+        />
+        <CommentsSidebar />
+      </>
     );
   };
 

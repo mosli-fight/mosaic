@@ -478,6 +478,19 @@ export { LiveCollaborationTrigger };
 export { Stats } from "./components/Stats";
 
 export { DefaultSidebar } from "./components/DefaultSidebar";
+export { CommentsPanel } from "./comments/CommentsPanel";
+export {
+  CommentsSidebar,
+  COMMENTS_SIDEBAR_NAME,
+} from "./comments/CommentsSidebar";
+export type {
+  CommentAnchor,
+  CommentAuthor,
+  CommentComposerAnchor,
+  CommentFilter,
+  CommentMessage,
+  CommentThread,
+} from "./comments/types";
 export { TTDDialog } from "./components/TTDDialog/TTDDialog";
 export { TTDDialogTrigger } from "./components/TTDDialog/TTDDialogTrigger";
 export {

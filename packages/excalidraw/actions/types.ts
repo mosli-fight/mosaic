@@ -160,7 +160,13 @@ export type ActionName =
   | "toggleStickyNoteFontStyle"
   | "addStickyNoteTag"
   | "removeStickyNoteTag"
-  | "insertStickyNoteEmoji";
+  | "insertStickyNoteEmoji"
+  | "toggleComments"
+  | "toggleResolvedComments"
+  | "addComment"
+  | "addCommentReply"
+  | "setCommentResolved"
+  | "deleteComment";
 
 export type PanelComponentProps = {
   elements: readonly ExcalidrawElement[];
@@ -223,7 +229,8 @@ export interface Action<TData = any> {
           | "collab"
           | "hyperlink"
           | "search_menu"
-          | "shape_switch";
+          | "shape_switch"
+          | "comment";
         action?: string;
         predicate?: (
           appState: Readonly<AppState>,

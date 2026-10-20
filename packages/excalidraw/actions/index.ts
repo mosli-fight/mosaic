@@ -116,3 +116,12 @@ export {
   actionPresentNextFrame,
   actionPresentPreviousFrame,
 } from "./actionFrames";
+
+export {
+  actionToggleComments,
+  actionToggleResolvedComments,
+  actionAddComment,
+  actionAddCommentReply,
+  actionSetCommentResolved,
+  actionDeleteComment,
+} from "./actionComment";

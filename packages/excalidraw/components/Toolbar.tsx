@@ -38,6 +38,7 @@ import {
   SelectionToolPopover,
   StickyNoteToolButton,
   TextToolButton,
+  CommentToolButton,
 } from "./Tools";
 
 import type {
@@ -262,6 +263,7 @@ export const Toolbar = ({
           activeTool={activeTool}
           setAppState={setAppState}
         />
+        <CommentToolButton {...toolProps} />
 
         <div
           className="App-toolbar__divider"
