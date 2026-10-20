@@ -6,6 +6,7 @@ import {
   getColorTargetElement,
   hasBoundTextElement,
   isElbowArrow,
+  isFrameLikeElement,
   isImageElement,
   isLinearElement,
   isStickyNoteElement,
@@ -154,6 +155,8 @@ export const getShapeActionPredicates = (
     stickyNote:
       activeToolType === "stickynote" ||
       targetElements.some(isStickyNoteElement),
+    /** the frame's own controls (paper color, name, visibility, notes) */
+    frame: targetElements.some(isFrameLikeElement),
     textAlign:
       activeToolType === "text" ||
       suppportsHorizontalAlign(targetElements, elementsMap),

@@ -980,6 +980,128 @@ export const getFrameLikeTitle = (element: ExcalidrawFrameLikeElement) => {
   return element.name === null ? getDefaultFrameName(element) : element.name;
 };
 
+// --------------------------- Hidden frames ----------------------------------
+
+/**
+ * Whether the frame itself is hidden from the board.
+ */
+export const isFrameHidden = (frame: ExcalidrawFrameLikeElement) =>
+  frame.hidden === true;
+
+/**
+ * Whether the element is hidden from the board — either because it is a
+ * hidden frame, or because it sits inside one.
+ *
+ * Hiding a frame hides what is on it: a frame is a canvas, and a canvas
+ * that is taken off the wall takes its contents with it. An element whose
+ * frame is gone (a frame that was deleted while the child survived) is
+ * visible, since there is nothing left to hide it behind.
+ */
+export const isElementHidden = (
+  element: ExcalidrawElement,
+  elementsMap: ElementsMap,
+): boolean => {
+  if (isFrameLikeElement(element)) {
+    return isFrameHidden(element);
+  }
+
+  if (!element.frameId) {
+    return false;
+  }
+
+  const frame = elementsMap.get(element.frameId);
+  return !!frame && isFrameLikeElement(frame) && isFrameHidden(frame);
+};
+
+/**
+ * The elements that are visible on the board — everything but the hidden
+ * frames and their contents.
+ */
+export const getUnhiddenElements = <T extends ExcalidrawElement>(
+  elements: readonly T[],
+  elementsMap: ElementsMap,
+): T[] => {
+  return elements.filter((element) => !isElementHidden(element, elementsMap));
+};
+
+/**
+ * The frames of the board in the order they are presented in.
+ *
+ * The order is the scene order (the z-order of the frames), which is the
+ * order the frames panel lists them in and the order present mode steps
+ * through them.
+ */
+export const getFramesInPresentOrder = <T extends ExcalidrawElement>(
+  elements: readonly T[],
+): ExcalidrawFrameLikeElement[] => {
+  return elements.filter((element): element is T & ExcalidrawFrameLikeElement =>
+    isFrameLikeElement(element),
+  );
+};
+
+/**
+ * Moves a frame one step up or down among the frames of the board.
+ *
+ * The frame travels with its contents: a frame and what sits on it are one
+ * thing, and leaving the contents behind would put them under a different
+ * frame's stack. The frames' own order is the board order — the order the
+ * frames panel lists them in, and the order a presentation walks them in.
+ *
+ * @returns the reordered elements, or the same elements when the frame is
+ * already at the end it is being moved towards
+ */
+export const moveFrameInFramesOrder = (
+  elements: readonly ExcalidrawElement[],
+  frameId: ExcalidrawFrameLikeElement["id"],
+  direction: "up" | "down",
+): readonly ExcalidrawElement[] => {
+  const frameIndex = elements.findIndex((element) => element.id === frameId);
+  if (frameIndex === -1) {
+    return elements;
+  }
+
+  const frame = elements[frameIndex];
+  if (!isFrameLikeElement(frame)) {
+    return elements;
+  }
+
+  const frameIndices: number[] = [];
+  elements.forEach((element, index) => {
+    if (isFrameLikeElement(element)) {
+      frameIndices.push(index);
+    }
+  });
+
+  const position = frameIndices.indexOf(frameIndex);
+  const neighborIndex =
+    frameIndices[direction === "up" ? position - 1 : position + 1];
+
+  if (neighborIndex === undefined) {
+    // already at the end it is being moved towards
+    return elements;
+  }
+
+  // the frame and everything on it travel together
+  const moving = new Set<string>([
+    frame.id,
+    ...getFrameChildren(elements, frame.id).map((child) => child.id),
+  ]);
+
+  const rest = elements.filter((element) => !moving.has(element.id));
+  const moved = elements.filter((element) => moving.has(element.id));
+
+  // the frame lands in the neighbour frame's slot: before it when moving
+  // up, after it when moving down
+  const insertAt = rest.indexOf(elements[neighborIndex]);
+  const target = direction === "up" ? insertAt : insertAt + 1;
+
+  const reordered = [...rest.slice(0, target), ...moved, ...rest.slice(target)];
+
+  syncMovedIndices(reordered, arrayToMap(moved));
+
+  return reordered;
+};
+
 export const getElementsOverlappingFrame = <T extends ExcalidrawElement>(
   elements: readonly T[],
   frame: ExcalidrawFrameLikeElement,

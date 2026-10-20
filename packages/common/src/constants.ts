@@ -556,6 +556,7 @@ export const DEFAULT_ELEMENT_PROPS: {
 
 export const LIBRARY_SIDEBAR_TAB = "library";
 export const CANVAS_SEARCH_TAB = "search";
+export const FRAMES_SIDEBAR_TAB = "frames";
 
 export const DEFAULT_SIDEBAR = {
   name: "default",

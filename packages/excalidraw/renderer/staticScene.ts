@@ -10,6 +10,7 @@ import { createPlaceholderEmbeddableLabel } from "@excalidraw/element";
 import { getBoundTextElement } from "@excalidraw/element";
 import {
   isEmbeddableElement,
+  isFrameLikeElement,
   isIframeLikeElement,
   isTextElement,
 } from "@excalidraw/element";
@@ -391,6 +392,59 @@ const _renderStaticScene = ({
       frameClip(frame, context, renderConfig, appState);
     }
   };
+
+  // Paint the frames' fills, as a background layer.
+  //
+  // A frame is a canvas, and what sits on a canvas is drawn on top of it —
+  // but the z-order says otherwise: a frame is created after the objects it
+  // contains, so it ends up above them. The fill therefore cannot be
+  // painted with the frame itself; it goes behind everything, which is also
+  // where it belongs, since an object that merely overlaps a frame (and is
+  // not one of its contents) is not clipped by it and stays on top.
+  if (appState.frameRendering.enabled) {
+    for (const element of visibleElements) {
+      if (!isFrameLikeElement(element)) {
+        continue;
+      }
+
+      const fillColor = element.backgroundColor;
+      if (!fillColor || fillColor === "transparent") {
+        continue;
+      }
+
+      const renderState = getRenderState(element);
+      const frame = getRenderElementWithPositionOverride(
+        element,
+        renderState.offset,
+      );
+
+      context.save();
+      context.globalAlpha = element.opacity / 100;
+      context.fillStyle = applyDarkModeFilter(
+        fillColor,
+        appState.theme === THEME.DARK,
+      );
+      context.beginPath();
+      if (FRAME_STYLE.radius && context.roundRect) {
+        context.roundRect(
+          frame.x + appState.scrollX,
+          frame.y + appState.scrollY,
+          frame.width,
+          frame.height,
+          FRAME_STYLE.radius / appState.zoom.value,
+        );
+      } else {
+        context.rect(
+          frame.x + appState.scrollX,
+          frame.y + appState.scrollY,
+          frame.width,
+          frame.height,
+        );
+      }
+      context.fill();
+      context.restore();
+    }
+  }
 
   // Paint visible elements
   visibleElements

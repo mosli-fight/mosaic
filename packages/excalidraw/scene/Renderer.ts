@@ -2,6 +2,7 @@ import {
   getCommonFrameId,
   getFrameChildrenInsertionIndex,
   getContainerElement,
+  getUnhiddenElements,
   isElementInViewport,
   isTextElement,
 } from "@excalidraw/element";
@@ -331,9 +332,16 @@ export class Renderer {
     }) => {
       const elements = this.scene.getNonDeletedElements();
 
+      // a hidden frame takes its contents off the board with it, so neither
+      // it nor what sits on it is rendered
+      const visibleElementsOnBoard = getUnhiddenElements(
+        elements,
+        this.scene.getNonDeletedElementsMap(),
+      );
+
       const { elementsMap, newElementCanvasElement } =
         this.getRenderableElementsMap({
-          elements,
+          elements: visibleElementsOnBoard,
           editingTextElement,
           newElement,
         });

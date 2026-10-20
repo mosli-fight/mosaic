@@ -103,6 +103,7 @@ import {
   isSelectionLikeTool,
   oneOf,
   getStrokeWidthByKey,
+  getFrameFormatSize,
 } from "@excalidraw/common";
 import { BRAND_EMBEDDED_CONTENT_TITLE } from "@mosaic/brand";
 
@@ -134,6 +135,8 @@ import {
   isBindingElementType,
   isBoundToContainer,
   isFrameLikeElement,
+  isFrameHidden,
+  isElementHidden,
   isImageElement,
   isEmbeddableElement,
   isInitializedImageElement,
@@ -2158,6 +2161,11 @@ class App extends React.Component<AppProps, AppState> {
         : null;
 
     return nonDeletedFramesLikes.map((f) => {
+      // a frame that is off the board has no name on it either
+      if (isFrameHidden(f)) {
+        return null;
+      }
+
       // The name is a decoration that follows the frame's render overrides,
       // except while it's being edited: editing is interaction and keeps to
       // document geometry like everything else interactive. Culling by the
@@ -5132,6 +5140,12 @@ class App extends React.Component<AppProps, AppState> {
         return;
       }
 
+      // in present mode the keyboard belongs to the show: the arrow keys
+      // walk the frames and escape leaves the stage
+      if (this.state.presentMode.active) {
+        return;
+      }
+
       // normalize `event.key` when CapsLock is pressed #2372
 
       if (
@@ -6068,6 +6082,11 @@ class App extends React.Component<AppProps, AppState> {
             )
     )
       .filter((el) => this.hitElement(x, y, el))
+      .filter(
+        (element) =>
+          // a hidden frame is off the board, and so is what sits on it
+          !isElementHidden(element, this.scene.getNonDeletedElementsMap()),
+      )
       .filter((element) => !this.isClippedByFrameAt(x, y, element))
       .filter((el) => {
         // The parameter elements comes ordered from lower z-index to higher.
@@ -9506,12 +9525,20 @@ class App extends React.Component<AppProps, AppState> {
         : this.getEffectiveGridSize(),
     );
 
+    const presetSize =
+      type === TOOL_TYPE.frame
+        ? getFrameFormatSize(this.state.currentItemFrameFormat)
+        : null;
+
     const constructorOpts = {
-      x: gridX,
-      y: gridY,
+      x: presetSize ? gridX - presetSize.width / 2 : gridX,
+      y: presetSize ? gridY - presetSize.height / 2 : gridY,
       opacity: this.state.currentItemOpacity,
       locked: false,
       ...FRAME_STYLE,
+      // a frame made from a paper format is that size from the start — the
+      // drag then places it rather than sizes it
+      ...(presetSize ?? {}),
     } as const;
 
     const frame =
@@ -12479,7 +12506,22 @@ class App extends React.Component<AppProps, AppState> {
       snapLines,
     });
 
-    if (!isBindingElement(newElement)) {
+    // a frame born from a paper format keeps the size it was born with —
+    // the drag places it on the board rather than sizing it
+    const isPresetFrame =
+      newElement.type === "frame" &&
+      getFrameFormatSize(this.state.currentItemFrameFormat) !== null;
+
+    if (isPresetFrame) {
+      this.scene.mutateElement(
+        newElement,
+        {
+          x: gridX - newElement.width / 2,
+          y: gridY - newElement.height / 2,
+        },
+        { informMutation, isDragging: false },
+      );
+    } else if (!isBindingElement(newElement)) {
       dragNewElement({
         newElement,
         elementType: this.state.activeTool.type,

@@ -34,6 +34,7 @@ import {
 } from "../actions/colorTargets";
 
 import { SelectedShapeActions, CompactShapeActions } from "./Actions";
+import { PresentMode } from "./frames/PresentMode";
 import { LoadingMessage } from "./LoadingMessage";
 import { MobileMenu } from "./MobileMenu";
 import { PasteChartDialog } from "./PasteChartDialog";
@@ -467,6 +468,20 @@ const LayerUI = ({
     isSidebarDocked &&
     editorInterface.canFitSidebar
   );
+
+  // in present mode the editor is off-stage: the board is the show, and the
+  // chrome around it would only be in the way
+  if (appState.presentMode.active) {
+    return (
+      <UIAppStateContext.Provider value={appState}>
+        <TunnelsJotaiProvider>
+          <TunnelsContext.Provider value={tunnels}>
+            <PresentMode />
+          </TunnelsContext.Provider>
+        </TunnelsJotaiProvider>
+      </UIAppStateContext.Provider>
+    );
+  }
 
   const layerUIJSX = (
     <>

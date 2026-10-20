@@ -1080,10 +1080,18 @@ const drawElement = (
         context.fillStyle = "rgba(0, 0, 200, 0.04)";
 
         context.lineWidth = FRAME_STYLE.strokeWidth / appState.zoom.value;
-        context.strokeStyle = applyDarkModeFilter(
-          FRAME_STYLE.strokeColor,
-          appState.theme === THEME.DARK,
-        );
+        // a frame with a paper of its own is outlined in that paper, so the
+        // frame reads as one object rather than a shape sitting on a shape
+        context.strokeStyle =
+          element.backgroundColor && element.backgroundColor !== "transparent"
+            ? applyDarkModeFilter(
+                element.backgroundColor,
+                appState.theme === THEME.DARK,
+              )
+            : applyDarkModeFilter(
+                FRAME_STYLE.strokeColor,
+                appState.theme === THEME.DARK,
+              );
 
         // TODO change later to only affect AI frames
         if (isMagicFrameElement(element)) {
