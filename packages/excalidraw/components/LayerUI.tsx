@@ -67,6 +67,7 @@ import { ImageExportDialog } from "./ImageExportDialog";
 import { Island } from "./Island";
 import { JSONExportDialog } from "./JSONExportDialog";
 import { LaserPointerButton } from "./LaserPointerButton";
+import { MediaPanel } from "./media/MediaPanel";
 import { Toast } from "./Toast";
 import { Toolbar } from "./Toolbar";
 import { TemplatesDialog } from "./templates/TemplatesDialog";
@@ -615,6 +616,7 @@ const LayerUI = ({
         />
       )}
       {appState.openDialog?.name === "templates" && <TemplatesDialog />}
+      {appState.openDialog?.name === "media" && <MediaPanel />}
       <ActiveConfirmDialog />
       {defaultUIEnabled && appState.openDialog?.name === "elementLinkSelector" && (
         <ElementLinkDialog

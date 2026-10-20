@@ -49,6 +49,7 @@ import {
   settingsIcon,
   emptyIcon,
   templatesIcon,
+  mediaIcon,
 } from "../icons";
 import {
   boltIcon,
@@ -212,6 +213,27 @@ export const Templates = (opts?: { className?: string }) => {
   );
 };
 Templates.displayName = "Templates";
+
+export const Media = (opts?: { className?: string }) => {
+  const setAppState = useExcalidrawSetAppState();
+  const { t } = useI18n();
+
+  return (
+    <DropdownMenuItem
+      icon={mediaIcon}
+      data-testid="media-button"
+      onSelect={() => {
+        trackEvent("media", "open", "menu");
+        setAppState({ openDialog: { name: "media" } });
+      }}
+      aria-label={t("labels.media.title")}
+      className={opts?.className}
+    >
+      {t("labels.media.title")}
+    </DropdownMenuItem>
+  );
+};
+Media.displayName = "Media";
 
 export const Help = () => {
   const { t } = useI18n();
