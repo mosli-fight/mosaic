@@ -491,6 +491,16 @@ export type {
   CommentMessage,
   CommentThread,
 } from "./comments/types";
+export { FacilitationMenu } from "./components/facilitation/FacilitationMenu";
+export { TimerWidget } from "./components/facilitation/TimerWidget";
+export type {
+  FacilitationTimerState,
+  PollData,
+  PollOption,
+  TimerStatus,
+  VotingSession,
+} from "./components/facilitation/types";
+export { getPollData } from "./components/facilitation/types";
 export { TTDDialog } from "./components/TTDDialog/TTDDialog";
 export { TTDDialogTrigger } from "./components/TTDDialog/TTDDialogTrigger";
 export {

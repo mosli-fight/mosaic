@@ -2675,3 +2675,77 @@ export const commentDeleteIcon = createIcon(
   </g>,
   tablerIconProps,
 );
+
+// tabler-icons: users-group (Mosaic facilitation menu)
+export const facilitationIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M9 7a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+    <path d="M3 21v-2a4 4 0 0 1 4 -4h2a4 4 0 0 1 4 4v2" />
+    <path d="M16 4.5a3 3 0 0 1 0 5" />
+    <path d="M17 15a4 4 0 0 1 4 4v2" />
+  </g>,
+  tablerIconProps,
+);
+
+// tabler-icons: clock (Mosaic facilitation timer)
+export const timerIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <circle cx="12" cy="13" r="8" />
+    <path d="M12 9v4l2.5 2.5" />
+    <path d="M9 2h6" />
+  </g>,
+  tablerIconProps,
+);
+
+// tabler-icons: check (Mosaic facilitation vote)
+export const voteIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M9 11.5l2.5 2.5l5 -5" />
+    <path d="M12 3l1.2 2.6l2.8 .3l-2.1 1.9l.6 2.8l-2.5 -1.4l-2.5 1.4l.6 -2.8l-2.1 -1.9l2.8 -.3z" />
+  </g>,
+  tablerIconProps,
+);
+
+// tabler-icons: chart-bar (Mosaic facilitation poll)
+export const pollIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M4 20h16" />
+    <path d="M7 20v-6" />
+    <path d="M12 20v-10" />
+    <path d="M17 20v-4" />
+  </g>,
+  tablerIconProps,
+);
+
+// tabler-icons: player-play (Mosaic facilitation timer start)
+export const timerStartIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M7 4l13 8l-13 8z" />
+  </g>,
+  tablerIconProps,
+);
+
+// tabler-icons: player-pause (Mosaic facilitation timer pause)
+export const timerPauseIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M8 4v16" />
+    <path d="M16 4v16" />
+  </g>,
+  tablerIconProps,
+);
+
+// tabler-icons: refresh (Mosaic facilitation timer reset)
+export const timerResetIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M20 11a8 8 0 1 0 -2.3 5.7" />
+    <path d="M20 5v6h-6" />
+  </g>,
+  tablerIconProps,
+);

@@ -166,7 +166,10 @@ export type ActionName =
   | "addComment"
   | "addCommentReply"
   | "setCommentResolved"
-  | "deleteComment";
+  | "deleteComment"
+  | "createPoll"
+  | "updatePoll"
+  | "deletePoll";
 
 export type PanelComponentProps = {
   elements: readonly ExcalidrawElement[];
@@ -230,7 +233,8 @@ export interface Action<TData = any> {
           | "hyperlink"
           | "search_menu"
           | "shape_switch"
-          | "comment";
+          | "comment"
+          | "facilitation";
         action?: string;
         predicate?: (
           appState: Readonly<AppState>,

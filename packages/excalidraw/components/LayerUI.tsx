@@ -38,6 +38,8 @@ import {
   COMMENTS_SIDEBAR_NAME,
 } from "../comments/CommentsSidebar";
 
+import { FacilitationMenu } from "./facilitation/FacilitationMenu";
+
 import { SelectedShapeActions, CompactShapeActions } from "./Actions";
 import { PresentMode } from "./frames/PresentMode";
 import { LoadingMessage } from "./LoadingMessage";
@@ -439,6 +441,9 @@ const LayerUI = ({
                 icon={messageCircleIcon}
                 title={capitalizeString(t("comment.panelTitle"))}
               />
+            )}
+            {defaultUIEnabled && !appState.viewModeEnabled && (
+              <FacilitationMenu />
             )}
             {shouldShowStats && (
               <Stats
