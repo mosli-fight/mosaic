@@ -125,3 +125,9 @@ export {
   actionSetCommentResolved,
   actionDeleteComment,
 } from "./actionComment";
+
+export {
+  actionCreatePoll,
+  actionUpdatePoll,
+  actionDeletePoll,
+} from "./actionFacilitation";

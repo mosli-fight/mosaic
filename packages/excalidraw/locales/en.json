@@ -534,6 +534,63 @@
     "jumpTo": "Show on canvas",
     "attachedToElement": "Attached to an element"
   },
+  "facilitation": {
+    "menu": {
+      "title": "Facilitate"
+    },
+    "timer": {
+      "title": "Timer",
+      "show": "Show timer",
+      "hide": "Hide timer",
+      "start": "Start",
+      "pause": "Pause",
+      "reset": "Reset",
+      "set": "Set",
+      "minutes": "Min",
+      "seconds": "Sec",
+      "addMinute": "Add a minute",
+      "drag": "Drag to move the timer",
+      "remaining": "{{time}} left",
+      "timeUp": "Time is up",
+      "timeUpShort": "0:00"
+    },
+    "voting": {
+      "title": "Voting",
+      "start": "Start voting",
+      "end": "End voting",
+      "cancel": "Cancel vote",
+      "live": "Voting is open",
+      "results": "Results",
+      "closeResults": "Close results",
+      "tally": "{{votes}} votes on {{count}} items",
+      "hintSelected": "Voting on {{count}} selected elements.",
+      "hintAll": "Nothing is selected: voting on all {{count}} elements.",
+      "hintVoteOnCanvas": "Click the badge on an element to vote for it.",
+      "voteFor": "Vote for {{label}}",
+      "thisElement": "this element"
+    },
+    "poll": {
+      "title": "Poll",
+      "new": "New poll",
+      "create": "Create poll",
+      "edit": "Edit poll",
+      "save": "Save",
+      "cancel": "Cancel",
+      "question": "Question",
+      "questionPlaceholder": "What should we decide?",
+      "options": "Options",
+      "optionPlaceholder": "Option {{index}}",
+      "addOption": "Add an option",
+      "removeOption": "Remove this option",
+      "close": "Close poll",
+      "reopen": "Reopen poll",
+      "closed": "Closed",
+      "resetVotes": "Reset votes",
+      "delete": "Delete poll",
+      "tally": "{{votes}} votes",
+      "voteFor": "Vote for {{label}}"
+    }
+  },
   "bucketfill": {
     "noRegion": "Couldn't find an enclosed region to fill here.",
     "tooComplex": "This region is too complex to fill."

@@ -416,6 +416,9 @@ import {
 
 import { CommentLayer } from "../comments/CommentLayer";
 
+import { FacilitationLayer } from "./facilitation/FacilitationLayer";
+import { TimerWidget } from "./facilitation/TimerWidget";
+
 import ConvertElementTypePopup, {
   getConversionTypeFromElements,
   convertElementTypePopupAtom,
@@ -2737,6 +2740,8 @@ class App extends React.Component<AppProps, AppState> {
                             )}
                           {this.renderFrameNames()}
                           <CommentLayer />
+                          <FacilitationLayer />
+                          <TimerWidget />
                           {this.isDefaultUIEnabled() &&
                             this.state.activeLockedId && (
                               <UnlockPopup
