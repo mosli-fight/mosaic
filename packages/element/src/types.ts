@@ -21,6 +21,19 @@ export type FontFamilyKeys = keyof typeof FONT_FAMILY;
 export type FontFamilyValues = typeof FONT_FAMILY[FontFamilyKeys];
 export type Theme = typeof THEME[keyof typeof THEME];
 export type FontString = string & { _brand: "fontString" };
+/**
+ * The weight and slant of a text. Only sticky note labels carry one — the
+ * element colors have no styled text of their own, and the style applies to
+ * the whole label because the text model has no rich runs.
+ *
+ * The two flags are independent: a label can be bold and italic at once.
+ */
+export type FontStyle = {
+  /** the text is drawn in the bold weight */
+  bold?: boolean;
+  /** the text is drawn slanted */
+  italic?: boolean;
+};
 export type GroupId = string;
 export type PointerType = "mouse" | "pen" | "touch";
 export type StrokeRoundness = "round" | "sharp";
@@ -102,6 +115,18 @@ export type ExcalidrawStickyNoteElement = _ExcalidrawElementBase &
      * note grows above it to fit its label and never shrinks below it
      */
     baseHeight: number;
+    /**
+     * Who wrote the note — the name of the user who created it, shown in the
+     * note's footer. `null` for notes created before this field existed, for
+     * notes whose author is unknown, and for notes imported from a file that
+     * carries no author.
+     */
+    author: string | null;
+    /**
+     * The note's tags, shown as a row of pills under the label. Ordered and
+     * free of duplicates; an empty list for a note without tags.
+     */
+    tags: readonly string[];
   }>;
 
 export type ExcalidrawDiamondElement = _ExcalidrawElementBase & {
@@ -264,6 +289,12 @@ export type ExcalidrawTextElement = _ExcalidrawElementBase &
      * the container decides its meaning.
      */
     baseFontSize: number | null;
+    /**
+     * The weight and slant of the text. Today only sticky note labels have
+     * one — a note styles its label as a whole, because the text model has no
+     * rich runs. `undefined` (and `"normal"`) mean the regular weight.
+     */
+    fontStyle?: FontStyle;
     text: string;
     textAlign: TextAlign;
     verticalAlign: VerticalAlign;

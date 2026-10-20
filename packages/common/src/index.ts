@@ -8,6 +8,7 @@ export * from "./keys";
 export * from "./points";
 export * from "./promise-pool";
 export * from "./random";
+export * from "./stickyNote";
 export * from "./url";
 export * from "./utils";
 export * from "./emitter";

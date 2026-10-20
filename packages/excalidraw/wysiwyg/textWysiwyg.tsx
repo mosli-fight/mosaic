@@ -822,6 +822,10 @@ export const textWysiwyg = ({
             isStickyNoteElement(container) && boundTextElement
               ? boundTextElement.fontFamily
               : app.state.currentItemFontFamily,
+          fontStyle:
+            isStickyNoteElement(container) && boundTextElement
+              ? boundTextElement.fontStyle
+              : undefined,
         });
         const maxWidth = getBoundTextMaxWidth(container, boundTextElement);
         const { selectionStart, selectionEnd, value } = editable;

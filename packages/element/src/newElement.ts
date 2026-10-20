@@ -27,6 +27,7 @@ import { newElementWith } from "./mutateElement";
 import {
   normalizeStickyNoteBackgroundColor,
   normalizeStickyNoteStrokeColor,
+  normalizeStickyNoteTags,
 } from "./stickyNote";
 import { getBoundTextMaxWidth } from "./textElement";
 import { normalizeText, measureText } from "./textMeasurements";
@@ -231,6 +232,8 @@ export const newStickyNoteElement = (
   opts: {
     type: "stickynote";
     baseHeight?: number;
+    author?: string | null;
+    tags?: readonly string[];
   } & ElementConstructorOpts,
 ): NonDeleted<ExcalidrawStickyNoteElement> => {
   const base = _newElementBase<ExcalidrawStickyNoteElement>("stickynote", opts);
@@ -239,6 +242,8 @@ export const newStickyNoteElement = (
   return normalizeStickyNoteStyle({
     ...base,
     baseHeight: opts.baseHeight ?? base.height,
+    author: opts.author ?? null,
+    tags: normalizeStickyNoteTags(opts.tags),
   });
 };
 
@@ -345,6 +350,7 @@ export const newTextElement = (
     autoResize?: ExcalidrawTextElement["autoResize"];
     labelPosition?: ExcalidrawTextElement["labelPosition"];
     baseFontSize?: ExcalidrawTextElement["baseFontSize"];
+    fontStyle?: ExcalidrawTextElement["fontStyle"];
   } & ElementConstructorOpts,
 ): NonDeleted<ExcalidrawTextElement> => {
   const fontFamily = opts.fontFamily || DEFAULT_FONT_FAMILY;
@@ -353,7 +359,7 @@ export const newTextElement = (
   const text = normalizeText(opts.text);
   const metrics = measureText(
     text,
-    getFontString({ fontFamily, fontSize }),
+    getFontString({ fontFamily, fontSize, fontStyle: opts.fontStyle }),
     lineHeight,
   );
   const textAlign = opts.textAlign || DEFAULT_TEXT_ALIGN;
@@ -368,6 +374,9 @@ export const newTextElement = (
     text,
     fontSize,
     baseFontSize: opts.baseFontSize ?? null,
+    // only a styled label carries a style — an ordinary text element has
+    // none, and the key is left out entirely rather than set to a default
+    ...(opts.fontStyle ? { fontStyle: opts.fontStyle } : {}),
     fontFamily,
     textAlign,
     verticalAlign,

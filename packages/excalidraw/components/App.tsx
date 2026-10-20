@@ -446,6 +446,7 @@ import { hideTooltip } from "./Tooltip";
 import { StaticCanvas, InteractiveCanvas } from "./canvases";
 import NewElementCanvas from "./canvases/NewElementCanvas";
 import { isPointHittingLink } from "./hyperlink/helpers";
+import { getStickyNoteAuthor } from "./sticky-note/stickyNoteAuthor";
 import { CursorHint, CursorHints } from "./CursorHint";
 import { MagicIcon, copyIcon, fullscreenIcon } from "./icons";
 import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
@@ -9471,6 +9472,7 @@ class App extends React.Component<AppProps, AppState> {
       element = newStickyNoteElement({
         type: "stickynote",
         ...baseElementAttributes,
+        author: getStickyNoteAuthor(this.state),
       });
     } else {
       element = newElement({

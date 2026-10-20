@@ -2,7 +2,11 @@ import { average } from "@excalidraw/math";
 
 import type { GlobalCoord } from "@excalidraw/math";
 
-import type { FontFamilyValues, FontString } from "@excalidraw/element/types";
+import type {
+  FontFamilyValues,
+  FontString,
+  FontStyle,
+} from "@excalidraw/element/types";
 
 import type {
   ActiveTool,
@@ -139,11 +143,23 @@ export const getFontFamilyString = ({
 export const getFontString = ({
   fontSize,
   fontFamily,
+  fontStyle,
 }: {
   fontSize: number;
   fontFamily: FontFamilyValues;
+  /**
+   * The weight and slant of the text. Only sticky note labels set one — the
+   * element colors have no styled text of their own.
+   */
+  fontStyle?: FontStyle;
 }) => {
-  return `${fontSize}px ${getFontFamilyString({ fontFamily })}` as FontString;
+  // the flags are independent: a label can be bold *and* italic
+  const style = `${fontStyle?.bold ? "bold " : ""}${
+    fontStyle?.italic ? "italic " : ""
+  }`;
+  return `${style}${fontSize}px ${getFontFamilyString({
+    fontFamily,
+  })}` as FontString;
 };
 
 /** executes callback in the frame that's after the current one */

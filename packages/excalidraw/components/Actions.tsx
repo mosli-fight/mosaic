@@ -42,6 +42,7 @@ import {
 import { Island } from "./Island";
 
 import { getShapeActionPredicates } from "./shapeActionPredicates";
+import { StickyNoteProperties } from "./sticky-note/StickyNoteProperties";
 
 import type { ShapeActionPredicates } from "./shapeActionPredicates";
 import type { AppClassProperties, UIAppState, AppState } from "../types";
@@ -159,6 +160,9 @@ export const SelectedShapeActions = ({
 
   return (
     <div className="selected-shape-actions">
+      {predicates.stickyNote && (
+        <StickyNoteProperties appState={appState} elementsMap={elementsMap} />
+      )}
       <div>{predicates.strokeColor && renderAction("changeStrokeColor")}</div>
       {predicates.backgroundColor && (
         <div>{renderAction("changeBackgroundColor")}</div>

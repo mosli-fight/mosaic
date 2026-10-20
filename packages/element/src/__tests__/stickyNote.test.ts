@@ -8,6 +8,9 @@ import {
   STICKY_NOTE_MIN_FONT_SIZE,
   STICKY_NOTE_BODY_INSET_Y,
   STICKY_NOTE_FOOTER,
+  STICKY_NOTE_TAG_ROW_HEIGHT,
+  getFontString,
+  getStickyNoteBodyInsetY,
   STICKY_NOTE_MIN_SIZE,
   STICKY_NOTE_PADDING,
   VERTICAL_ALIGN,
@@ -34,8 +37,12 @@ import { resizeMultipleElements, resizeSingleElement } from "../resizeElements";
 import {
   getStickyNoteLayout,
   getStickyNoteCornerRadius,
+  getStickyNoteAuthorLabel,
   getStickyNoteDateLabel,
   getStickyNoteFooter,
+  getStickyNoteFooterContent,
+  normalizeStickyNoteFontStyle,
+  normalizeStickyNoteTags,
   getStickyNoteMinSize,
   syncStickyNoteInk,
   normalizeStickyNoteFontSize,
@@ -1125,5 +1132,128 @@ describe("sticky note ink", () => {
     expect(
       inks(syncStickyNoteInk(pair(RED, "transparent"), new Map())),
     ).toEqual([RED, RED]);
+  });
+});
+
+describe("sticky note tags", () => {
+  it("trims, drops blanks and duplicates, and keeps the order", () => {
+    expect(
+      normalizeStickyNoteTags([" idea ", "todo", "idea", "", "   "]),
+    ).toEqual(["idea", "todo"]);
+  });
+
+  it("keeps at most the number of tags a note can show", () => {
+    expect(normalizeStickyNoteTags(["a", "b", "c", "d", "e"])).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+  });
+
+  it("has no tags at all for an empty list", () => {
+    expect(normalizeStickyNoteTags([])).toEqual([]);
+    expect(normalizeStickyNoteTags(null)).toEqual([]);
+    expect(normalizeStickyNoteTags(undefined)).toEqual([]);
+  });
+
+  it("gives a note less label room when it carries tags", () => {
+    expect(getStickyNoteBodyInsetY(0)).toBe(STICKY_NOTE_BODY_INSET_Y);
+    expect(getStickyNoteBodyInsetY(1)).toBe(
+      STICKY_NOTE_BODY_INSET_Y + STICKY_NOTE_TAG_ROW_HEIGHT,
+    );
+  });
+});
+
+describe("sticky note author", () => {
+  it("has no author label without an author", () => {
+    expect(getStickyNoteAuthorLabel(null, 250)).toBe(null);
+    expect(getStickyNoteAuthorLabel("  ", 250)).toBe(null);
+  });
+
+  it("keeps a short author whole", () => {
+    expect(getStickyNoteAuthorLabel("Ada", 250)).toBe("Ada");
+  });
+
+  it("trims a long author to what the note's width can carry", () => {
+    const long = "A".repeat(40);
+    // a narrow note carries fewer characters
+    const narrow = getStickyNoteAuthorLabel(long, 120);
+    const wide = getStickyNoteAuthorLabel(long, 400);
+    expect(narrow!.length).toBeLessThan(wide!.length);
+    expect(narrow!.endsWith("…")).toBe(true);
+    expect(wide!.endsWith("…")).toBe(true);
+  });
+
+  it("puts the author, the date and the tags into the footer", () => {
+    const sticky = newStickyNoteElement({
+      type: "stickynote",
+      x: 0,
+      y: 0,
+      width: 250,
+      height: 250,
+      baseHeight: 250,
+      author: "Ada",
+      tags: ["idea", "todo"],
+      created: Date.UTC(2024, 8, 7),
+    });
+
+    const footer = getStickyNoteFooterContent(sticky, Date.UTC(2024, 8, 7));
+    expect(footer.author?.text).toBe("Ada");
+    expect(footer.date?.text).toBe("7 Sep");
+    expect(footer.tags.map((pill) => pill.text)).toEqual(["idea", "todo"]);
+    // the tag row sits above the footer band
+    expect(footer.tags[0].y).toBeLessThan(footer.author!.y);
+  });
+
+  it("omits the author and the tags when the note has neither", () => {
+    const sticky = newStickyNoteElement({
+      type: "stickynote",
+      x: 0,
+      y: 0,
+      width: 250,
+      height: 250,
+      baseHeight: 250,
+    });
+
+    const footer = getStickyNoteFooterContent(sticky, Date.UTC(2024, 8, 7));
+    expect(footer.author).toBe(null);
+    expect(footer.tags).toEqual([]);
+  });
+});
+
+describe("sticky note label typography", () => {
+  it("carries the font style into the font string", () => {
+    expect(getFontString({ fontSize: 20, fontFamily: 1 })).not.toContain(
+      "bold",
+    );
+    expect(
+      getFontString({ fontSize: 20, fontFamily: 1, fontStyle: { bold: true } }),
+    ).toContain("bold ");
+    expect(
+      getFontString({
+        fontSize: 20,
+        fontFamily: 1,
+        fontStyle: { italic: true },
+      }),
+    ).toContain("italic ");
+    // the flags are independent: a label can be bold *and* italic
+    expect(
+      getFontString({
+        fontSize: 20,
+        fontFamily: 1,
+        fontStyle: { bold: true, italic: true },
+      }),
+    ).toContain("bold italic ");
+  });
+
+  it("keeps only the styles the editor knows", () => {
+    expect(normalizeStickyNoteFontStyle({ bold: true, wavy: true })).toEqual({
+      bold: true,
+    });
+    expect(normalizeStickyNoteFontStyle({ bold: false, italic: false })).toBe(
+      undefined,
+    );
+    expect(normalizeStickyNoteFontStyle("bold")).toBe(undefined);
+    expect(normalizeStickyNoteFontStyle(null)).toBe(undefined);
   });
 });

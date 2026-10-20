@@ -3,15 +3,20 @@ import {
   DEFAULT_STICKY_NOTE_BG,
   MIN_FONT_SIZE,
   arrayToMap,
+  getStickyNoteBodyInsetY,
   STICKY_NOTE_BODY_INSET_Y,
   STICKY_NOTE_FALLBACK_FONT_SIZE,
   STICKY_NOTE_FOOTER,
+  STICKY_NOTE_FONT_STYLE_FLAGS,
   STICKY_NOTE_FONT_STEP,
   STICKY_NOTE_MAX_FONT_SIZE,
+  STICKY_NOTE_MAX_TAGS,
   STICKY_NOTE_MIN_SIZE,
   STICKY_NOTE_MIN_FONT_SIZE,
   STICKY_NOTE_PADDING,
   STICKY_NOTE_SHADOW_OFFSET,
+  STICKY_NOTE_TAG,
+  STICKY_NOTE_TAG_ROW_HEIGHT,
   getFontString,
   getLineHeight,
   isTransparent,
@@ -34,6 +39,7 @@ import type { TransformHandleDirection } from "./transformHandles";
 import type {
   ElementsMap,
   ExcalidrawElement,
+  FontStyle,
   ExcalidrawStickyNoteElement,
   ExcalidrawTextElement,
   ExcalidrawTextElementWithContainer,
@@ -78,6 +84,84 @@ export const normalizeStickyNoteBackgroundColor = (
   return !backgroundColor || isTransparent(backgroundColor)
     ? DEFAULT_STICKY_NOTE_BG
     : backgroundColor;
+};
+
+/**
+ * A note's tags: trimmed, without blanks, without duplicates, and never
+ * more than the note can show. The order the user added them in is kept —
+ * a tag row reads as a list, not as a set.
+ */
+export const normalizeStickyNoteTags = (
+  tags: readonly string[] | null | undefined,
+): readonly string[] => {
+  if (!tags?.length) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const tag of tags) {
+    if (typeof tag !== "string") {
+      continue;
+    }
+    const trimmed = tag.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      continue;
+    }
+    seen.add(trimmed);
+    normalized.push(trimmed);
+    if (normalized.length === STICKY_NOTE_MAX_TAGS) {
+      break;
+    }
+  }
+  return normalized;
+};
+
+/**
+ * A font style a file may carry: only the flags the editor understands, and
+ * only when at least one of them is set.
+ *
+ * A file that names a style this editor does not know is not an error — the
+ * unknown flag is dropped, and what is left is what the label is drawn
+ * with.
+ */
+export const normalizeStickyNoteFontStyle = (
+  value: unknown,
+): FontStyle | undefined => {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const style: FontStyle = {};
+  for (const flag of STICKY_NOTE_FONT_STYLE_FLAGS) {
+    if ((value as Record<string, unknown>)[flag]) {
+      style[flag] = true;
+    }
+  }
+  return style.bold || style.italic ? style : undefined;
+};
+
+/**
+ * The author a note shows in its footer, trimmed to what the note's width
+ * can carry.
+ *
+ * The label is picked by width bucket, never measured — the same rule the
+ * creation date follows, and for the same reason: the server has no text
+ * measurer, so a footer that depends on measurement would render
+ * differently there. An unknown author has no label at all.
+ */
+export const getStickyNoteAuthorLabel = (
+  author: string | null | undefined,
+  width: number,
+): string | null => {
+  const trimmed = author?.trim();
+  if (!trimmed) {
+    return null;
+  }
+  // ~12px Helvetica: a character is about 6px wide, so a bucket of
+  // characters is a bucket of width
+  const maxChars = width < 150 ? 8 : width < 250 ? 14 : width < 400 ? 20 : 28;
+  return trimmed.length > maxChars
+    ? `${trimmed.slice(0, Math.max(1, maxChars - 1))}…`
+    : trimmed;
 };
 
 /**
@@ -495,6 +579,101 @@ export const getStickyNoteFooter = (
 };
 
 /**
+ * A tag as a pill: where it sits and how wide it is.
+ *
+ * The width is an estimate — the tag's characters at the pill font, plus the
+ * pill's padding. It is an estimate rather than a measurement for the same
+ * reason the date label is bucketed instead of measured: the server has no
+ * text measurer, and a note that measured differently there would not be
+ * the same note.
+ */
+export type StickyNoteTagPill = {
+  text: string;
+  /** the pill's left edge */
+  x: number;
+  /** the pill's top edge */
+  y: number;
+  /** the pill's width */
+  width: number;
+  /** the pill's height */
+  height: number;
+  /** the tag's baseline */
+  baseline: number;
+};
+
+/**
+ * The whole bottom band of a note: the creation date on the right, the author
+ * on the left, and the tag pills in the row above them.
+ *
+ * Shared by the canvas and SVG renderers so the two paint the same note.
+ * Every part is optional — a note can have a date but no author, tags but
+ * no date, and so on.
+ */
+export const getStickyNoteFooterContent = (
+  element: Pick<
+    ExcalidrawStickyNoteElement,
+    "created" | "width" | "height" | "author" | "tags"
+  >,
+  now = Date.now(),
+): {
+  date: { text: string; x: number; y: number } | null;
+  author: { text: string; x: number; y: number } | null;
+  tags: StickyNoteTagPill[];
+} => {
+  const date = getStickyNoteFooter(element, now);
+  const tags = element.tags ?? [];
+
+  if (
+    element.width < STICKY_NOTE_MIN_SIZE ||
+    element.height < STICKY_NOTE_MIN_SIZE
+  ) {
+    return { date, author: null, tags: [] };
+  }
+
+  const baseline = element.height - STICKY_NOTE_FOOTER.baselineFromBottom;
+  const authorText = getStickyNoteAuthorLabel(
+    element.author,
+    element.width - STICKY_NOTE_PADDING * 2,
+  );
+
+  // the tag row sits directly above the footer band
+  const rowTop =
+    element.height - STICKY_NOTE_FOOTER.height - STICKY_NOTE_TAG_ROW_HEIGHT;
+  const pillHeight = STICKY_NOTE_TAG_ROW_HEIGHT - 4;
+  const gap = 4;
+  let x = STICKY_NOTE_PADDING;
+  const pills: StickyNoteTagPill[] = [];
+
+  for (const tag of tags) {
+    const width =
+      Math.round(tag.length * STICKY_NOTE_TAG.fontSize * 0.62) +
+      STICKY_NOTE_TAG.paddingX * 2;
+    if (x + width > element.width - STICKY_NOTE_PADDING) {
+      // the row is full — the note shows what fits, and the rest is still
+      // on the note (the properties panel lists every tag)
+      break;
+    }
+    pills.push({
+      text: tag,
+      x,
+      y: rowTop + 2,
+      width,
+      height: pillHeight,
+      baseline: rowTop + 12,
+    });
+    x += width + gap;
+  }
+
+  return {
+    date,
+    author: authorText
+      ? { text: authorText, x: STICKY_NOTE_PADDING, y: baseline }
+      : null,
+    tags: pills,
+  };
+};
+
+/**
  * The smallest note the UI lets a user create or resize to: one line at the
  * label's font ceiling plus padding (and, vertically, the footer), never below
  * `STICKY_NOTE_MIN_SIZE`. Without the font term a fresh note would grow on
@@ -697,11 +876,13 @@ export const getStickyNoteLayout = (
   );
   const fontSizeMin = Math.min(STICKY_NOTE_MIN_FONT_SIZE, baseFontSize);
   const maxWidth = Math.max(baseWidth - STICKY_NOTE_PADDING * 2, 1);
-  const maxHeight = Math.max(baseHeight - STICKY_NOTE_BODY_INSET_Y, 0);
-  const { fontFamily, lineHeight } = textElement;
+  // a tagged note gives the tag row its own band above the footer
+  const bodyInsetY = getStickyNoteBodyInsetY(container.tags?.length ?? 0);
+  const maxHeight = Math.max(baseHeight - bodyInsetY, 0);
+  const { fontFamily, lineHeight, fontStyle } = textElement;
 
   const fit = (fontSize: number): FontFit => {
-    const font = getFontString({ fontFamily, fontSize });
+    const font = getFontString({ fontFamily, fontSize, fontStyle });
     const text = wrapText(originalText, font, maxWidth);
     return { text, fontSize, ...measureText(text, font, lineHeight) };
   };
@@ -713,7 +894,7 @@ export const getStickyNoteLayout = (
         fontSize: baseFontSize,
         ...measureText(
           "",
-          getFontString({ fontFamily, fontSize: baseFontSize }),
+          getFontString({ fontFamily, fontSize: baseFontSize, fontStyle }),
           lineHeight,
         ),
       }
@@ -727,7 +908,7 @@ export const getStickyNoteLayout = (
 
   const height = isBlank
     ? baseHeight
-    : Math.max(baseHeight, fitted.height + STICKY_NOTE_BODY_INSET_Y);
+    : Math.max(baseHeight, fitted.height + bodyInsetY);
   const nextContainer = {
     ...getPositionAfterHeightChange(container, height, anchor),
     width: baseWidth,
@@ -865,7 +1046,9 @@ export const updateStickyNoteLayout = (
 };
 
 const STICKY_NOTE_LAYOUT_INPUTS = {
-  container: ["x", "y", "width", "baseHeight", "angle"],
+  // `tags` is here because a tag row takes a band of the note's height away
+  // from the label body
+  container: ["x", "y", "width", "baseHeight", "angle", "tags"],
   text: [
     "originalText",
     "baseFontSize",
@@ -873,6 +1056,7 @@ const STICKY_NOTE_LAYOUT_INPUTS = {
     "lineHeight",
     "textAlign",
     "verticalAlign",
+    "fontStyle",
   ],
 } as const;
 

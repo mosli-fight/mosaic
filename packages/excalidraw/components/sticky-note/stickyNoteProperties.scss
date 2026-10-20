@@ -1,0 +1,201 @@
+@use "../../css/variables.module" as *;
+
+.excalidraw {
+  .sticky-note-properties {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    fieldset {
+      border: 0;
+      margin: 0;
+      padding: 0;
+      min-width: 0;
+    }
+
+    legend {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-primary-color);
+      margin-bottom: 0.25rem;
+      padding: 0;
+    }
+  }
+
+  .sticky-note-properties__swatches {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.25rem;
+  }
+
+  .sticky-note-properties__swatch {
+    width: 100%;
+    aspect-ratio: 1;
+    min-height: 1rem;
+    padding: 0;
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--default-border-color);
+    cursor: pointer;
+    transition: transform 0.1s ease;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    &.active {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 1px;
+    }
+  }
+
+  .sticky-note-properties__size-box {
+    display: block;
+    border-radius: 2px;
+    background-color: var(--color-gray-40);
+    border: 1px solid var(--default-border-color);
+
+    &[data-size="small"] {
+      width: 8px;
+      height: 8px;
+    }
+
+    &[data-size="medium"] {
+      width: 12px;
+      height: 12px;
+    }
+
+    &[data-size="large"] {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .sticky-note-properties__font-size {
+    font-size: 0.75rem;
+    font-family: var(--ui-font);
+    line-height: 1;
+  }
+
+  .sticky-note-properties__style {
+    @include outlineButtonStyles;
+
+    width: var(--default-button-size);
+    height: var(--default-button-size);
+    padding: 0;
+    font-family: var(--ui-font);
+    font-size: 0.875rem;
+  }
+
+  .sticky-note-properties__action {
+    @include outlineButtonStyles;
+
+    width: var(--default-button-size);
+    height: var(--default-button-size);
+    padding: 0;
+  }
+
+  .sticky-note-properties__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .sticky-note-properties__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.0625rem 0.25rem;
+    border-radius: var(--border-radius-lg);
+    background-color: var(--color-gray-20);
+    color: var(--text-primary-color);
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .sticky-note-properties__tag-remove {
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: var(--text-primary-color);
+    font-size: 0.875rem;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.6;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  .sticky-note-properties__tag-input {
+    display: flex;
+    gap: 0.25rem;
+
+    input {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-family: var(--ui-font);
+      font-size: 0.75rem;
+      padding: 0.25rem 0.375rem;
+      border-radius: var(--border-radius-lg);
+      border: 1px solid var(--default-border-color);
+      background-color: var(--input-bg-color, var(--island-bg-color));
+      color: var(--text-primary-color);
+    }
+
+    button {
+      @include outlineButtonStyles;
+
+      width: auto;
+      height: auto;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+  }
+
+  .sticky-note-properties__author {
+    font-size: 0.75rem;
+    color: var(--text-primary-color);
+  }
+
+  .sticky-note-emoji-picker {
+    position: relative;
+  }
+
+  .sticky-note-emoji-picker__toggle {
+    @include outlineButtonStyles;
+
+    width: var(--default-button-size);
+    height: var(--default-button-size);
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .sticky-note-emoji-picker__grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.125rem;
+    margin-top: 0.25rem;
+    padding: 0.25rem;
+    border-radius: var(--border-radius-lg);
+    background-color: var(--island-bg-color);
+    border: 1px solid var(--default-border-color);
+  }
+
+  .sticky-note-emoji-picker__emoji {
+    border: 0;
+    background: none;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1.4;
+    padding: 0.125rem;
+    border-radius: var(--border-radius-lg);
+
+    &:hover {
+      background-color: var(--color-gray-20);
+    }
+  }
+}

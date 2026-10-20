@@ -57,7 +57,9 @@ import {
   normalizeStickyNote,
   normalizeStickyNoteBackgroundColor,
   normalizeStickyNoteFontSize,
+  normalizeStickyNoteFontStyle,
   normalizeStickyNoteStrokeColor,
+  normalizeStickyNoteTags,
 } from "@excalidraw/element";
 import { getBoundTextElement, getContainerElement } from "@excalidraw/element";
 import { isStickyNoteElement } from "@excalidraw/element";
@@ -546,6 +548,9 @@ export const restoreElement = (
         fontSize = DEFAULT_FONT_SIZE;
       }
       const text = (typeof element.text === "string" && element.text) || "";
+      // only meaningful for sticky note labels, like `baseFontSize`. A
+      // label with no style carries no key at all.
+      const fontStyle = normalizeStickyNoteFontStyle(element.fontStyle);
 
       // line-height might not be specified either when creating elements
       // programmatically, or when importing old diagrams.
@@ -578,6 +583,7 @@ export const restoreElement = (
         baseFontSize: isFiniteNumber(element.baseFontSize)
           ? normalizeStickyNoteFontSize(element.baseFontSize)
           : null,
+        ...(fontStyle ? { fontStyle } : {}),
       });
 
       // if empty text, mark as deleted. We keep in array
@@ -736,6 +742,11 @@ export const restoreElement = (
             element.baseHeight ??
             (element as typeof element & { maxHeight?: number }).maxHeight ??
             element.height,
+          author:
+            typeof element.author === "string" && element.author.trim()
+              ? element.author.trim()
+              : null,
+          tags: normalizeStickyNoteTags(element.tags),
         }),
       );
     case "magicframe":

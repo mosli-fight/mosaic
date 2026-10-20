@@ -5,6 +5,8 @@ import { degreesToRadians } from "@excalidraw/math";
 
 import type { Degrees } from "@excalidraw/math";
 
+import { STICKY_NOTE_HUES } from "./stickyNote";
+
 // ---------------------------------------------------------------------------
 // Dark mode color transformation
 // ---------------------------------------------------------------------------
@@ -178,8 +180,16 @@ const pick = <R extends Record<string, any>, K extends readonly (keyof R)[]>(
 
 export type ColorTuple = readonly [string, string, string, string, string];
 
+/**
+ * A two-element shade tuple. The element colors use the five-shade
+ * `ColorTuple`; the sticky note palette uses two paper shades per hue.
+ */
+export type ColorPair = readonly [string, string];
+
 // used general type instead of specific type (ColorPalette) to support custom colors
-export type ColorPaletteCustom = { [key: string]: ColorTuple | string };
+export type ColorPaletteCustom = {
+  [key: string]: ColorTuple | ColorPair | string;
+};
 export type ColorShadesIndexes = [number, number, number, number, number];
 
 export const MAX_CUSTOM_COLORS_USED_IN_CANVAS = 5;
@@ -265,19 +275,20 @@ export const BUCKET_FILL_BACKGROUND_PICKS = [
 ] as ColorTuple;
 
 // sticky notes are their own color domain (own defaults, own picks)
-export const DEFAULT_STICKY_NOTE_BG = "#ffdf6b";
+export const DEFAULT_STICKY_NOTE_BG = STICKY_NOTE_HUES.yellow[0];
 
 export const STICKY_NOTE_STROKE_PICKS: ColorTuple =
   DEFAULT_ELEMENT_STROKE_PICKS;
 
-// ORDER matters for positioning in quick picker. Classic note colors; the
-// first one is `DEFAULT_STICKY_NOTE_BG`. Never transparent.
+// ORDER matters for positioning in quick picker. The classic note colors —
+// one per hue, in the sticky note palette's hue order. The first one is
+// `DEFAULT_STICKY_NOTE_BG`. Never transparent.
 export const STICKY_NOTE_BACKGROUND_PICKS = [
   DEFAULT_STICKY_NOTE_BG,
-  COLOR_PALETTE.pink[1],
-  COLOR_PALETTE.green[1],
-  COLOR_PALETTE.blue[1],
-  COLOR_PALETTE.orange[1],
+  STICKY_NOTE_HUES.pink[1],
+  STICKY_NOTE_HUES.green[1],
+  STICKY_NOTE_HUES.blue[1],
+  STICKY_NOTE_HUES.orange[1],
 ] as ColorTuple;
 
 // ORDER matters for positioning in quick picker
