@@ -208,6 +208,65 @@
       "duplicate": "Duplicate note",
       "delete": "Delete note"
     },
+    "templates": {
+      "title": "Templates",
+      "search": "Search templates",
+      "all": "All",
+      "use": "Use template",
+      "preview": "Preview",
+      "hidePreview": "Hide preview",
+      "empty": "No templates match your search",
+      "categories": {
+        "meetings": "Meetings & workshops",
+        "ideation": "Ideation & brainstorming",
+        "research": "Research & design",
+        "agile": "Agile workflows",
+        "strategy": "Strategy & planning",
+        "diagramming": "Diagramming & mapping"
+      },
+      "items": {
+        "brainstorming": {
+          "name": "Brainstorming",
+          "description": "A grid of empty notes to fill with ideas"
+        },
+        "meetingAgenda": {
+          "name": "Meeting Agenda",
+          "description": "A numbered agenda with a column for the notes"
+        },
+        "kanbanBoard": {
+          "name": "Kanban Board",
+          "description": "Four columns of work, ready for your cards"
+        },
+        "mindMap": {
+          "name": "Mind Map",
+          "description": "One topic in the middle and four branches"
+        },
+        "swotAnalysis": {
+          "name": "SWOT Analysis",
+          "description": "The four quadrants of strengths, weaknesses, opportunities and threats"
+        },
+        "projectTimeline": {
+          "name": "Project Timeline",
+          "description": "Phases above a spine, milestones below it"
+        },
+        "retroBoard": {
+          "name": "Retro Board",
+          "description": "What went well, what didn't, and what we do next"
+        },
+        "userJourneyMap": {
+          "name": "User Journey Map",
+          "description": "The stages a person goes through, and what they feel in each"
+        },
+        "wireframeBasics": {
+          "name": "Wireframe Basics",
+          "description": "A page of blocks: navigation, hero, content and a button"
+        },
+        "flowchartStarter": {
+          "name": "Flowchart Starter",
+          "description": "The shapes a flowchart is made of, joined by arrows"
+        }
+      }
+    },
     "frame": {
       "fill": "Frame color",
       "hide": "Hide frame",
@@ -318,6 +377,7 @@
     "save": "Save to current file",
     "saveAs": "Save as",
     "load": "Open",
+    "templates": "Templates",
     "getShareableLink": "Get shareable link",
     "close": "Close",
     "selectLanguage": "Select language",

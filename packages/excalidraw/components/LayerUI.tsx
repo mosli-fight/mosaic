@@ -69,6 +69,7 @@ import { JSONExportDialog } from "./JSONExportDialog";
 import { LaserPointerButton } from "./LaserPointerButton";
 import { Toast } from "./Toast";
 import { Toolbar } from "./Toolbar";
+import { TemplatesDialog } from "./templates/TemplatesDialog";
 import {
   ViewportStatusBadge,
   ViewportStatusBorder,
@@ -613,6 +614,7 @@ const LayerUI = ({
           }}
         />
       )}
+      {appState.openDialog?.name === "templates" && <TemplatesDialog />}
       <ActiveConfirmDialog />
       {defaultUIEnabled && appState.openDialog?.name === "elementLinkSelector" && (
         <ElementLinkDialog
