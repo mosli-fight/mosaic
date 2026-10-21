@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 
-import { isShallowEqual } from "@excalidraw/common";
+import { isShallowEqual, MIME_TYPES } from "@excalidraw/common";
 
 import type {
   NonDeletedExcalidrawElement,
@@ -13,6 +13,7 @@ import { renderStaticScene } from "../../renderer/staticScene";
 import type {
   RenderableElementsMap,
   StaticCanvasRenderConfig,
+  StaticSceneRenderConfig,
 } from "../../scene/types";
 import type { AppState, StaticCanvasAppState } from "../../types";
 import type { RoughCanvas } from "roughjs/bin/canvas";
@@ -30,9 +31,77 @@ type StaticCanvasProps = {
   renderConfig: StaticCanvasRenderConfig;
 };
 
+/**
+ * How often the canvas is drawn again while a GIF is on it.
+ *
+ * A GIF moves at its own pace, but it does not need to be drawn at the
+ * display's full rate to look like it is moving.
+ */
+const GIF_FRAME_INTERVAL = 1000 / 30;
+
+/**
+ * Whether an animated GIF is on the board.
+ *
+ * The canvas draws the frame the browser has ready at the time it draws,
+ * so a GIF on the board only moves if the board is drawn again and again.
+ */
+const hasAnimatedGif = (
+  visibleElements: readonly NonDeletedExcalidrawElement[],
+  renderConfig: StaticCanvasRenderConfig,
+) =>
+  visibleElements.some(
+    (element) =>
+      element.type === "image" &&
+      !!element.fileId &&
+      renderConfig.imageCache.get(element.fileId)?.mimeType === MIME_TYPES.gif,
+  );
+
 const StaticCanvas = (props: StaticCanvasProps) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isComponentMounted = useRef(false);
+  /** the scene as it was last drawn, so that it can be drawn again */
+  const latestScene = useRef<StaticSceneRenderConfig | null>(null);
+  /** the frame the animation loop is waiting on, if it is running */
+  const animationFrame = useRef<number | null>(null);
+  /** when the animation loop last drew the scene */
+  const lastFrameAt = useRef(0);
+
+  const stopAnimation = () => {
+    if (animationFrame.current !== null) {
+      cancelAnimationFrame(animationFrame.current);
+      animationFrame.current = null;
+    }
+  };
+
+  const startAnimation = () => {
+    if (
+      animationFrame.current !== null ||
+      typeof requestAnimationFrame !== "function"
+    ) {
+      return;
+    }
+
+    const tick = () => {
+      const scene = latestScene.current;
+      const now = Date.now();
+
+      if (scene && now - lastFrameAt.current >= GIF_FRAME_INTERVAL) {
+        lastFrameAt.current = now;
+
+        try {
+          renderStaticScene(scene);
+        } catch {
+          // the canvas is gone — nothing left to draw on
+          stopAnimation();
+          return;
+        }
+      }
+
+      animationFrame.current = requestAnimationFrame(tick);
+    };
+
+    animationFrame.current = requestAnimationFrame(tick);
+  };
 
   useEffect(() => {
     props.canvas.style.width = `${props.appState.width}px`;
@@ -56,20 +125,34 @@ const StaticCanvas = (props: StaticCanvasProps) => {
       canvas.classList.add("excalidraw__canvas", "static");
     }
 
-    renderStaticScene(
-      {
-        canvas,
-        rc: props.rc,
-        scale: props.scale,
-        elementsMap: props.elementsMap,
-        allElementsMap: props.allElementsMap,
-        visibleElements: props.visibleElements,
-        appState: props.appState,
-        renderConfig: props.renderConfig,
-      },
-      isRenderThrottlingEnabled(),
-    );
+    const scene: StaticSceneRenderConfig = {
+      canvas,
+      rc: props.rc,
+      scale: props.scale,
+      elementsMap: props.elementsMap,
+      allElementsMap: props.allElementsMap,
+      visibleElements: props.visibleElements,
+      appState: props.appState,
+      renderConfig: props.renderConfig,
+    };
+
+    latestScene.current = scene;
+
+    renderStaticScene(scene, isRenderThrottlingEnabled());
+
+    if (hasAnimatedGif(props.visibleElements, props.renderConfig)) {
+      startAnimation();
+    } else {
+      stopAnimation();
+    }
   });
+
+  useEffect(() => {
+    return () => {
+      stopAnimation();
+      latestScene.current = null;
+    };
+  }, []);
 
   return <div className="excalidraw__canvas-wrapper" ref={wrapperRef} />;
 };

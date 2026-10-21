@@ -232,4 +232,110 @@
       background: var(--color-primary-hover);
     }
   }
+
+  .media-panel__gifs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 0;
+    flex: 1;
+  }
+
+  .media-panel__gif-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+
+  .media-panel__gif-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+    gap: 0.5rem;
+  }
+
+  .media-panel__gif {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    padding: 0.25rem;
+    border: 1px solid var(--default-border-color);
+    border-radius: var(--border-radius-lg);
+    background: var(--island-bg-color);
+    cursor: pointer;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: var(--border-radius-md);
+    }
+
+    &:hover {
+      border-color: var(--color-primary);
+      background: var(--color-primary-light);
+    }
+
+    &:disabled {
+      cursor: progress;
+      opacity: 0.6;
+    }
+  }
+
+  .media-panel__gif-setup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 0.25rem 0;
+  }
+
+  .media-panel__gif-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .media-panel__gif-label {
+    font-size: 0.75rem;
+    color: var(--text-muted-darker);
+  }
+
+  .media-panel__gif-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .media-panel__gif-input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.4375rem 0.625rem;
+    border: 1px solid var(--default-border-color);
+    border-radius: var(--border-radius-lg);
+    background: var(--island-bg-color);
+    color: var(--text-primary-color);
+    font-family: var(--ui-font);
+    font-size: 0.8125rem;
+  }
+
+  .media-panel__gif-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .media-panel__gif-status {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--text-muted-darker);
+  }
+
+  .media-panel__link {
+    color: var(--color-primary-darkest);
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }

@@ -1,6 +1,7 @@
 import React from "react";
 
 import { fireEvent, waitFor } from "@testing-library/react";
+import { vi } from "vitest";
 
 import { isImageElement } from "@excalidraw/element";
 
@@ -13,6 +14,7 @@ import {
   getEmojiCount,
   searchEmojis,
 } from "../components/media/emojiData";
+import { GIF_SETTINGS_STORAGE_KEY } from "../components/media/gifSettings";
 import {
   STICKERS,
   stickerToDataURL,
@@ -53,6 +55,89 @@ const getVideoInput = () =>
   document.querySelector(
     '[data-testid="media-video-field"] input',
   ) as HTMLInputElement;
+
+const getGifSearchInput = () =>
+  document.querySelector(
+    '[data-testid="media-gif-search"] input',
+  ) as HTMLInputElement;
+
+const getGifKeyInput = () =>
+  document.querySelector(
+    '[data-testid="media-gif-api-key"]',
+  ) as HTMLInputElement;
+
+/** what the provider answers with */
+const GIF_RESULTS = [
+  {
+    id: "dancing-cat",
+    title: "A dancing cat",
+    images: {
+      fixed_width: {
+        url: "https://media.giphy.com/media/dancing-cat/200w.gif",
+        width: 200,
+        height: 112,
+      },
+      preview_gif: {
+        url: "https://media.giphy.com/media/dancing-cat/giphy-preview.gif",
+        width: 100,
+        height: 56,
+      },
+    },
+  },
+];
+
+const mockFetch = vi.fn();
+
+/**
+ * Whether the url goes to the provider.
+ *
+ * The hostname is what is compared, not a piece of the url: a url that
+ * merely mentions the provider is not a url to the provider.
+ */
+const isProviderUrl = (url: string) => {
+  try {
+    return new URL(url).hostname === "api.giphy.com";
+  } catch {
+    // not a url at all
+    return false;
+  }
+};
+
+/** the provider answers with GIFs, and the GIFs themselves can be fetched */
+const answerWithGifs = () => {
+  mockFetch.mockImplementation(async (url: string) => {
+    if (isProviderUrl(url)) {
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => "application/json" },
+        json: async () => ({ data: GIF_RESULTS }),
+      };
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => "image/gif" },
+      arrayBuffer: async () =>
+        new TextEncoder().encode("GIF89a-the-animated-bytes").buffer,
+    };
+  });
+};
+
+const openGifTab = async () => {
+  await openPanel();
+
+  fireEvent.click(
+    document.querySelector<HTMLButtonElement>('[data-testid="media-tab-gif"]')!,
+  );
+
+  await waitFor(() => {
+    expect(document.querySelector('[data-testid="media-tab-gif"]')).not.toBe(
+      null,
+    );
+  });
+};
 
 describe("media panel", () => {
   describe("the emoji catalogue", () => {
@@ -453,6 +538,188 @@ describe("media panel", () => {
           document.querySelector('[data-testid="media-tab-emoji"]'),
         ).not.toBe(null);
       });
+    });
+  });
+
+  describe("the GIFs", () => {
+    beforeEach(() => {
+      localStorage.clear();
+      mockFetch.mockReset();
+      global.fetch = mockFetch as unknown as typeof fetch;
+    });
+
+    afterEach(() => {
+      localStorage.clear();
+    });
+
+    /**
+     * Gives the panel a key, the way the user does: through the panel.
+     *
+     * The panel then keeps it, the way it keeps it for a real user — the
+     * test never writes to storage behind the panel's back.
+     */
+    const withKey = async (apiKey = "test-key") => {
+      await waitFor(() => {
+        expect(getGifKeyInput()).not.toBe(null);
+      });
+
+      fireEvent.change(getGifKeyInput(), {
+        target: { value: apiKey },
+      });
+
+      fireEvent.click(
+        document.querySelector<HTMLButtonElement>(
+          '[data-testid="media-gif-save"]',
+        )!,
+      );
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="media-gif-setup"]')).toBe(
+          null,
+        );
+      });
+    };
+
+    it("has a tab of its own", async () => {
+      await openPanel();
+
+      expect(document.querySelector('[data-testid="media-tab-gif"]')).not.toBe(
+        null,
+      );
+    });
+
+    it("asks for a key before it searches for anything", async () => {
+      await openGifTab();
+
+      expect(
+        document.querySelector('[data-testid="media-gif-setup"]'),
+      ).not.toBe(null);
+
+      // no key, no search — and no wall of errors either
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("keeps the key in this browser, and nowhere else", async () => {
+      await openGifTab();
+
+      await withKey();
+
+      expect(
+        JSON.parse(localStorage.getItem(GIF_SETTINGS_STORAGE_KEY) as string),
+      ).toEqual({ apiKey: "test-key" });
+    });
+
+    it("searches with the key the user gave it", async () => {
+      answerWithGifs();
+
+      await openGifTab();
+      await withKey();
+
+      fireEvent.change(getGifSearchInput(), {
+        target: { value: "cat" },
+      });
+
+      await waitFor(
+        () => {
+          expect(mockFetch).toHaveBeenCalled();
+        },
+        { timeout: 3000 },
+      );
+
+      const [url] = mockFetch.mock.calls[0];
+
+      expect(url).toContain("api_key=test-key");
+      expect(url).toContain("q=cat");
+    });
+
+    it("shows the GIFs it found", async () => {
+      answerWithGifs();
+
+      await openGifTab();
+      await withKey();
+
+      fireEvent.change(getGifSearchInput(), {
+        target: { value: "cat" },
+      });
+
+      await waitFor(
+        () => {
+          expect(
+            document.querySelector('[data-testid="media-gif-dancing-cat"]'),
+          ).not.toBe(null);
+        },
+        { timeout: 3000 },
+      );
+    });
+
+    it("says so when the search fails", async () => {
+      mockFetch.mockRejectedValue(new Error("the network is down"));
+
+      await openGifTab();
+      await withKey();
+
+      fireEvent.change(getGifSearchInput(), {
+        target: { value: "cat" },
+      });
+
+      await waitFor(
+        () => {
+          expect(
+            document.querySelector('[data-testid="media-gif-error"]'),
+          ).not.toBe(null);
+        },
+        { timeout: 3000 },
+      );
+    });
+
+    it("puts a GIF on the board with the animated file itself", async () => {
+      answerWithGifs();
+
+      await openGifTab();
+      await withKey();
+
+      fireEvent.change(getGifSearchInput(), {
+        target: { value: "cat" },
+      });
+
+      await waitFor(
+        () => {
+          expect(
+            document.querySelector('[data-testid="media-gif-dancing-cat"]'),
+          ).not.toBe(null);
+        },
+        { timeout: 3000 },
+      );
+
+      fireEvent.click(
+        document.querySelector<HTMLButtonElement>(
+          '[data-testid="media-gif-dancing-cat"]',
+        )!,
+      );
+
+      await waitFor(() => {
+        expect(h.elements.length).toBe(1);
+      });
+
+      const element = h.elements[0];
+
+      expect(element.type).toBe("image");
+      expect(isImageElement(element)).toBe(true);
+
+      if (!isImageElement(element)) {
+        throw new Error("the GIF did not land as an image");
+      }
+
+      // the file is the animated GIF, kept as it is — not a still of it
+      const file = h.app.files[element.fileId!];
+
+      expect(file).toBeDefined();
+      expect(file.mimeType).toBe("image/gif");
+      expect(file.dataURL.startsWith("data:image/gif;base64,")).toBe(true);
+
+      // and it keeps the proportions it was made in
+      expect(element.width).toBe(200);
+      expect(element.height).toBe(112);
     });
   });
 });
