@@ -102,22 +102,71 @@ describe("precision eraser: split geometry", () => {
   it("drops runs too short to render", () => {
     const element = createStroke([
       [0, 0],
-      [10, 0],
-      [20, 0],
-      [30, 0],
+      [40, 0],
     ]);
 
-    // erasing only the second point strands the first on its own — a
-    // one-point run renders as nothing, so it must not survive as an
+    // the drag starts just past the first sample, stranding it on its own —
+    // a one-point run renders as nothing, so it must not survive as an
     // invisible element
-    const split = splitFreedrawByErasePath(element, erasePath([[10, 0]]), 5)!;
+    const split = splitFreedrawByErasePath(
+      element,
+      erasePath([
+        [6, -10],
+        [6, 10],
+      ]),
+      5,
+    )!;
 
     expect(MIN_FREEDRAW_RUN_POINTS).toBe(2);
+    expect(split.erasedCount).toBe(2);
     expect(split.runs).toHaveLength(1);
-    expect(split.runs[0].points).toEqual([
-      [20, 0],
-      [30, 0],
+    expect(split.runs[0].points[0][0]).toBeGreaterThan(10);
+    expect(split.runs[0].points.at(-1)).toEqual([40, 0]);
+  });
+
+  it("splits a sparse stroke crossed between its samples", () => {
+    // a fast pen drag samples sparsely — here the visible line runs from
+    // x=50 to x=100 with no sample in between, and the eraser crosses it at
+    // x=75. Hit-testing only the original samples would erase nothing.
+    const element = createStroke([
+      [0, 0],
+      [50, 0],
+      [100, 0],
     ]);
+
+    const split = splitFreedrawByErasePath(
+      element,
+      erasePath([
+        [75, -20],
+        [75, 20],
+      ]),
+      4,
+    )!;
+
+    expect(split).not.toBe(null);
+    expect(split.erasedCount).toBeGreaterThan(0);
+    expect(split.runs).toHaveLength(2);
+    expect(split.runs[0].points.at(-1)![0]).toBeLessThan(75);
+    expect(split.runs[1].points[0][0]).toBeGreaterThan(75);
+  });
+
+  it("still misses a sparse stroke beyond the radius", () => {
+    const element = createStroke([
+      [0, 0],
+      [50, 0],
+      [100, 0],
+    ]);
+
+    expect(
+      splitFreedrawByErasePath(
+        element,
+        erasePath([
+          [75, 10],
+          [75, 30],
+        ]),
+        4,
+      ),
+    ).toBe(null);
   });
 
   it("erases along the whole dragged path, not just its endpoints", () => {
@@ -255,6 +304,35 @@ describe("precision eraser: in the editor", () => {
 
     Keyboard.undo();
     expect(window.h.app.scene.getNonDeletedElements()).toHaveLength(1);
+  });
+
+  it("splits a sparse stroke dragged across between samples", async () => {
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+
+    // a stroke sampled like a fast real pen drag: no point anywhere near
+    // where the eraser will cross (x=75)
+    const element = createStroke([
+      [0, 0],
+      [50, 0],
+      [100, 0],
+    ]);
+    API.updateScene({
+      elements: [element],
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+
+    act(() => {
+      window.h.app.setActiveTool({ type: "eraser" });
+      window.h.setState({ precisionEraserActive: true });
+    });
+
+    const mouse = new Pointer("mouse");
+    mouse.moveTo(75, -20);
+    mouse.down();
+    mouse.moveTo(75, 20);
+    mouse.up();
+
+    expect(window.h.app.scene.getNonDeletedElements()).toHaveLength(2);
   });
 
   it("leaves the stroke untouched when the drag misses it", async () => {
