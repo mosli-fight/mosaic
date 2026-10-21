@@ -4411,9 +4411,11 @@ class App extends React.Component<AppProps, AppState> {
     } else if (
       // switching between the two eraser modes leaves `activeTool.type` alone,
       // so nothing else repaints the cursor — and the two modes have
-      // different-sized circles
+      // different-sized circles. Resizing the precision eraser needs the same
+      // repaint, since its circle *is* the chosen size.
       isEraserActive(this.state) &&
-      prevState.precisionEraserActive !== this.state.precisionEraserActive
+      (prevState.precisionEraserActive !== this.state.precisionEraserActive ||
+        prevState.precisionEraserSize !== this.state.precisionEraserSize)
     ) {
       this.cursor.applyForTool();
     }
@@ -11624,7 +11626,10 @@ class App extends React.Component<AppProps, AppState> {
     const nextElements = applyPrecisionErase(
       this.scene.getElementsIncludingDeleted(),
       eraserPath,
-      getPrecisionEraserRadius(this.state.zoom.value),
+      getPrecisionEraserRadius(
+        this.state.zoom.value,
+        this.state.precisionEraserSize,
+      ),
     );
 
     if (!nextElements) {

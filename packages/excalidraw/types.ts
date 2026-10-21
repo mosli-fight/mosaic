@@ -471,6 +471,13 @@ export interface AppState {
    * `isPrecisionEraserActive`.
    */
   precisionEraserActive: boolean;
+  /**
+   * The precision eraser's size — the radius of its cursor circle in screen
+   * pixels, chosen with the slider in the drawing-tools popover. Only
+   * meaningful while the precision mode is on; normalized by
+   * `normalizePrecisionEraserSize` wherever it is consumed.
+   */
+  precisionEraserSize: number;
 
   // Pen handling
   penMode: boolean;

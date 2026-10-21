@@ -61,6 +61,7 @@ export const getDefaultAppState = (): Omit<
       lastActiveTool: null,
     },
     precisionEraserActive: false,
+    precisionEraserSize: 4,
     preferredSelectionTool: {
       type: "selection",
       initialized: false,
@@ -226,6 +227,8 @@ const APP_STATE_STORAGE_CONF = (<
   // `AllowedExcalidrawActiveTools`), so a stored mode would outlive the tool
   // that gives it meaning and silently reappear the next time E is pressed
   precisionEraserActive: { browser: false, export: false, server: false },
+  // the size is a preference, not scene state — same treatment as the mode
+  precisionEraserSize: { browser: false, export: false, server: false },
   preferredSelectionTool: { browser: true, export: false, server: false },
   penMode: { browser: true, export: false, server: false },
   penDetected: { browser: true, export: false, server: false },

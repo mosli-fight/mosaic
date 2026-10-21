@@ -3,7 +3,7 @@ import { CURSOR_TYPE, MIME_TYPES, THEME } from "@excalidraw/common";
 import { isHandToolActive, isEraserActive } from "../appState";
 
 import { ERASER_CURSOR_RADIUS } from "../eraser";
-import { PRECISION_ERASER_CURSOR_RADIUS } from "../eraser/precision";
+import { normalizePrecisionEraserSize } from "../eraser/precision";
 
 import { bucketFillIconSvgPaths } from "./icons";
 
@@ -32,6 +32,7 @@ const laserPointerCursorDataURL_darkMode = `data:${
 type EraserCursorCache = {
   canvas?: HTMLCanvasElement;
   theme?: AppState["theme"];
+  radius?: number;
   dataURL?: DataURL;
 };
 
@@ -62,6 +63,8 @@ export class AppCursor {
     type: AppState["activeTool"]["type"];
     /** distinguishes the two eraser modes, which share `type` */
     precisionEraser: boolean;
+    /** the precision eraser's normalized size — its circle is sized by it */
+    precisionEraserSize: number;
     bucketFillColor?: string;
     theme?: AppState["theme"];
   } | null = null;
@@ -129,15 +132,20 @@ export class AppCursor {
         : undefined;
     // the two eraser modes share `activeTool.type`, so the memo has to track
     // the mode too — otherwise switching between them would keep the other
-    // one's circle
+    // one's circle. The precision mode's size joins it for the same reason:
+    // resizing it must repaint the circle at the new radius.
     const precisionEraser =
       isEraserActive({ activeTool }) && this.app.state.precisionEraserActive;
+    const precisionEraserSize = normalizePrecisionEraserSize(
+      this.app.state.precisionEraserSize,
+    );
 
     const memo = this.toolCursorMemo;
     if (
       memo?.canvas === canvas &&
       memo.type === activeTool.type &&
       memo.precisionEraser === precisionEraser &&
+      memo.precisionEraserSize === precisionEraserSize &&
       memo.bucketFillColor === bucketFillColor &&
       memo.theme === theme
     ) {
@@ -178,6 +186,7 @@ export class AppCursor {
       canvas,
       type: activeTool.type,
       precisionEraser,
+      precisionEraserSize,
       bucketFillColor,
       theme,
     };
@@ -234,8 +243,12 @@ export class AppCursor {
   private applyEraserCursor = (cache: EraserCursorCache, radius: number) => {
     const theme = this.app.state.theme;
 
-    if (!cache.canvas || cache.theme !== theme) {
-      const cursorImageSizePx = 20;
+    // the image is sized to the circle (plus the stroke's pixel), so a
+    // user-chosen radius larger than the old fixed image still fits — the
+    // hotspot stays the circle's center either way
+    const cursorImageSizePx = radius * 2 + 2;
+
+    if (!cache.canvas || cache.theme !== theme || cache.radius !== radius) {
       const isDarkTheme = theme === THEME.DARK;
       const canvas = document.createElement("canvas");
       canvas.height = cursorImageSizePx;
@@ -251,10 +264,10 @@ export class AppCursor {
 
       cache.canvas = canvas;
       cache.theme = theme;
+      cache.radius = radius;
       cache.dataURL = canvas.toDataURL(MIME_TYPES.svg) as DataURL;
     }
 
-    const cursorImageSizePx = 20;
     this.set(
       `url(${cache.dataURL}) ${cursorImageSizePx / 2} ${
         cursorImageSizePx / 2
@@ -269,7 +282,7 @@ export class AppCursor {
   private applyPrecisionEraser = () => {
     this.applyEraserCursor(
       this.precisionEraserCursor,
-      PRECISION_ERASER_CURSOR_RADIUS,
+      normalizePrecisionEraserSize(this.app.state.precisionEraserSize),
     );
   };
 }

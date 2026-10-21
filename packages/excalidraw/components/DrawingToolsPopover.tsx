@@ -7,6 +7,13 @@ import { trackEvent } from "../analytics";
 
 import { t } from "../i18n";
 
+import {
+  PRECISION_ERASER_MAX_SIZE,
+  PRECISION_ERASER_MIN_SIZE,
+  PRECISION_ERASER_SIZE_PRESETS,
+  normalizePrecisionEraserSize,
+} from "../eraser/precision";
+
 import { DrawingToolPresetRow } from "./DrawingToolPresetRow";
 import { IconButton } from "./IconButton";
 import { isToolButtonDisabled } from "./Tools";
@@ -115,6 +122,12 @@ export const DrawingToolsPopover = ({
   const [lastPenPreset, setLastPenPreset] = useState(0);
   const { container } = useExcalidrawContainer();
   const { presets, updatePreset } = useDrawingToolPresets();
+
+  // the precision eraser's size, normalized — the stored value is
+  // user-controlled, so the slider and presets read the clamped one
+  const precisionEraserSize = normalizePrecisionEraserSize(
+    app.state.precisionEraserSize,
+  );
 
   const currentPreset: DrawingToolPreset | null =
     activeTool.type === "freedraw"
@@ -354,6 +367,90 @@ export const DrawingToolsPopover = ({
             onSelect={() => handleSelect(type)}
           />
         ))}
+
+        {/* the precision eraser's size, Miro-style: one-tap presets plus a
+            thickness slider. Precision mode only — the plain eraser deletes
+            whole strokes, so it has no size to set. */}
+        {activeTool.type === "eraser" && app.state.precisionEraserActive && (
+          <>
+            <div className="drawing-tools-popover__separator" />
+            <div className="drawing-tool-presets">
+              <div className="drawing-tool-presets__header">
+                <span className="drawing-tool-presets__title">
+                  {t("toolBar.precisionEraser")}
+                </span>
+              </div>
+              <div className="drawing-tool-presets__list">
+                {PRECISION_ERASER_SIZE_PRESETS.map((presetSize) => (
+                  <button
+                    key={presetSize}
+                    type="button"
+                    className={clsx("drawing-tool-presets__preset", {
+                      "drawing-tool-presets__preset--active":
+                        precisionEraserSize === presetSize,
+                    })}
+                    data-testid={`precision-eraser-size-preset-${presetSize}`}
+                    onClick={() => {
+                      trackEvent("toolbar", "precision-eraser-size", "ui");
+                      setAppState({ precisionEraserSize: presetSize });
+                    }}
+                  >
+                    <span
+                      className="drawing-tool-presets__dot"
+                      style={{
+                        ["--swatch-size" as string]: `${Math.min(
+                          18,
+                          4 + presetSize * 0.7,
+                        )}px`,
+                        ["--swatch-color" as string]: "currentColor",
+                      }}
+                    />
+                    <span className="drawing-tool-presets__preset-label">
+                      {presetSize}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="drawing-tool-presets__field">
+                <label
+                  className="drawing-tool-presets__field-label"
+                  htmlFor="precision-eraser-size"
+                >
+                  {t("labels.thickness")}
+                </label>
+                <input
+                  id="precision-eraser-size"
+                  className="drawing-tool-presets__slider"
+                  type="range"
+                  min={PRECISION_ERASER_MIN_SIZE}
+                  max={PRECISION_ERASER_MAX_SIZE}
+                  step={1}
+                  value={precisionEraserSize}
+                  style={{
+                    ["--range-progress" as string]:
+                      (precisionEraserSize - PRECISION_ERASER_MIN_SIZE) /
+                      (PRECISION_ERASER_MAX_SIZE - PRECISION_ERASER_MIN_SIZE),
+                  }}
+                  aria-label={t("labels.thickness")}
+                  data-testid="precision-eraser-size-slider"
+                  onChange={(event) =>
+                    setAppState({
+                      precisionEraserSize: +event.target.value,
+                    })
+                  }
+                />
+                <output
+                  className="drawing-tool-presets__readout"
+                  data-testid="precision-eraser-size-value"
+                >
+                  {t("labels.thicknessValue", {
+                    value: precisionEraserSize,
+                  })}
+                </output>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* presets only apply to the two freedraw-based tools (pen and
             highlighter) — laser and eraser have no stroke style to preset */}
