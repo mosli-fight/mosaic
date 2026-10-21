@@ -286,6 +286,18 @@
         "objects": "Objects",
         "symbols": "Symbols"
       },
+      "stickerSearch": "Search stickers",
+      "stickerNoResults": "No sticker matches your search",
+      "stickerCategories": {
+        "all": "All",
+        "faces": "Faces",
+        "animals": "Animals",
+        "gestures": "Gestures",
+        "objects": "Objects",
+        "symbols": "Symbols",
+        "nature": "Nature",
+        "celebration": "Celebration"
+      },
       "video": {
         "add": "Add video",
         "back": "Back to media",
