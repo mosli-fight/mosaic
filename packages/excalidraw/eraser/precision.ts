@@ -112,8 +112,63 @@ const toEraserSegments = (
 };
 
 /**
- * Builds a run from the original point indices that survived, and works out
- * where the run's element has to sit to render in place.
+ * Freedraw points are sampled per pointer move, so a fast drag leaves them
+ * tens of units apart. Hit-testing only those samples would let the eraser
+ * cross the visible line *between* two samples and erase nothing — the
+ * stroke is therefore densified first: any segment longer than the erase
+ * radius is subdivided (interpolating pressures) until neighbouring samples
+ * are at most one radius apart, so a crossing always lands within the radius
+ * of a sample, and the samples erased around it leave a gap that matches the
+ * eraser circle the user saw.
+ */
+const densifyStroke = (
+  points: readonly LocalPoint[],
+  pressures: readonly number[],
+  radius: number,
+): { points: LocalPoint[]; pressures: number[] } => {
+  // pressures are index-aligned with points; a mismatched array is stale, so
+  // don't try to interpolate it (the renderer only reads it when not
+  // simulating)
+  const hasPressures = pressures.length === points.length;
+  const densePoints: LocalPoint[] = [];
+  const densePressures: number[] = [];
+
+  for (let i = 0; i < points.length; i++) {
+    const point = points[i];
+    densePoints.push(point);
+    if (hasPressures) {
+      densePressures.push(pressures[i]);
+    }
+
+    const next = points[i + 1];
+    if (!next) {
+      break;
+    }
+
+    const length = Math.hypot(next[0] - point[0], next[1] - point[1]);
+    const subdivisions = Math.floor(length / radius);
+    for (let j = 1; j <= subdivisions; j++) {
+      const t = j / (subdivisions + 1);
+      densePoints.push(
+        pointFrom<LocalPoint>(
+          point[0] + (next[0] - point[0]) * t,
+          point[1] + (next[1] - point[1]) * t,
+        ),
+      );
+      if (hasPressures) {
+        densePressures.push(
+          pressures[i] + (pressures[i + 1] - pressures[i]) * t,
+        );
+      }
+    }
+  }
+
+  return { points: densePoints, pressures: densePressures };
+};
+
+/**
+ * Builds a run from the point indices that survived, and works out where the
+ * run's element has to sit to render in place.
  *
  * A freedraw element rotates about the center of its own points, so a subset
  * of the points rotates about a different pivot. Solving
@@ -121,17 +176,17 @@ const toEraserSegments = (
  * `t = (I - R)(c_old - c)` — zero when the element isn't rotated.
  */
 const buildRun = (
-  element: ExcalidrawFreeDrawElement,
+  strokePoints: readonly LocalPoint[],
+  strokePressures: readonly number[],
   indices: number[],
+  angle: ExcalidrawFreeDrawElement["angle"],
   originalCenter: { x: number; y: number },
 ): FreedrawRun => {
-  const points = indices.map((index) => element.points[index]);
+  const points = indices.map((index) => strokePoints[index]);
 
-  // pressures are index-aligned with points; a mismatched array is stale, so
-  // don't try to slice it (the renderer only reads it when not simulating)
   const pressures =
-    element.pressures.length === element.points.length
-      ? indices.map((index) => element.pressures[index])
+    strokePressures.length === strokePoints.length
+      ? indices.map((index) => strokePressures[index])
       : [];
 
   const runCenter = getLocalCenter(points);
@@ -142,7 +197,7 @@ const buildRun = (
   const rotatedDelta = pointRotateRads(
     delta,
     pointFrom<GlobalPoint>(0, 0),
-    element.angle,
+    angle,
   );
 
   return {
@@ -157,8 +212,8 @@ const buildRun = (
 
 /**
  * Splits a freedraw stroke around the points the eraser path touched:
- * every point within `radius` of the path is removed, and the points that
- * survive are grouped into runs — one element per run.
+ * every (densified) point within `radius` of the path is removed, and the
+ * points that survive are grouped into runs — one element per run.
  *
  * Returns `null` when the path touched nothing, so callers can skip the
  * element entirely. A split with no runs means the whole stroke was erased.
@@ -173,8 +228,10 @@ export const splitFreedrawByErasePath = (
     return null;
   }
 
-  const localCenter = getLocalCenter(element.points);
-  const scenePoints = element.points.map((point) =>
+  const stroke = densifyStroke(element.points, element.pressures, radius);
+
+  const localCenter = getLocalCenter(stroke.points);
+  const scenePoints = stroke.points.map((point) =>
     toScenePoint(element, point, localCenter),
   );
 
@@ -193,7 +250,15 @@ export const splitFreedrawByErasePath = (
 
   const flushRun = () => {
     if (run.length >= MIN_FREEDRAW_RUN_POINTS) {
-      runs.push(buildRun(element, run, localCenter));
+      runs.push(
+        buildRun(
+          stroke.points,
+          stroke.pressures,
+          run,
+          element.angle,
+          localCenter,
+        ),
+      );
     }
     run = [];
   };
