@@ -273,7 +273,8 @@
       "noResults": "No emoji match your search",
       "tabs": {
         "emoji": "Emoji",
-        "stickers": "Stickers"
+        "stickers": "Stickers",
+        "gif": "GIFs"
       },
       "categories": {
         "smileys": "Smileys & emotion",
@@ -294,6 +295,37 @@
           "empty": "Paste a link to a video first",
           "invalid": "That link cannot be embedded",
           "unsupported": "Only YouTube and Vimeo videos can be embedded"
+        }
+      },
+      "gif": {
+        "searchPlaceholder": "Search GIFs",
+        "hint": "Type what you are looking for to search for GIFs.",
+        "noResults": "No GIF matches your search",
+        "loading": "Searching for GIFs...",
+        "insert": "Add this GIF to the board",
+        "errors": {
+          "unauthorized": "That key was not accepted by the GIF provider. Check it and try again.",
+          "network": "The GIF provider could not be reached. Check your connection and try again.",
+          "notFound": "That GIF is not available any more.",
+          "tooLarge": "That GIF is too large to put on a board.",
+          "unknown": "Something went wrong while looking for GIFs. Please try again."
+        },
+        "setup": {
+          "title": "GIF provider key",
+          "description": "Mosaic does not come with a GIF provider key — you bring your own. Paste a free key to search for GIFs and put them on the board.",
+          "getKey": "Get a free key",
+          "apiKey": "Provider API key",
+          "apiKeyPlaceholder": "Paste your API key",
+          "showKey": "Show",
+          "hideKey": "Hide",
+          "save": "Save key",
+          "remove": "Remove key",
+          "change": "Change key",
+          "cancel": "Keep the current key",
+          "privacyNote": "The key is kept in this browser and is sent only to the GIF provider, with your searches.",
+          "saved": "Key saved. You can search for GIFs now.",
+          "removed": "Key removed.",
+          "savingFailed": "The key could not be saved in this browser."
         }
       }
     },

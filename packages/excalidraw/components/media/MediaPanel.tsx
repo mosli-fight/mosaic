@@ -10,6 +10,7 @@ import { Dialog } from "../Dialog";
 import { TextField } from "../TextField";
 
 import { searchEmojis } from "./emojiData";
+import { GifPanel } from "./GifPanel";
 import { insertEmoji, insertSticker, insertVideo } from "./insertMedia";
 import { STICKERS, stickerToSVG } from "./stickers";
 
@@ -20,8 +21,9 @@ import type { VideoInsertResult } from "./insertMedia";
 /**
  * The media panel: a Miro-style shelf of things that can be put on a board.
  *
- * Two tabs hold the browsing — emoji and stickers — and a third mode, the
- * video form, is where a link to a YouTube or a Vimeo video is pasted in.
+ * Three tabs hold the browsing — emoji, stickers and GIFs — and a fourth
+ * mode, the video form, is where a link to a YouTube or a Vimeo video is
+ * pasted in.
  *
  * The panel is a dialog because media is a one-off thing: you reach for it,
  * you take what you need, and you get back to the board. The panel stays
@@ -29,7 +31,7 @@ import type { VideoInsertResult } from "./insertMedia";
  * row.
  */
 
-type MediaTab = "emoji" | "stickers";
+type MediaTab = "emoji" | "stickers" | "gif";
 type MediaMode = MediaTab | "video";
 
 const getVideoErrorKey = (result: VideoInsertResult) => {
@@ -250,6 +252,18 @@ export const MediaPanel = () => {
                 >
                   {t("labels.media.tabs.stickers")}
                 </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === "gif"}
+                  className={clsx("media-panel__tab", {
+                    "media-panel__tab--active": tab === "gif",
+                  })}
+                  data-testid="media-tab-gif"
+                  onClick={() => setTab("gif")}
+                >
+                  {t("labels.media.tabs.gif")}
+                </button>
               </div>
 
               <button
@@ -281,8 +295,10 @@ export const MediaPanel = () => {
 
             {tab === "emoji" ? (
               <EmojiGrid query={query} onPick={addEmoji} />
-            ) : (
+            ) : tab === "stickers" ? (
               <StickerGrid onPick={addSticker} />
+            ) : (
+              <GifPanel />
             )}
           </>
         )}

@@ -1,14 +1,15 @@
 /**
  * Putting media on the board.
  *
- * Three things can be added from the media panel: an emoji, a sticker and a
- * video. They all land in the middle of the viewport and come back
+ * Four things can be added from the media panel: an emoji, a sticker, a GIF
+ * and a video. They all land in the middle of the viewport and come back
  * selected, so that the user can drag them, scale them or delete them
  * straight away.
  *
  * The insertion goes through the editor's own machinery — the same path a
  * pasted element takes — so a sticker arrives as a real image with its file
- * attached, and a video arrives as a real embeddable.
+ * attached, a GIF arrives as a real image whose file is the animated file
+ * itself, and a video arrives as a real embeddable.
  */
 
 import {
@@ -30,12 +31,15 @@ import type { FileId } from "@excalidraw/element/types";
 
 import { STICKER_SIZE, stickerToDataURL } from "./stickers";
 
-import type { AppClassProperties } from "../../types";
+import type { AppClassProperties, DataURL } from "../../types";
 
 import type { Sticker } from "./stickers";
 
 /** the size an emoji lands on the board at */
 export const EMOJI_FONT_SIZE = 64;
+
+/** the longest side a GIF lands on the board at */
+export const GIF_MAX_SIZE = 320;
 
 /**
  * The middle of the viewport, in scene coordinates.
@@ -104,6 +108,72 @@ export const insertSticker = (app: AppClassProperties, sticker: Sticker) => {
         id: fileId,
         dataURL: stickerToDataURL(sticker),
         mimeType: MIME_TYPES.svg,
+        created: Date.now(),
+      },
+    },
+    position: "center",
+  });
+};
+
+/** a GIF, ready to be put on the board */
+export type GifData = {
+  /** the animated file, whole and unresized */
+  dataURL: DataURL;
+  /** the size of the GIF, in pixels */
+  width: number;
+  height: number;
+};
+
+/**
+ * The size a GIF lands on the board at.
+ *
+ * A GIF keeps its own proportions — squeezing one would stretch the very
+ * thing that makes it worth putting on a board — but a very large one is
+ * brought down to a size that fits on a board without swallowing it.
+ */
+const gifSize = (width: number, height: number) => {
+  const safeWidth = width > 0 ? width : GIF_MAX_SIZE;
+  const safeHeight = height > 0 ? height : GIF_MAX_SIZE;
+  const longestSide = Math.max(safeWidth, safeHeight);
+  const scale = longestSide > GIF_MAX_SIZE ? GIF_MAX_SIZE / longestSide : 1;
+
+  return {
+    width: Math.round(safeWidth * scale),
+    height: Math.round(safeHeight * scale),
+  };
+};
+
+/**
+ * Puts a GIF on the board as an image.
+ *
+ * The file is the animated file itself — the very bytes the provider
+ * served, kept as they are. Nothing here resizes or re-encodes it, because
+ * a GIF that has been through an image resizer is a GIF that has stopped
+ * moving, and a still of a moving picture is not what the user asked for.
+ */
+export const insertGif = (app: AppClassProperties, gif: GifData) => {
+  const fileId = randomId() as FileId;
+  const { width, height } = gifSize(gif.width, gif.height);
+
+  const element = newImageElement({
+    type: "image",
+    x: 0,
+    y: 0,
+    width,
+    height,
+    fileId,
+    status: "pending",
+    strokeColor: "transparent",
+    backgroundColor: "transparent",
+  });
+
+  app.addElementsFromPasteOrLibrary({
+    elements: [element],
+    files: {
+      [fileId]: {
+        id: fileId,
+        dataURL: gif.dataURL,
+        mimeType: MIME_TYPES.gif,
         created: Date.now(),
       },
     },
