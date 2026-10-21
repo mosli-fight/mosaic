@@ -88,10 +88,25 @@ const GIF_RESULTS = [
 
 const mockFetch = vi.fn();
 
+/**
+ * Whether the url goes to the provider.
+ *
+ * The hostname is what is compared, not a piece of the url: a url that
+ * merely mentions the provider is not a url to the provider.
+ */
+const isProviderUrl = (url: string) => {
+  try {
+    return new URL(url).hostname === "api.giphy.com";
+  } catch {
+    // not a url at all
+    return false;
+  }
+};
+
 /** the provider answers with GIFs, and the GIFs themselves can be fetched */
 const answerWithGifs = () => {
   mockFetch.mockImplementation(async (url: string) => {
-    if (url.includes("api.giphy.com")) {
+    if (isProviderUrl(url)) {
       return {
         ok: true,
         status: 200,
@@ -537,11 +552,32 @@ describe("media panel", () => {
       localStorage.clear();
     });
 
-    const withKey = (apiKey = "test-key") => {
-      localStorage.setItem(
-        GIF_SETTINGS_STORAGE_KEY,
-        JSON.stringify({ apiKey }),
+    /**
+     * Gives the panel a key, the way the user does: through the panel.
+     *
+     * The panel then keeps it, the way it keeps it for a real user — the
+     * test never writes to storage behind the panel's back.
+     */
+    const withKey = async (apiKey = "test-key") => {
+      await waitFor(() => {
+        expect(getGifKeyInput()).not.toBe(null);
+      });
+
+      fireEvent.change(getGifKeyInput(), {
+        target: { value: apiKey },
+      });
+
+      fireEvent.click(
+        document.querySelector<HTMLButtonElement>(
+          '[data-testid="media-gif-save"]',
+        )!,
       );
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="media-gif-setup"]')).toBe(
+          null,
+        );
+      });
     };
 
     it("has a tab of its own", async () => {
@@ -566,33 +602,18 @@ describe("media panel", () => {
     it("keeps the key in this browser, and nowhere else", async () => {
       await openGifTab();
 
-      fireEvent.change(getGifKeyInput(), {
-        target: { value: "test-key" },
-      });
+      await withKey();
 
-      fireEvent.click(
-        document.querySelector<HTMLButtonElement>(
-          '[data-testid="media-gif-save"]',
-        )!,
-      );
-
-      await waitFor(() => {
-        expect(
-          JSON.parse(localStorage.getItem(GIF_SETTINGS_STORAGE_KEY) as string),
-        ).toEqual({ apiKey: "test-key" });
-      });
-
-      // and the setup step steps out of the way
-      expect(document.querySelector('[data-testid="media-gif-setup"]')).toBe(
-        null,
-      );
+      expect(
+        JSON.parse(localStorage.getItem(GIF_SETTINGS_STORAGE_KEY) as string),
+      ).toEqual({ apiKey: "test-key" });
     });
 
     it("searches with the key the user gave it", async () => {
       answerWithGifs();
-      withKey();
 
       await openGifTab();
+      await withKey();
 
       fireEvent.change(getGifSearchInput(), {
         target: { value: "cat" },
@@ -613,9 +634,9 @@ describe("media panel", () => {
 
     it("shows the GIFs it found", async () => {
       answerWithGifs();
-      withKey();
 
       await openGifTab();
+      await withKey();
 
       fireEvent.change(getGifSearchInput(), {
         target: { value: "cat" },
@@ -633,9 +654,9 @@ describe("media panel", () => {
 
     it("says so when the search fails", async () => {
       mockFetch.mockRejectedValue(new Error("the network is down"));
-      withKey();
 
       await openGifTab();
+      await withKey();
 
       fireEvent.change(getGifSearchInput(), {
         target: { value: "cat" },
@@ -653,9 +674,9 @@ describe("media panel", () => {
 
     it("puts a GIF on the board with the animated file itself", async () => {
       answerWithGifs();
-      withKey();
 
       await openGifTab();
+      await withKey();
 
       fireEvent.change(getGifSearchInput(), {
         target: { value: "cat" },
