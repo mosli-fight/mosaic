@@ -10,6 +10,7 @@ import { Excalidraw } from "../index";
 import {
   MIN_FREEDRAW_RUN_POINTS,
   PRECISION_ERASER_CURSOR_RADIUS,
+  PRECISION_ERASER_MAX_SIZE,
   PRECISION_ERASER_MIN_RADIUS,
   getPrecisionEraserRadius,
   splitFreedrawByErasePath,
@@ -219,6 +220,17 @@ describe("precision eraser: split geometry", () => {
       PRECISION_ERASER_CURSOR_RADIUS,
     );
   });
+
+  it("scales the erase radius with the chosen size", () => {
+    expect(getPrecisionEraserRadius(1, 10)).toBe(10);
+    expect(getPrecisionEraserRadius(2, 10)).toBe(5);
+    // the stored size is user-controlled: out-of-range values clamp to the
+    // slider's range, junk falls back to the default size
+    expect(getPrecisionEraserRadius(1, 1000)).toBe(PRECISION_ERASER_MAX_SIZE);
+    expect(getPrecisionEraserRadius(1, NaN)).toBe(
+      PRECISION_ERASER_CURSOR_RADIUS,
+    );
+  });
 });
 
 describe("precision eraser: applying to a scene", () => {
@@ -335,6 +347,38 @@ describe("precision eraser: in the editor", () => {
     expect(window.h.app.scene.getNonDeletedElements()).toHaveLength(2);
   });
 
+  it("erases a wider span when the size is turned up", async () => {
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+
+    const element = createHorizontalStroke();
+    API.updateScene({
+      elements: [element],
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+
+    act(() => {
+      window.h.app.setActiveTool({ type: "eraser" });
+      window.h.setState({
+        precisionEraserActive: true,
+        precisionEraserSize: 30,
+      });
+    });
+
+    const mouse = new Pointer("mouse");
+    mouse.moveTo(50, -40);
+    mouse.down();
+    mouse.moveTo(50, 40);
+    mouse.up();
+
+    const elements = window.h.app.scene.getNonDeletedElements();
+    expect(elements).toHaveLength(2);
+    // radius 30 around the x=50 crossing: the survivors end by x=20 and
+    // resume at x=80 — at the default size of 4 they would end at 45/56
+    const [left, right] = elements as ExcalidrawFreeDrawElement[];
+    expect(left.x + left.width).toBeLessThanOrEqual(21);
+    expect(right.x + right.points[0][0]).toBeGreaterThanOrEqual(79);
+  });
+
   it("leaves the stroke untouched when the drag misses it", async () => {
     await render(<Excalidraw handleKeyboardGlobally={true} />);
 
@@ -445,6 +489,38 @@ describe("precision eraser: in the drawing-tools popover", () => {
     clickOption("eraser");
     expect(window.h.state.activeTool.type).toBe("eraser");
     expect(window.h.state.precisionEraserActive).toBe(false);
+  });
+
+  it("offers size presets and a thickness slider in precision mode", async () => {
+    const { container } = await render(<Excalidraw />);
+
+    await openPopover(container);
+    // the size controls belong to the precision mode alone
+    expect(
+      document.querySelector('[data-testid="precision-eraser-size-slider"]'),
+    ).toBe(null);
+
+    clickOption("precisionEraser");
+
+    const slider = document.querySelector(
+      '[data-testid="precision-eraser-size-slider"]',
+    ) as HTMLInputElement;
+    expect(slider).not.toBe(null);
+    expect(+slider.value).toBe(window.h.state.precisionEraserSize);
+
+    fireEvent.change(slider, { target: { value: "18" } });
+    expect(window.h.state.precisionEraserSize).toBe(18);
+    expect(
+      document.querySelector('[data-testid="precision-eraser-size-value"]')
+        ?.textContent,
+    ).toContain("18");
+
+    fireEvent.click(
+      document.querySelector(
+        '[data-testid="precision-eraser-size-preset-10"]',
+      )!,
+    );
+    expect(window.h.state.precisionEraserSize).toBe(10);
   });
 
   it("drops the precision mode when the eraser tool is left", async () => {

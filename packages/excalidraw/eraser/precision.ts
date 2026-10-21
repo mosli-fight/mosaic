@@ -21,6 +21,29 @@ import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
  */
 export const PRECISION_ERASER_CURSOR_RADIUS = 4;
 
+/** Smallest / largest precision eraser size the size slider offers. */
+export const PRECISION_ERASER_MIN_SIZE = 2;
+export const PRECISION_ERASER_MAX_SIZE = 30;
+
+/** One-tap sizes in the drawing-tools popover, fine to broad. */
+export const PRECISION_ERASER_SIZE_PRESETS = [4, 10, 20];
+
+/**
+ * The stored size is user-controlled (slider, persisted scenes), so anything
+ * reaching the radius math or the cursor painter is funnelled through here:
+ * non-finite values fall back to the default, the rest clamp to the slider's
+ * range.
+ */
+export const normalizePrecisionEraserSize = (size: number): number => {
+  if (!Number.isFinite(size)) {
+    return PRECISION_ERASER_CURSOR_RADIUS;
+  }
+  return Math.min(
+    PRECISION_ERASER_MAX_SIZE,
+    Math.max(PRECISION_ERASER_MIN_SIZE, size),
+  );
+};
+
 /**
  * Floor for the scene-space radius. Zooming out divides the cursor radius by
  * the zoom, which would otherwise let a single touch swallow a whole stroke.
@@ -38,11 +61,18 @@ export const MIN_FREEDRAW_RUN_POINTS = 2;
 
 /**
  * The scene-space radius the precision eraser removes points within, for the
- * given zoom. Zoom-independent in *screen* terms, so the erased area tracks
- * the cursor circle the user actually sees.
+ * given zoom and the user's chosen size (a screen-space radius, as painted
+ * by the cursor). Zoom-independent in *screen* terms, so the erased area
+ * tracks the cursor circle the user actually sees.
  */
-export const getPrecisionEraserRadius = (zoom: number) =>
-  Math.max(PRECISION_ERASER_MIN_RADIUS, PRECISION_ERASER_CURSOR_RADIUS / zoom);
+export const getPrecisionEraserRadius = (
+  zoom: number,
+  size: number = PRECISION_ERASER_CURSOR_RADIUS,
+) =>
+  Math.max(
+    PRECISION_ERASER_MIN_RADIUS,
+    normalizePrecisionEraserSize(size) / zoom,
+  );
 
 /** One surviving stretch of a split stroke, in the original element's frame. */
 export type FreedrawRun = {

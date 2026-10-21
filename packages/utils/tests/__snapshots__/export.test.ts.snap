@@ -96,6 +96,7 @@ exports[`exportToSvg > with default arguments 1`] = `
   "penDetected": false,
   "penMode": false,
   "precisionEraserActive": false,
+  "precisionEraserSize": 4,
   "preferredSelectionTool": {
     "initialized": false,
     "type": "selection",
