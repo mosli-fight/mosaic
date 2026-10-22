@@ -8,6 +8,7 @@ import { t } from "../i18n";
 
 import { useEditorInterface, useStylesPanelMode } from "./App";
 import { AIAssistantButton } from "./ai/AIAssistantButton";
+import { DiagramButton } from "./diagram/DiagramButton";
 import { HintViewer } from "./HintViewer";
 import { DrawingToolsPopover } from "./DrawingToolsPopover";
 import { FrameFormatPicker } from "./frames/FrameFormatPicker";
@@ -270,6 +271,7 @@ export const Toolbar = ({
         <MediaButton app={app} />
         <TemplatesButton app={app} />
         <AIAssistantButton />
+        <DiagramButton />
 
         <div
           className="App-toolbar__divider"

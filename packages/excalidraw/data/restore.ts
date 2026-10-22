@@ -111,6 +111,7 @@ import type { MarkOptional, Mutable } from "@excalidraw/common/utility-types";
 
 import { getDefaultAppState } from "../appState";
 import { restoreCommentThreads } from "../comments/commentUtils";
+import { DEFAULT_DIAGRAM_TYPE, isDiagramType } from "../diagramTypes";
 
 import {
   getNormalizedGridSize,
@@ -1336,6 +1337,16 @@ export const restoreAppState = (
   nextAppState.commentThreads = restoreCommentThreads(
     nextAppState.commentThreads,
   );
+
+  // the diagram's source comes from untrusted places too (imported files,
+  // shared links): a non-string would break the pane on first render
+  nextAppState.diagramCode =
+    typeof nextAppState.diagramCode === "string"
+      ? nextAppState.diagramCode
+      : "";
+  nextAppState.diagramType = isDiagramType(nextAppState.diagramType)
+    ? nextAppState.diagramType
+    : DEFAULT_DIAGRAM_TYPE;
 
   // legacy
   if ((appState as any).currentItemStrokeWidth !== undefined) {

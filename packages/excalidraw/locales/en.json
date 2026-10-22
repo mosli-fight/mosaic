@@ -541,7 +541,19 @@
     "showHints": "Show hints",
     "inputDevice": "Input",
     "inputDeviceTrackpad": "Trackpad",
-    "inputDeviceMouse": "Mouse"
+    "inputDeviceMouse": "Mouse",
+    "diagram": {
+      "title": "Diagram",
+      "close": "Close",
+      "hint": "Write a diagram: one node per line, `A > B` for an arrow, `Group { ... }` for a frame.",
+      "drawn": "The canvas matches the code.",
+      "types": {
+        "flowchart": "Flowchart",
+        "architecture": "Architecture",
+        "erd": "ER diagram",
+        "sequence": "Sequence"
+      }
+    }
   },
   "elementLink": {
     "title": "Link to object",

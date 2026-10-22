@@ -652,6 +652,16 @@ export interface AppState {
   commentsVisible: boolean;
   /** whether the resolved threads are revealed (pins and panel listing) */
   showResolvedComments: boolean;
+  /**
+   * The diagram written in the diagram-as-code pane.
+   *
+   * It is part of the document, not of the pane: it is saved with the board
+   * so that reopening a board brings back both the drawing and the code
+   * that made it.
+   */
+  diagramCode: string;
+  /** which kind of diagram the pane is drawing */
+  diagramType: DiagramType;
 }
 
 export type SearchMatch = {
@@ -1571,6 +1581,15 @@ export type PendingExcalidrawElements = NonDeletedExcalidrawElement[];
 export type NullableGridSize =
   | (AppState["gridSize"] & MakeBrand<"NullableGridSize">)
   | null;
+
+/**
+ * The kinds of diagram the diagram-as-code pane can draw.
+ *
+ * The node/edge engine is shared; the type only changes the defaults —
+ * how a colon is read, how nodes are shaped, and how the layout places
+ * them.
+ */
+export type DiagramType = "flowchart" | "architecture" | "erd" | "sequence";
 
 export type GenerateDiagramToCode = (props: {
   frame: NonDeleted<ExcalidrawMagicFrameElement>;

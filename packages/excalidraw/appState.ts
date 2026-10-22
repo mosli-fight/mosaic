@@ -157,6 +157,8 @@ export const getDefaultAppState = (): Omit<
     commentComposerAnchor: null,
     commentsVisible: true,
     showResolvedComments: false,
+    diagramCode: "",
+    diagramType: "flowchart",
   };
 };
 
@@ -323,6 +325,10 @@ const APP_STATE_STORAGE_CONF = (<
   // the pins' visibility and the panel's filter are user preferences
   commentsVisible: { browser: true, export: false, server: false },
   showResolvedComments: { browser: true, export: false, server: false },
+  // the diagram's source is document state: it travels with the board so a
+  // reopened board still has the code that drew it
+  diagramCode: { browser: true, export: true, server: true },
+  diagramType: { browser: true, export: true, server: true },
 });
 
 const _clearAppStateForStorage = <
