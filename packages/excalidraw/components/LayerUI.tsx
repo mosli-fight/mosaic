@@ -42,6 +42,7 @@ import { FacilitationMenu } from "./facilitation/FacilitationMenu";
 
 import { SelectedShapeActions, CompactShapeActions } from "./Actions";
 import { AIAssistantPanel } from "./ai/AIAssistantPanel";
+import { DiagramPanel } from "./diagram/DiagramPanel";
 import { PresentMode } from "./frames/PresentMode";
 import { LoadingMessage } from "./LoadingMessage";
 import { MobileMenu } from "./MobileMenu";
@@ -697,6 +698,7 @@ const LayerUI = ({
             {renderWelcomeScreen && <tunnels.WelcomeScreenCenterTunnel.Out />}
             {renderFixedSideContainer()}
             <AIAssistantPanel />
+            <DiagramPanel />
             <Footer
               appState={appState}
               actionManager={actionManager}
