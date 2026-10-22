@@ -112,7 +112,14 @@ export const DiagramPanelBody = () => {
       setStatus(result.errors.length ? "error" : "drawn");
 
       if (result.errors.length) {
-        // the last good scene stays: a half-typed line must not wipe the board
+        // the last good scene stays: a half-typed line must not wipe the board.
+        // the text is still saved, so a reload brings back what was typed
+        // rather than the last code that happened to parse.
+        guard.current.run(() => {
+          app.api.updateScene({
+            appState: { diagramCode: nextCode, diagramType: nextType },
+          });
+        });
         return;
       }
 
@@ -136,18 +143,25 @@ export const DiagramPanelBody = () => {
 
     seeded.current = true;
 
-    if (
-      appState.diagramCode.trim() ||
-      hasDiagramOnBoard(app.api.getSceneElements())
-    ) {
-      setCode(appState.diagramCode);
-      setType(appState.diagramType);
+    setCode(appState.diagramCode);
+    setType(appState.diagramType);
+
+    if (appState.diagramCode.trim()) {
+      // a board that was saved with code but no drawing — an import, or a
+      // save taken while a line was malformed — is drawn now that the pane
+      // is open to show any errors
+      if (!hasDiagramOnBoard(app.api.getSceneElements())) {
+        draw(appState.diagramCode, appState.diagramType);
+      }
+      return;
+    }
+
+    if (hasDiagramOnBoard(app.api.getSceneElements())) {
       return;
     }
 
     const example = exampleFor(appState.diagramType);
     setCode(example);
-    setType(appState.diagramType);
     draw(example, appState.diagramType);
     // deliberately runs once per open; the guard ref keeps it to one seed
     // eslint-disable-next-line react-hooks/exhaustive-deps
