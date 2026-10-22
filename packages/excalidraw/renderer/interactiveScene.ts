@@ -1337,6 +1337,14 @@ const renderTransformHandles = (
     if (transformHandle !== undefined) {
       const [x, y, width, height] = transformHandle;
 
+      // `roundRect`/`arc` throw on non-finite coordinates, so a single
+      // element with a broken geometry would take the whole overlay — and
+      // with it the editor — down. Skip just that handle, silently: this
+      // runs every animation frame while the element stays selected.
+      if (![x, y, width, height].every(Number.isFinite)) {
+        return;
+      }
+
       context.save();
       context.lineWidth = 1 / appState.zoom.value;
       if (renderConfig.selectionColor) {
@@ -2160,7 +2168,16 @@ export const renderInteractiveScene = <
 >(
   renderConfig: InteractiveSceneRenderConfig,
 ): ReturnType<U> => {
-  const ret = _renderInteractiveScene(renderConfig);
+  let ret: ReturnType<U>;
+  try {
+    ret = _renderInteractiveScene(renderConfig) as ReturnType<U>;
+  } catch (error) {
+    // the overlay is chrome: failing to paint it must never take the editor
+    // down with it. This runs inside React's effect, so an exception here
+    // would unmount the whole app and leave a blank canvas behind.
+    console.error(error);
+    ret = {} as ReturnType<U>;
+  }
   renderConfig.callback(ret);
-  return ret as ReturnType<U>;
+  return ret;
 };

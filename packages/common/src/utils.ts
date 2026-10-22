@@ -162,6 +162,19 @@ export const getFontString = ({
   })}` as FontString;
 };
 
+/**
+ * The font size (in px) encoded in a CSS font shorthand.
+ *
+ * The shorthand may carry a style prefix (`bold `, `italic `), so the size
+ * cannot be read with a bare `parseFloat` — that yields NaN for styled text,
+ * and a NaN font size poisons every measurement (and every element geometry)
+ * derived from it.
+ */
+export const getFontSizeFromFontString = (font: FontString) => {
+  const match = /(?:^|\s)(\d+(?:\.\d+)?)px(?:\s|$)/.exec(font);
+  return match ? parseFloat(match[1]) : NaN;
+};
+
 /** executes callback in the frame that's after the current one */
 export const nextAnimationFrame = async (cb: () => any) => {
   requestAnimationFrame(() => requestAnimationFrame(cb));

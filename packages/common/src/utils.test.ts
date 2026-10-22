@@ -1,4 +1,5 @@
 import {
+  getFontSizeFromFontString,
   getNearestScrollableContainer,
   isInputLike,
   isInteractive,
@@ -11,6 +12,8 @@ import {
 import { vi } from "vitest";
 
 // Import directly to avoid the @excalidraw/common throttleRAF mock from setupTests.ts.
+import type { FontString } from "@excalidraw/element/types";
+
 import { throttleRAF } from "./utils";
 
 type RafCallback = FrameRequestCallback;
@@ -199,6 +202,43 @@ describe("@excalidraw/common/utils", () => {
       runScheduledFrame();
 
       expect(fn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getFontSizeFromFontString()", () => {
+    it("reads the size out of a plain font shorthand", () => {
+      expect(getFontSizeFromFontString("28px Virgil" as FontString)).toBe(28);
+    });
+
+    it("reads the size out of a styled font shorthand", () => {
+      // the style prefix is why `parseFloat` can't be used: it returns NaN
+      // here, and a NaN size poisons every measurement derived from it
+      expect(getFontSizeFromFontString("bold 28px Virgil" as FontString)).toBe(
+        28,
+      );
+      expect(
+        getFontSizeFromFontString("italic 28px Virgil" as FontString),
+      ).toBe(28);
+      expect(
+        getFontSizeFromFontString("bold italic 28px Virgil" as FontString),
+      ).toBe(28);
+    });
+
+    it("keeps fractional sizes and ignores a family that contains 'px'", () => {
+      expect(getFontSizeFromFontString("27.5px Virgil" as FontString)).toBe(
+        27.5,
+      );
+      expect(
+        getFontSizeFromFontString(
+          '20px "Some 9px Font", sans-serif' as FontString,
+        ),
+      ).toBe(20);
+    });
+
+    it("returns NaN when there is no size to read", () => {
+      expect(
+        Number.isNaN(getFontSizeFromFontString("Virgil" as FontString)),
+      ).toBe(true);
     });
   });
 });

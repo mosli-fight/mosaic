@@ -2,6 +2,7 @@ import {
   BOUND_TEXT_PADDING,
   DEFAULT_FONT_SIZE,
   DEFAULT_FONT_FAMILY,
+  getFontSizeFromFontString,
   getFontString,
   isTestEnv,
   normalizeEOL,
@@ -20,10 +21,17 @@ export const measureText = (
     // lines would be stripped from computation
     .map((x) => x || " ")
     .join("\n");
-  const fontSize = parseFloat(font);
-  const height = getTextHeight(_text, fontSize, lineHeight);
+  const fontSize = getFontSizeFromFontString(font);
+  // a font shorthand we cannot read the size of must not yield a NaN
+  // measurement — a NaN height poisons the geometry of every element the
+  // text belongs to (and takes the whole scene render down with it)
+  const height = getTextHeight(
+    _text,
+    Number.isFinite(fontSize) ? fontSize : DEFAULT_FONT_SIZE,
+    lineHeight,
+  );
   const width = getTextWidth(_text, font);
-  return { width, height };
+  return { width: Number.isFinite(width) ? width : 0, height };
 };
 
 const DUMMY_TEXT = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".toLocaleUpperCase();

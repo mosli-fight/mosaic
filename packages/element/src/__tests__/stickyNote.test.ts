@@ -58,6 +58,7 @@ import {
 import type {
   ExcalidrawElement,
   ExcalidrawStickyNoteElement,
+  ExcalidrawTextElement,
   ExcalidrawTextElementWithContainer,
   NonDeleted,
 } from "../types";
@@ -1255,5 +1256,158 @@ describe("sticky note label typography", () => {
     );
     expect(normalizeStickyNoteFontStyle("bold")).toBe(undefined);
     expect(normalizeStickyNoteFontStyle(null)).toBe(undefined);
+  });
+
+  it("measures a styled label like a plain one", () => {
+    // the font string carries the style (`bold 28px Virgil`), so the size
+    // cannot be read with a bare `parseFloat` — a NaN size would poison the
+    // note's geometry and take the whole scene render down with it
+    const plain = getFontString({ fontSize: 28, fontFamily: 1 });
+    const styled = getFontString({
+      fontSize: 28,
+      fontFamily: 1,
+      fontStyle: { bold: true },
+    });
+
+    const measured = textMeasurements.measureText(
+      "hello",
+      styled,
+      1.25 as ExcalidrawTextElement["lineHeight"],
+    );
+    expect(measured.height).toBeGreaterThan(0);
+    expect(measured.width).toBeGreaterThan(0);
+    expect(measured.height).toBe(
+      textMeasurements.measureText(
+        "hello",
+        plain,
+        1.25 as ExcalidrawTextElement["lineHeight"],
+      ).height,
+    );
+  });
+});
+
+describe("a sticky note in an edge state", () => {
+  const expectFiniteLayout = (
+    layout: ReturnType<typeof getStickyNoteLayout>,
+  ) => {
+    expect(Number.isFinite(layout.container.width)).toBe(true);
+    expect(Number.isFinite(layout.container.height)).toBe(true);
+    expect(Number.isFinite(layout.container.x)).toBe(true);
+    expect(Number.isFinite(layout.container.y)).toBe(true);
+    expect(Number.isFinite(layout.container.baseHeight)).toBe(true);
+    expect(Number.isFinite(layout.text!.width)).toBe(true);
+    expect(Number.isFinite(layout.text!.height)).toBe(true);
+    expect(Number.isFinite(layout.text!.x)).toBe(true);
+    expect(Number.isFinite(layout.text!.y)).toBe(true);
+    expect(Number.isFinite(layout.text!.fontSize)).toBe(true);
+  };
+
+  it("lays out a styled label with a finite geometry", () => {
+    // regression: a styled label's font string is `bold 28px Virgil`, and a
+    // bare `parseFloat` reads that as NaN — which spread into the note's
+    // height and both elements' positions, blanking the whole canvas
+    const { scene, stickyId, textId } = createStickyWithText("hello");
+    const sticky = getSticky(scene, stickyId);
+    const text = getBoundText(scene, textId);
+
+    for (const fontStyle of [
+      { bold: true },
+      { italic: true },
+      { bold: true, italic: true },
+    ]) {
+      scene.mutateElement(text, { fontStyle });
+
+      expectFiniteLayout(getStickyNoteLayout(sticky, text));
+    }
+  });
+
+  it("lays out a note whose size is broken", () => {
+    const { scene, stickyId, textId } = createStickyWithText("hello");
+    const sticky = getSticky(scene, stickyId);
+    const text = getBoundText(scene, textId);
+
+    scene.mutateElement(sticky, { width: NaN, height: NaN, baseHeight: NaN });
+
+    expectFiniteLayout(getStickyNoteLayout(sticky, text));
+  });
+
+  it("lays out a zero-size note", () => {
+    const { scene, stickyId, textId } = createStickyWithText("hello");
+    const sticky = getSticky(scene, stickyId);
+    const text = getBoundText(scene, textId);
+
+    scene.mutateElement(sticky, {
+      width: 0,
+      height: 0,
+      baseHeight: 0,
+      x: 0,
+      y: 0,
+    });
+
+    const layout = getStickyNoteLayout(sticky, text);
+    expectFiniteLayout(layout);
+    // the note grows back to the smallest usable note, never stays 0×0
+    expect(layout.container.width).toBeGreaterThanOrEqual(STICKY_NOTE_MIN_SIZE);
+    expect(layout.container.height).toBeGreaterThanOrEqual(
+      STICKY_NOTE_MIN_SIZE,
+    );
+  });
+
+  it("lays out a note whose label measurement cannot be trusted", () => {
+    const { scene, stickyId, textId } = createStickyWithText("hello");
+    const sticky = getSticky(scene, stickyId);
+    const text = getBoundText(scene, textId);
+
+    // a broken line height makes every measurement NaN
+    scene.mutateElement(text, { lineHeight: NaN as any });
+    expectFiniteLayout(getStickyNoteLayout(sticky, text));
+
+    // as does a broken ceiling, which also feeds the fit's warm start
+    scene.mutateElement(text, { fontSize: NaN, baseFontSize: NaN });
+    expectFiniteLayout(getStickyNoteLayout(sticky, text));
+  });
+
+  it("lays out a note with a huge tag without overflowing", () => {
+    const { scene, stickyId, textId } = createStickyWithText("hello");
+    const sticky = getSticky(scene, stickyId);
+    const text = getBoundText(scene, textId);
+
+    scene.mutateElement(sticky, { tags: ["x".repeat(5000)] });
+
+    expectFiniteLayout(getStickyNoteLayout(sticky, text));
+  });
+
+  it("lays out a note with a broken angle", () => {
+    const { scene, stickyId, textId } = createStickyWithText("hello");
+    const sticky = getSticky(scene, stickyId);
+    const text = getBoundText(scene, textId);
+
+    scene.mutateElement(sticky, { angle: NaN as any });
+
+    const layout = getStickyNoteLayout(sticky, text);
+    expectFiniteLayout(layout);
+    expect(layout.text!.angle).toBe(0);
+  });
+
+  it("leaves the footer empty when the note's size is broken", () => {
+    const sticky = newStickyNoteElement({
+      type: "stickynote",
+      x: 0,
+      y: 0,
+      width: 250,
+      height: 250,
+      baseHeight: 250,
+      author: "Ada",
+      tags: ["idea"],
+      created: Date.UTC(2024, 8, 7),
+    });
+
+    const footer = getStickyNoteFooterContent(
+      { ...sticky, width: NaN, height: NaN },
+      Date.UTC(2024, 8, 7),
+    );
+    expect(footer.date).toBe(null);
+    expect(footer.author).toBe(null);
+    expect(footer.tags).toEqual([]);
   });
 });
