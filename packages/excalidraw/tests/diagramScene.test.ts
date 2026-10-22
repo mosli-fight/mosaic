@@ -153,6 +153,32 @@ describe("buildDiagramElements", () => {
     expect(label.originalText).toBe("users\n\nid\nname\nemail");
   });
 
+  it("draws an edge's label on the arrow, bound to it", () => {
+    const elements = elementsFor("Client > Server: request");
+    const arrow = elements.find(
+      (element) => getDiagramTag(element)?.diagramRole === "edge",
+    )!;
+    const label = elements.find(
+      (element) => getDiagramTag(element)?.diagramRole === "edge-label",
+    ) as { originalText: string; containerId?: string };
+
+    expect(label.originalText).toBe("request");
+    expect(label.containerId).toBe(arrow.id);
+    expect(arrow.boundElements?.some((entry) => entry.id === label.id)).toBe(
+      true,
+    );
+  });
+
+  it("draws no label for an edge without one", () => {
+    const elements = elementsFor("Client > Server");
+
+    expect(
+      elements.some(
+        (element) => getDiagramTag(element)?.diagramRole === "edge-label",
+      ),
+    ).toBe(false);
+  });
+
   it("draws a lifeline for every participant of a sequence", () => {
     const elements = elementsFor("A > B\nB > A", "sequence");
     const lifelines = elements.filter(

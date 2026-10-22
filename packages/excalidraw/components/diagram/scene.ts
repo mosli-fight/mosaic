@@ -59,6 +59,7 @@ export type DiagramRole =
   | "label"
   | "icon"
   | "edge"
+  | "edge-label"
   | "group"
   | "lifeline";
 
@@ -85,6 +86,9 @@ const TABLE_FONT_SIZE = 14;
 
 /** the size an icon glyph is drawn at */
 const ICON_FONT_SIZE = 18;
+
+/** the size an edge's label is written in */
+const EDGE_LABEL_FONT_SIZE = 12;
 
 /** the ink a shape is drawn in when the code does not pick a color */
 const DEFAULT_STROKE = COLOR_PALETTE.black;
@@ -542,6 +546,28 @@ export const buildDiagramElements = (
 
     if (fromShape && toShape && edge.from !== edge.to) {
       bindArrow(arrow, fromShape, toShape, edge, elements);
+    }
+
+    // an edge label sits on the arrow, bound to it so it moves with the line
+    if (edge.label) {
+      const label = createBoundLabel(arrow, edge.label, {
+        fontSize: EDGE_LABEL_FONT_SIZE,
+        textAlign: "center",
+        verticalAlign: "middle",
+        id: elementIdFor("edge-label", edge.id, reuse),
+        tag: tag("edge-label", { edge: edge.id }),
+      });
+
+      const bound = newElementWith(arrow, {
+        boundElements: [
+          ...(arrow.boundElements ?? []),
+          { type: "text", id: label.id },
+        ],
+      });
+
+      Object.assign(arrow, bound);
+
+      elements.push(label);
     }
   }
 
