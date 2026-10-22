@@ -691,8 +691,10 @@ export const reconcileDiagram = (
       continue;
     }
 
+    // an edge's label belongs to its edge, not to a node, so it is keyed by
+    // the edge id — otherwise it would be re-created on every pass
     const key =
-      tagValue.diagramRole === "edge"
+      tagValue.diagramRole === "edge" || tagValue.diagramRole === "edge-label"
         ? tagValue.diagramEdge
         : tagValue.diagramRole === "group"
         ? tagValue.diagramGroup

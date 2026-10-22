@@ -397,6 +397,29 @@ describe("reconcileDiagram", () => {
     expect(after[0].id).toBe(drawn.id);
   });
 
+  it("keeps an edge's label element across a re-parse", () => {
+    const first = build("Client > Server: request");
+    const before = reconcileDiagram([], first.model, first.layout, "flowchart");
+
+    const labelBefore = before.find(
+      (element) => getDiagramTag(element)?.diagramRole === "edge-label",
+    )!;
+
+    const second = build("Client > Server: request");
+    const after = reconcileDiagram(
+      before,
+      second.model,
+      second.layout,
+      "flowchart",
+    );
+
+    const labelAfter = after.find(
+      (element) => getDiagramTag(element)?.diagramRole === "edge-label",
+    )!;
+
+    expect(labelAfter.id).toBe(labelBefore.id);
+  });
+
   it("is stable when run twice on the same code", () => {
     const { model, layout } = build("A > B\nBackend {\n  C\n}");
     const once = reconcileDiagram([], model, layout, "flowchart");
