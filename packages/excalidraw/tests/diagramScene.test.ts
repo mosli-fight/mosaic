@@ -286,12 +286,21 @@ describe("icons from the icon library", () => {
     expect(icon.y + icon.height).toBeLessThanOrEqual(node.y + node.height);
   });
 
-  it("keeps the glyph table for a name the library does not know", () => {
+  it("keeps the glyph for a name the glyph table already knows", () => {
+    // `server` is a glyph name, and every diagram written before the icon
+    // library used it — a saved board must not change shape under its author
     const elements = elementsFor("Server [icon: server]");
     const icons = iconElements(elements);
 
     expect(icons).toHaveLength(1);
     expect(icons[0].type).toBe("text");
+  });
+
+  it("draws a library icon for a name the glyph table does not know", () => {
+    const icons = iconElements(elementsFor("Database [icon: postgresql]"));
+
+    expect(icons).toHaveLength(1);
+    expect(icons[0].type).toBe("image");
   });
 
   it("leaves a table card without an icon", () => {

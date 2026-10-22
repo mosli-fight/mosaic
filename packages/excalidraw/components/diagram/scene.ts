@@ -493,13 +493,17 @@ export const buildDiagramElements = (
 
     // an icon is a small mark in the corner, not part of the label.
     //
-    // A name from the icon library (`postgres`, `s3`, `k8s-pod`, ...) is
-    // drawn as the very same tile the media panel offers, so a diagram and a
-    // board speak one visual language. A name that is not in the library
-    // falls back to the glyph table below, which is what the pane has always
-    // understood.
+    // A name the glyph table knows keeps its glyph: those names are what
+    // every diagram written before the icon library used, and a saved board
+    // must not change shape under its author. A name the table does not know
+    // is looked up in the icon library and drawn as the very same tile the
+    // media panel offers, so a diagram and a board speak one visual language.
+    const glyph = resolveIconGlyph(node.icon);
+
     const iconAsset =
-      type !== "erd" && !isParticipant ? findIconByName(node.icon) : null;
+      !glyph && type !== "erd" && !isParticipant
+        ? findIconByName(node.icon)
+        : null;
 
     if (iconAsset) {
       elements.push(
@@ -521,8 +525,6 @@ export const buildDiagramElements = (
         }),
       );
     }
-
-    const glyph = iconAsset ? null : resolveIconGlyph(node.icon);
 
     if (glyph && type !== "erd" && !isParticipant) {
       const lineHeight = getLineHeight(DIAGRAM_FONT_FAMILY);
