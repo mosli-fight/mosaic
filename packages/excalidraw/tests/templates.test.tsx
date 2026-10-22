@@ -3,12 +3,9 @@ import React from "react";
 import { fireEvent, waitFor } from "@testing-library/react";
 
 import { Excalidraw, MainMenu } from "../index";
-import {
-  TEMPLATE_CATEGORIES,
-  TEMPLATES,
-  buildTemplateElements,
-  getTemplateById,
-} from "../templates";
+import { t } from "../i18n";
+import { TEMPLATE_CATEGORIES, buildTemplateElements } from "../templates";
+import { TEMPLATES, getTemplateById } from "../templates/catalogue";
 
 import { API } from "./helpers/api";
 import { act, render, toggleMenu } from "./test-utils";
@@ -48,11 +45,107 @@ describe("templates gallery", () => {
       }
     });
 
+    it("has a shelf of templates in every category", () => {
+      for (const category of TEMPLATE_CATEGORIES) {
+        const templates = TEMPLATES.filter(
+          (template) => template.category === category.id,
+        );
+        expect(templates.length).toBeGreaterThanOrEqual(3);
+      }
+    });
+
+    it("keeps the templates the gallery started with", () => {
+      const ids = TEMPLATES.map((template) => template.id);
+
+      for (const id of [
+        "brainstorming",
+        "meeting-agenda",
+        "kanban-board",
+        "mind-map",
+        "swot-analysis",
+        "project-timeline",
+        "retro-board",
+        "user-journey-map",
+        "wireframe-basics",
+        "flowchart-starter",
+      ]) {
+        expect(ids).toContain(id);
+      }
+    });
+
+    it("carries the templates the expansion added", () => {
+      const ids = TEMPLATES.map((template) => template.id);
+
+      for (const id of [
+        "business-model-canvas",
+        "lean-canvas",
+        "cost-benefit-analysis",
+        "org-chart",
+        "meeting-notes",
+        "start-stop-continue",
+        "timeboxed-agenda",
+        "dot-voting-board",
+        "how-might-we",
+        "six-thinking-hats",
+        "empathy-map",
+        "service-blueprint",
+        "persona-card",
+        "user-story-map",
+        "sprint-board",
+        "bug-triage-board",
+        "prioritization-matrix",
+        "okr-planning",
+        "quarterly-roadmap",
+        "venn-diagram",
+        "sequence-diagram",
+        "decision-tree",
+      ]) {
+        expect(ids).toContain(id);
+      }
+    });
+
     it("gives every template a name, a description and a category", () => {
       for (const template of TEMPLATES) {
         expect(template.nameKey).toBeTruthy();
         expect(template.descriptionKey).toBeTruthy();
         expect(template.elements.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("gives every template a category the gallery knows", () => {
+      const categories = TEMPLATE_CATEGORIES.map((category) => category.id);
+
+      for (const template of TEMPLATES) {
+        expect(categories).toContain(template.category);
+      }
+    });
+
+    it("gives every template a name and a description in the language of the gallery", () => {
+      for (const template of TEMPLATES) {
+        expect(t(template.nameKey)).toBeTruthy();
+        expect(t(template.descriptionKey)).toBeTruthy();
+      }
+    });
+
+    it("gives every template elements that have a size", () => {
+      for (const template of TEMPLATES) {
+        for (const element of buildTemplateElements(template)) {
+          if (element.type === "arrow") {
+            // an arrow is measured by its points, not by its box
+            continue;
+          }
+          expect(element.width).toBeGreaterThan(0);
+          expect(element.height).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    it("gives every element of every template a kind and an id", () => {
+      for (const template of TEMPLATES) {
+        for (const spec of template.elements) {
+          expect(spec.kind).toBeTruthy();
+          expect(spec.id).toBeTruthy();
+        }
       }
     });
 
@@ -235,6 +328,28 @@ describe("templates gallery", () => {
       );
 
       expect(h.elements.length).toBe(before);
+    });
+
+    it("draws the preview in the ink of the theme the board is in", async () => {
+      await openGallery();
+
+      const getInk = () =>
+        document
+          .querySelector("svg.templates-preview text")
+          ?.getAttribute("fill");
+
+      // on a light board the title is written in the ink of the board
+      expect(getInk()).toBe("#1e1e1e");
+
+      act(() => {
+        API.setAppState({ theme: "dark" });
+      });
+
+      // and on a dark board it is written in the ink of that board, so the
+      // preview stays the picture of the board
+      await waitFor(() => {
+        expect(getInk()).toBe("#d3d3d3");
+      });
     });
   });
 

@@ -1,7 +1,14 @@
 import clsx from "clsx";
 
-import { COLOR_PALETTE, STICKY_NOTE_HUES } from "@excalidraw/common";
+import {
+  COLOR_PALETTE,
+  STICKY_NOTE_HUES,
+  STICKY_NOTE_INK_FOR_BG,
+  THEME,
+  applyDarkModeFilter,
+} from "@excalidraw/common";
 
+import { useUIAppState } from "../../context/ui-appState";
 import { getTemplateBounds } from "../../templates/builder";
 
 import type {
@@ -21,33 +28,92 @@ import type {
 const FRAME_STROKE = COLOR_PALETTE.gray[3];
 const DEFAULT_STROKE = COLOR_PALETTE.black;
 
-const isTransparent = (color: string | undefined) =>
-  !color || color === "transparent";
+/**
+ * the space the editor leaves between a shape and its label — the label of a
+ * shape is bound to it, and the editor draws it that far in
+ */
+const LABEL_PADDING = 5;
 
-/** the text of a shape, drawn in the middle of the shape */
+/** the height of a line of text, as the editor measures it */
+const LINE_HEIGHT = 1.25;
+
+const isTransparent = (
+  color: string | undefined,
+): color is undefined | "transparent" => !color || color === "transparent";
+
+/**
+ * A colour, as the board would draw it.
+ *
+ * The editor darkens and lightens the colours of a scene when it is in dark
+ * theme, so a template that was written for a light board still reads on a
+ * dark one. The preview has to make the same adjustment, or the picture on
+ * the card would not be the picture on the board.
+ */
+type Ink = (color: string) => string;
+
+/**
+ * The text of a shape, drawn where the editor would draw it.
+ *
+ * The label of a shape is bound to it, so the editor places it according to
+ * the shape's alignment — and the preview has to place it the same way, or
+ * the picture on the card would not be the picture on the board.
+ */
 const ShapeLabel = ({
   spec,
+  ink,
 }: {
   spec: Extract<
     TemplateElementSpec,
     { kind: "rectangle" | "ellipse" | "diamond" }
   >;
+  ink: Ink;
 }) => {
   if (!spec.label) {
     return null;
   }
 
+  const fontSize = spec.fontSize ?? 16;
+  const lines = spec.label.split("\n");
+  const textHeight = lines.length * fontSize * LINE_HEIGHT;
+
+  const textAlign = spec.textAlign ?? "center";
+  const verticalAlign = spec.verticalAlign ?? "middle";
+
+  const x =
+    textAlign === "center"
+      ? spec.x + spec.width / 2
+      : textAlign === "right"
+      ? spec.x + spec.width - LABEL_PADDING
+      : spec.x + LABEL_PADDING;
+
+  const y =
+    verticalAlign === "top"
+      ? spec.y + LABEL_PADDING
+      : verticalAlign === "bottom"
+      ? spec.y + spec.height - LABEL_PADDING - textHeight
+      : spec.y + (spec.height - textHeight) / 2;
+
   return (
     <text
-      x={spec.x + spec.width / 2}
-      y={spec.y + spec.height / 2}
-      textAnchor="middle"
-      dominantBaseline="middle"
-      fontSize={spec.fontSize ?? 16}
-      fill={spec.textColor ?? DEFAULT_STROKE}
+      x={x}
+      y={y}
+      textAnchor={
+        textAlign === "center"
+          ? "middle"
+          : textAlign === "right"
+          ? "end"
+          : "start"
+      }
+      dominantBaseline="hanging"
+      fontSize={fontSize}
+      fill={ink(spec.textColor ?? DEFAULT_STROKE)}
       fontFamily="inherit"
     >
-      {spec.label}
+      {lines.map((line, index) => (
+        <tspan key={index} x={x} dy={index === 0 ? 0 : fontSize * LINE_HEIGHT}>
+          {line}
+        </tspan>
+      ))}
     </text>
   );
 };
@@ -55,8 +121,10 @@ const ShapeLabel = ({
 /** a run of text, drawn as it stands on the board */
 const TextRun = ({
   spec,
+  ink,
 }: {
   spec: Extract<TemplateElementSpec, { kind: "text" }>;
+  ink: Ink;
 }) => {
   const lines = spec.text.split("\n");
 
@@ -66,7 +134,7 @@ const TextRun = ({
       y={spec.y}
       dominantBaseline="hanging"
       fontSize={spec.fontSize ?? 20}
-      fill={spec.color ?? DEFAULT_STROKE}
+      fill={ink(spec.color ?? DEFAULT_STROKE)}
       fontFamily="inherit"
       fontWeight={spec.bold ? "600" : undefined}
       textAnchor={
@@ -96,7 +164,13 @@ const TextRun = ({
   );
 };
 
-const SpecPreview = ({ spec }: { spec: TemplateElementSpec }) => {
+const SpecPreview = ({
+  spec,
+  ink,
+}: {
+  spec: TemplateElementSpec;
+  ink: Ink;
+}) => {
   switch (spec.kind) {
     case "frame":
       return (
@@ -105,8 +179,8 @@ const SpecPreview = ({ spec }: { spec: TemplateElementSpec }) => {
           y={spec.y}
           width={spec.width}
           height={spec.height}
-          fill={isTransparent(spec.fill) ? "none" : spec.fill}
-          stroke={FRAME_STROKE}
+          fill={isTransparent(spec.fill) ? "none" : ink(spec.fill)}
+          stroke={ink(FRAME_STROKE)}
           strokeWidth={1}
           strokeDasharray="8 6"
           vectorEffect="non-scaling-stroke"
@@ -124,13 +198,13 @@ const SpecPreview = ({ spec }: { spec: TemplateElementSpec }) => {
             fill={
               isTransparent(spec.backgroundColor)
                 ? "none"
-                : spec.backgroundColor
+                : ink(spec.backgroundColor)
             }
-            stroke={spec.strokeColor ?? DEFAULT_STROKE}
+            stroke={ink(spec.strokeColor ?? DEFAULT_STROKE)}
             strokeWidth={spec.strokeWidth ?? 1}
             vectorEffect="non-scaling-stroke"
           />
-          <ShapeLabel spec={spec} />
+          <ShapeLabel spec={spec} ink={ink} />
         </>
       );
     case "ellipse":
@@ -144,13 +218,13 @@ const SpecPreview = ({ spec }: { spec: TemplateElementSpec }) => {
             fill={
               isTransparent(spec.backgroundColor)
                 ? "none"
-                : spec.backgroundColor
+                : ink(spec.backgroundColor)
             }
-            stroke={spec.strokeColor ?? DEFAULT_STROKE}
+            stroke={ink(spec.strokeColor ?? DEFAULT_STROKE)}
             strokeWidth={spec.strokeWidth ?? 1}
             vectorEffect="non-scaling-stroke"
           />
-          <ShapeLabel spec={spec} />
+          <ShapeLabel spec={spec} ink={ink} />
         </>
       );
     case "diamond":
@@ -165,13 +239,13 @@ const SpecPreview = ({ spec }: { spec: TemplateElementSpec }) => {
             fill={
               isTransparent(spec.backgroundColor)
                 ? "none"
-                : spec.backgroundColor
+                : ink(spec.backgroundColor)
             }
-            stroke={spec.strokeColor ?? DEFAULT_STROKE}
+            stroke={ink(spec.strokeColor ?? DEFAULT_STROKE)}
             strokeWidth={spec.strokeWidth ?? 1}
             vectorEffect="non-scaling-stroke"
           />
-          <ShapeLabel spec={spec} />
+          <ShapeLabel spec={spec} ink={ink} />
         </>
       );
     case "sticky": {
@@ -184,8 +258,8 @@ const SpecPreview = ({ spec }: { spec: TemplateElementSpec }) => {
             width={spec.width}
             height={spec.height}
             rx={4}
-            fill={fill}
-            stroke={COLOR_PALETTE.gray[3]}
+            fill={ink(fill)}
+            stroke={ink(COLOR_PALETTE.gray[3])}
             strokeWidth={1}
             vectorEffect="non-scaling-stroke"
           />
@@ -195,7 +269,7 @@ const SpecPreview = ({ spec }: { spec: TemplateElementSpec }) => {
             textAnchor="middle"
             dominantBaseline="middle"
             fontSize={spec.fontSize ?? 16}
-            fill={DEFAULT_STROKE}
+            fill={ink(STICKY_NOTE_INK_FOR_BG(fill))}
             fontFamily="inherit"
           >
             {spec.text}
@@ -204,7 +278,7 @@ const SpecPreview = ({ spec }: { spec: TemplateElementSpec }) => {
       );
     }
     case "text":
-      return <TextRun spec={spec} />;
+      return <TextRun spec={spec} ink={ink} />;
     case "arrow": {
       const x2 = spec.x + spec.dx;
       const y2 = spec.y + spec.dy;
@@ -215,7 +289,7 @@ const SpecPreview = ({ spec }: { spec: TemplateElementSpec }) => {
             y1={spec.y}
             x2={x2}
             y2={y2}
-            stroke={spec.strokeColor ?? DEFAULT_STROKE}
+            stroke={ink(spec.strokeColor ?? DEFAULT_STROKE)}
             strokeWidth={spec.strokeWidth ?? 2}
             strokeDasharray={
               spec.strokeStyle === "dashed"
@@ -229,7 +303,7 @@ const SpecPreview = ({ spec }: { spec: TemplateElementSpec }) => {
           {spec.arrowhead !== false && (
             <polygon
               points={`${x2},${y2} ${x2 - 10},${y2 - 5} ${x2 - 10},${y2 + 5}`}
-              fill={spec.strokeColor ?? DEFAULT_STROKE}
+              fill={ink(spec.strokeColor ?? DEFAULT_STROKE)}
             />
           )}
         </>
@@ -248,7 +322,11 @@ export const TemplatePreview = ({
   /** what the picture is of, for the screen reader */
   label: string;
 }) => {
+  const { theme } = useUIAppState();
   const bounds = getTemplateBounds(template);
+
+  // the ink of the board, in the theme the board is in
+  const ink: Ink = (color) => applyDarkModeFilter(color, theme === THEME.DARK);
 
   return (
     <svg
@@ -259,7 +337,7 @@ export const TemplatePreview = ({
       aria-label={label}
     >
       {template.elements.map((spec) => (
-        <SpecPreview key={spec.id} spec={spec} />
+        <SpecPreview key={spec.id} spec={spec} ink={ink} />
       ))}
     </svg>
   );

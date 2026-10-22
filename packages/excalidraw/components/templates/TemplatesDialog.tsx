@@ -1,29 +1,17 @@
 import clsx from "clsx";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { useUIAppState } from "../../context/ui-appState";
 import { t } from "../../i18n";
-import {
-  TEMPLATE_CATEGORIES,
-  getTemplatesByCategory,
-  searchTemplates,
-} from "../../templates";
-import { insertTemplate } from "../../templates/insertTemplate";
+import { TEMPLATE_CATEGORIES } from "../../templates/types";
 
-import { useApp } from "../App";
 import { useExcalidrawSetAppState } from "../App";
 import { Dialog } from "../Dialog";
 import { TextField } from "../TextField";
-import { trackEvent } from "../../analytics";
-
-import { TemplatePreview } from "./TemplatePreview";
 
 import "./templatesDialog.scss";
 
-import type {
-  ExcalidrawTemplate,
-  TemplateCategoryId,
-} from "../../templates/types";
+import type { TemplateCategoryId } from "../../templates/types";
 
 /**
  * The templates gallery: a Miro-style shelf of ready-made boards.
@@ -31,72 +19,16 @@ import type {
  * The gallery is a dialog rather than a sidebar because a template is a
  * one-off thing — you reach for it, you take what you need, and you get back
  * to the board.
+ *
+ * The shelf itself — the catalogue of templates and the drawing of a preview
+ * — is fetched only when the gallery is opened: a board that never opens the
+ * gallery does not carry the catalogue with it.
  */
-
-const getCategoryLabelKey = (category: TemplateCategoryId) =>
-  TEMPLATE_CATEGORIES.find((entry) => entry.id === category)?.labelKey ??
-  "labels.templates.all";
-
-const TemplateCard = ({
-  template,
-  onUse,
-}: {
-  template: ExcalidrawTemplate;
-  onUse: (template: ExcalidrawTemplate) => void;
-}) => {
-  const [isPreviewing, setIsPreviewing] = useState(false);
-  const name = t(template.nameKey);
-  const description = t(template.descriptionKey);
-
-  return (
-    <div
-      className="templates-card"
-      data-testid={`templates-card-${template.id}`}
-    >
-      <div
-        className={clsx("templates-card__preview", {
-          "templates-card__preview--large": isPreviewing,
-        })}
-      >
-        <TemplatePreview template={template} label={name} />
-      </div>
-
-      <div className="templates-card__body">
-        <h4 className="templates-card__name">{name}</h4>
-        <div className="templates-card__category">
-          {t(getCategoryLabelKey(template.category))}
-        </div>
-        <p className="templates-card__description">{description}</p>
-      </div>
-
-      <div className="templates-card__actions">
-        <button
-          type="button"
-          className="templates-card__action"
-          data-testid={`templates-preview-${template.id}`}
-          onClick={() => setIsPreviewing((previewing) => !previewing)}
-        >
-          {isPreviewing
-            ? t("labels.templates.hidePreview")
-            : t("labels.templates.preview")}
-        </button>
-        <button
-          type="button"
-          className="templates-card__action templates-card__action--primary"
-          data-testid={`templates-use-${template.id}`}
-          onClick={() => onUse(template)}
-        >
-          {t("labels.templates.use")}
-        </button>
-      </div>
-    </div>
-  );
-};
+const TemplateGallery = lazy(() => import("./TemplateGallery"));
 
 export const TemplatesDialog = () => {
   const appState = useUIAppState();
   const setAppState = useExcalidrawSetAppState();
-  const app = useApp();
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<TemplateCategoryId | null>(null);
@@ -105,20 +37,7 @@ export const TemplatesDialog = () => {
     return null;
   }
 
-  const templates = searchTemplates(
-    getTemplatesByCategory(category),
-    query,
-    (template) => t(template.nameKey),
-    (template) => t(template.descriptionKey),
-  );
-
   const close = () => setAppState({ openDialog: null });
-
-  const useTemplate = (template: ExcalidrawTemplate) => {
-    trackEvent("templates", "use", template.id);
-    insertTemplate(app, template);
-    close();
-  };
 
   return (
     <Dialog
@@ -170,21 +89,18 @@ export const TemplatesDialog = () => {
         </div>
       </div>
 
-      {templates.length ? (
-        <div className="templates-dialog__grid" data-testid="templates-grid">
-          {templates.map((template) => (
-            <TemplateCard
-              key={template.id}
-              template={template}
-              onUse={useTemplate}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="templates-dialog__empty" data-testid="templates-empty">
-          {t("labels.templates.empty")}
-        </div>
-      )}
+      <Suspense
+        fallback={
+          <div
+            className="templates-dialog__loading"
+            data-testid="templates-loading"
+          >
+            {t("labels.templates.loading")}
+          </div>
+        }
+      >
+        <TemplateGallery query={query} category={category} onClose={close} />
+      </Suspense>
     </Dialog>
   );
 };
