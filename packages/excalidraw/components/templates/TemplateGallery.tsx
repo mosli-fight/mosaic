@@ -41,10 +41,7 @@ import type {
  * bundle nor the gallery's first paint.
  */
 const loadDiagramTemplates = () =>
-  import("../../templates/diagrams").then(
-    (module) => module.DIAGRAM_TEMPLATES,
-  );
-
+  import("../../templates/diagrams").then((module) => module.DIAGRAM_TEMPLATES);
 
 const getCategoryLabelKey = (category: TemplateCategoryId) =>
   TEMPLATE_CATEGORIES.find((entry) => entry.id === category)?.labelKey ??

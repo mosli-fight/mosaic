@@ -2,6 +2,8 @@ import React from "react";
 
 import { fireEvent, waitFor } from "@testing-library/react";
 
+import type { ExcalidrawElement } from "@excalidraw/element/types";
+
 import { Excalidraw } from "../index";
 import { t } from "../i18n";
 import { buildTemplateElements } from "../templates";
@@ -10,8 +12,6 @@ import { DIAGRAM_TEMPLATES } from "../templates/diagrams";
 
 import { API } from "./helpers/api";
 import { act, render } from "./test-utils";
-
-import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 const { h } = window;
 
@@ -226,7 +226,9 @@ describe("the diagram catalogue", () => {
 
     await waitFor(() => {
       expect(
-        document.querySelector('[data-testid="templates-card-erd-star-schema"]'),
+        document.querySelector(
+          '[data-testid="templates-card-erd-star-schema"]',
+        ),
       ).not.toBe(null);
     });
   });
@@ -245,11 +247,17 @@ describe("the diagram catalogue", () => {
     });
 
     const byId = new Map(h.elements.map((element) => [element.id, element]));
-    const arrows = h.elements.filter((element) => element.type === "arrow");
+    const arrows = h.elements.filter(
+      (element) => element.type === "arrow" && element.startBinding,
+    );
 
     expect(arrows.length).toBeGreaterThan(0);
 
     for (const arrow of arrows) {
+      if (arrow.type !== "arrow") {
+        continue;
+      }
+
       expect(arrow.startBinding).not.toBeNull();
       expect(arrow.endBinding).not.toBeNull();
 

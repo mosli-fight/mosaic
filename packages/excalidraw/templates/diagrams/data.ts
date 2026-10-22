@@ -30,7 +30,12 @@ export const DATA_DIAGRAMS: readonly DiagramExample[] = [
       {
         id: "post",
         label: "Post",
-        fields: ["id · uuid", "author_id · uuid", "title · text", "body · text"],
+        fields: [
+          "id · uuid",
+          "author_id · uuid",
+          "title · text",
+          "body · text",
+        ],
         tone: "violet",
         height: 140,
       },
@@ -331,7 +336,12 @@ export const DATA_DIAGRAMS: readonly DiagramExample[] = [
       {
         id: "ticket_type",
         label: "TicketType",
-        fields: ["id · uuid", "event_id · uuid", "price · money", "seats · int"],
+        fields: [
+          "id · uuid",
+          "event_id · uuid",
+          "price · money",
+          "seats · int",
+        ],
         tone: "green",
         height: 140,
       },
@@ -421,7 +431,11 @@ export const DATA_DIAGRAMS: readonly DiagramExample[] = [
         height: 100,
       },
     ],
-    columns: [["date_dim", "customer_dim"], ["sales_fact"], ["product_dim", "store_dim"]],
+    columns: [
+      ["date_dim", "customer_dim"],
+      ["sales_fact"],
+      ["product_dim", "store_dim"],
+    ],
     links: [
       { from: "date_dim", to: "sales_fact" },
       { from: "customer_dim", to: "sales_fact" },
@@ -650,7 +664,11 @@ export const DATA_DIAGRAMS: readonly DiagramExample[] = [
         height: 110,
       },
     ],
-    columns: [["user_doc", "review_doc"], ["order_doc", "index"], ["product_doc"]],
+    columns: [
+      ["user_doc", "review_doc"],
+      ["order_doc", "index"],
+      ["product_doc"],
+    ],
     links: [
       { from: "user_doc", to: "order_doc", label: "references" },
       { from: "order_doc", to: "product_doc", label: "embeds sku" },

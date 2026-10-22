@@ -12,15 +12,16 @@
  * gallery imports it from a chunk of its own.
  */
 
-import type { ExcalidrawTemplate } from "../types";
-
 import { diagramTemplate } from "../diagram";
+
 import { ARCHITECTURE_DIAGRAMS } from "./architecture";
 import { DATA_DIAGRAMS } from "./data";
 import { FLOW_DIAGRAMS } from "./flow";
 import { PROCESS_DIAGRAMS } from "./process";
 import { SEQUENCE_DIAGRAMS } from "./sequence";
 import { SOFTWARE_DIAGRAMS } from "./software";
+
+import type { ExcalidrawTemplate } from "../types";
 
 /**
  * Every diagram example, in the order the gallery lists them.

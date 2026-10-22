@@ -59,7 +59,12 @@ export const ARCHITECTURE_DIAGRAMS: readonly DiagramExample[] = [
       { id: "users_db", label: "Users DB", tone: "yellow", height: 72 },
       { id: "orders_db", label: "Orders DB", tone: "yellow", height: 72 },
     ],
-    columns: [["client"], ["gateway"], ["users", "orders", "billing"], ["users_db", "orders_db", "queue"]],
+    columns: [
+      ["client"],
+      ["gateway"],
+      ["users", "orders", "billing"],
+      ["users_db", "orders_db", "queue"],
+    ],
     links: [
       { from: "client", to: "gateway", label: "https" },
       { from: "gateway", to: "users" },
@@ -117,7 +122,12 @@ export const ARCHITECTURE_DIAGRAMS: readonly DiagramExample[] = [
       { id: "dead", label: "Dead-letter queue", tone: "red", height: 80 },
       { id: "warehouse", label: "Warehouse", tone: "yellow", height: 80 },
     ],
-    columns: [["producer"], ["broker"], ["inventory", "notify", "analytics"], ["warehouse", "dead"]],
+    columns: [
+      ["producer"],
+      ["broker"],
+      ["inventory", "notify", "analytics"],
+      ["warehouse", "dead"],
+    ],
     links: [
       { from: "producer", to: "broker", label: "publishes" },
       { from: "broker", to: "inventory", label: "order.created" },
@@ -145,7 +155,12 @@ export const ARCHITECTURE_DIAGRAMS: readonly DiagramExample[] = [
       { id: "projection", label: "Read model", tone: "green", height: 80 },
       { id: "read_db", label: "Read database", tone: "yellow", height: 80 },
     ],
-    columns: [["client"], ["command", "query"], ["write", "projection"], ["log", "read_db"]],
+    columns: [
+      ["client"],
+      ["command", "query"],
+      ["write", "projection"],
+      ["log", "read_db"],
+    ],
     links: [
       { from: "client", to: "command", label: "writes" },
       { from: "client", to: "query", label: "reads" },
@@ -198,7 +213,12 @@ export const ARCHITECTURE_DIAGRAMS: readonly DiagramExample[] = [
       { id: "orders", label: "Orders API", tone: "green", height: 80 },
       { id: "catalog", label: "Catalog API", tone: "green", height: 80 },
     ],
-    columns: [["client"], ["gateway"], ["auth", "rate"], ["users", "orders", "catalog"]],
+    columns: [
+      ["client"],
+      ["gateway"],
+      ["auth", "rate"],
+      ["users", "orders", "catalog"],
+    ],
     links: [
       { from: "client", to: "gateway", label: "https" },
       { from: "gateway", to: "auth", label: "verifies" },
@@ -226,7 +246,12 @@ export const ARCHITECTURE_DIAGRAMS: readonly DiagramExample[] = [
       { id: "profile", label: "Profile service", tone: "green", height: 80 },
       { id: "push", label: "Push service", tone: "teal", height: 80 },
     ],
-    columns: [["ios", "android"], ["bff"], ["auth", "feed", "profile"], ["push"]],
+    columns: [
+      ["ios", "android"],
+      ["bff"],
+      ["auth", "feed", "profile"],
+      ["push"],
+    ],
     links: [
       { from: "ios", to: "bff", label: "graphql" },
       { from: "android", to: "bff", label: "graphql" },
@@ -254,7 +279,13 @@ export const ARCHITECTURE_DIAGRAMS: readonly DiagramExample[] = [
       { id: "warehouse", label: "Warehouse", tone: "yellow", height: 80 },
       { id: "bi", label: "Dashboards", tone: "orange", height: 80 },
     ],
-    columns: [["app_db", "events"], ["ingest"], ["lake", "transform"], ["warehouse"], ["bi"]],
+    columns: [
+      ["app_db", "events"],
+      ["ingest"],
+      ["lake", "transform"],
+      ["warehouse"],
+      ["bi"],
+    ],
     links: [
       { from: "app_db", to: "ingest", label: "CDC" },
       { from: "events", to: "ingest" },
@@ -310,9 +341,19 @@ export const ARCHITECTURE_DIAGRAMS: readonly DiagramExample[] = [
       { id: "pod_b", label: "Pod B", tone: "green", height: 72 },
       { id: "pod_c", label: "Pod C", tone: "green", height: 72 },
       { id: "registry", label: "Image registry", tone: "orange", height: 80 },
-      { id: "config", label: "ConfigMap & secrets", tone: "yellow", height: 80 },
+      {
+        id: "config",
+        label: "ConfigMap & secrets",
+        tone: "yellow",
+        height: 80,
+      },
     ],
-    columns: [["ingress"], ["service"], ["pod_a", "pod_b", "pod_c"], ["registry", "config"]],
+    columns: [
+      ["ingress"],
+      ["service"],
+      ["pod_a", "pod_b", "pod_c"],
+      ["registry", "config"],
+    ],
     links: [
       { from: "ingress", to: "service", label: "routes" },
       { from: "service", to: "pod_a" },
@@ -340,7 +381,14 @@ export const ARCHITECTURE_DIAGRAMS: readonly DiagramExample[] = [
       { id: "cd", label: "CD pipeline", tone: "violet", height: 80 },
       { id: "cluster", label: "Production cluster", tone: "green", height: 80 },
     ],
-    columns: [["repo"], ["ci"], ["tests", "scan"], ["registry"], ["cd"], ["cluster"]],
+    columns: [
+      ["repo"],
+      ["ci"],
+      ["tests", "scan"],
+      ["registry"],
+      ["cd"],
+      ["cluster"],
+    ],
     links: [
       { from: "repo", to: "ci", label: "push" },
       { from: "ci", to: "tests" },

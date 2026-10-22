@@ -56,11 +56,7 @@ const normalizeRatio = (ratio: number): number => {
  * where the ray crosses the nearer of its two pairs of sides, an ellipse
  * where it crosses the ellipse, a diamond where it crosses the rhombus.
  */
-const exitDistance = (
-  box: ConnectorBox,
-  ux: number,
-  uy: number,
-): number => {
+const exitDistance = (box: ConnectorBox, ux: number, uy: number): number => {
   const halfWidth = box.width / 2 + BINDING_GAP;
   const halfHeight = box.height / 2 + BINDING_GAP;
 

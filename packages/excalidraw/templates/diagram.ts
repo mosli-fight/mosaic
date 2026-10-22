@@ -214,10 +214,10 @@ const nodeSpec = (node: DiagramNodeSpec, box: Box): TemplateShapeSpec => ({
   label: nodeLabel(node),
   fontSize: node.fontSize ?? 16,
   textAlign: node.textAlign ?? (node.fields?.length ? "left" : "center"),
-  verticalAlign:
-    node.verticalAlign ?? (node.fields?.length ? "top" : "middle"),
+  verticalAlign: node.verticalAlign ?? (node.fields?.length ? "top" : "middle"),
   backgroundColor:
-    node.background ?? (node.tone ? toneColors(node.tone).background : undefined),
+    node.background ??
+    (node.tone ? toneColors(node.tone).background : undefined),
   strokeColor:
     node.stroke ?? (node.tone ? toneColors(node.tone).stroke : undefined),
   textColor: node.textColor,
@@ -324,7 +324,9 @@ export type DiagramExample = {
 };
 
 /** a diagram example as a template */
-export const diagramTemplate = (example: DiagramExample): ExcalidrawTemplate => ({
+export const diagramTemplate = (
+  example: DiagramExample,
+): ExcalidrawTemplate => ({
   id: example.id,
   nameKey: example.nameKey,
   descriptionKey: example.descriptionKey,
@@ -380,13 +382,15 @@ export const sequenceElements = ({
   participants.forEach((participant, index) => {
     centers.set(
       participant.id,
-      FIRST_X + index * (PARTICIPANT_WIDTH + PARTICIPANT_GAP) +
+      FIRST_X +
+        index * (PARTICIPANT_WIDTH + PARTICIPANT_GAP) +
         PARTICIPANT_WIDTH / 2,
     );
   });
 
   const lifelineBottom =
-    MESSAGE_TOP + Math.max(0, messages.length - 1) * MESSAGE_GAP +
+    MESSAGE_TOP +
+    Math.max(0, messages.length - 1) * MESSAGE_GAP +
     LIFELINE_TAIL;
 
   const actorSpecs = participants.flatMap((participant) => {

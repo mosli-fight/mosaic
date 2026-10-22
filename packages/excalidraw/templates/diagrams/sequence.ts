@@ -6,10 +6,10 @@
  * is drawn dashed and without a head.
  */
 
+import { sequenceTemplate } from "../diagram";
+
 import type { ExcalidrawTemplate } from "../types";
 import type { SequenceMessage, SequenceParticipant } from "../diagram";
-
-import { sequenceTemplate } from "../diagram";
 
 type SequenceExample = {
   id: string;
@@ -49,7 +49,12 @@ export const SEQUENCE_DIAGRAMS: readonly ExcalidrawTemplate[] = [
       { from: "server", to: "database", label: "findUser(email)" },
       { from: "database", to: "server", label: "user + hash", reply: true },
       { from: "server", to: "server", label: "verify password" },
-      { from: "server", to: "browser", label: "Set-Cookie: session", reply: true },
+      {
+        from: "server",
+        to: "browser",
+        label: "Set-Cookie: session",
+        reply: true,
+      },
     ],
   }),
   sequence({
@@ -111,7 +116,12 @@ export const SEQUENCE_DIAGRAMS: readonly ExcalidrawTemplate[] = [
       { from: "cache", to: "service", label: "miss", reply: true },
       { from: "service", to: "database", label: "SELECT user 42" },
       { from: "database", to: "service", label: "row", reply: true },
-      { from: "service", to: "cache", label: "SET user:42 ttl=60", dashed: true },
+      {
+        from: "service",
+        to: "cache",
+        label: "SET user:42 ttl=60",
+        dashed: true,
+      },
       { from: "service", to: "service", label: "return user" },
     ],
   }),
@@ -132,7 +142,12 @@ export const SEQUENCE_DIAGRAMS: readonly ExcalidrawTemplate[] = [
       { from: "database", to: "api", label: "20 rows", reply: true },
       { from: "api", to: "client", label: "{ items, next: 62 }", reply: true },
       { from: "client", to: "api", label: "GET /items?after=62" },
-      { from: "api", to: "client", label: "{ items, next: null }", reply: true },
+      {
+        from: "api",
+        to: "client",
+        label: "{ items, next: null }",
+        reply: true,
+      },
     ],
   }),
   sequence({
@@ -169,7 +184,12 @@ export const SEQUENCE_DIAGRAMS: readonly ExcalidrawTemplate[] = [
     ],
     messages: [
       { from: "client", to: "gateway", label: "GET /ws (Upgrade)" },
-      { from: "gateway", to: "client", label: "101 Switching Protocols", reply: true },
+      {
+        from: "gateway",
+        to: "client",
+        label: "101 Switching Protocols",
+        reply: true,
+      },
       { from: "gateway", to: "hub", label: "subscribe(room:7)" },
       { from: "hub", to: "gateway", label: "message", reply: true },
       { from: "gateway", to: "client", label: "message", reply: true },
@@ -193,8 +213,18 @@ export const SEQUENCE_DIAGRAMS: readonly ExcalidrawTemplate[] = [
       { from: "orchestrator", to: "stock", label: "reserveStock" },
       { from: "orchestrator", to: "payments", label: "authorise" },
       { from: "payments", to: "orchestrator", label: "declined", reply: true },
-      { from: "orchestrator", to: "stock", label: "releaseStock", dashed: true },
-      { from: "orchestrator", to: "orders", label: "cancelOrder", dashed: true },
+      {
+        from: "orchestrator",
+        to: "stock",
+        label: "releaseStock",
+        dashed: true,
+      },
+      {
+        from: "orchestrator",
+        to: "orders",
+        label: "cancelOrder",
+        dashed: true,
+      },
     ],
   }),
 ];
