@@ -24,7 +24,7 @@ import { useApp, useExcalidrawAppState } from "../App";
 
 import { closeDiagramPanel, useDiagramPanelOpen } from "./panelStore";
 
-import { diagramIcon } from "./DiagramButton";
+import { diagramIcon } from "./icon";
 
 import {
   applyCanvasRenames,
