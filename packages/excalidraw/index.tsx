@@ -111,6 +111,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     validateEmbeddable,
     renderEmbeddable,
     aiEnabled,
+    commentMembers,
     showDeprecatedFonts,
     renderScrollbars,
     viewportStatusFrame,
@@ -253,6 +254,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           validateEmbeddable={validateEmbeddable}
           renderEmbeddable={renderEmbeddable}
           aiEnabled={aiEnabled !== false}
+          commentMembers={commentMembers}
           showDeprecatedFonts={showDeprecatedFonts}
           renderScrollbars={renderScrollbars}
           viewportStatusFrame={viewportStatusFrame}
@@ -486,9 +488,12 @@ export {
 export type {
   CommentAnchor,
   CommentAuthor,
+  CommentCandidate,
   CommentComposerAnchor,
   CommentFilter,
+  CommentMention,
   CommentMessage,
+  CommentReaction,
   CommentThread,
 } from "./comments/types";
 export { FacilitationMenu } from "./components/facilitation/FacilitationMenu";

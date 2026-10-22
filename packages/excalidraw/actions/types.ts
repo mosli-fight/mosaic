@@ -165,6 +165,8 @@ export type ActionName =
   | "toggleResolvedComments"
   | "addComment"
   | "addCommentReply"
+  | "editComment"
+  | "toggleCommentReaction"
   | "setCommentResolved"
   | "deleteComment"
   | "createPoll"

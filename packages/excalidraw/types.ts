@@ -69,7 +69,11 @@ import type { SetViewportOptions } from "./viewport";
 
 import type { Language } from "./i18n";
 import type { isOverScrollBars } from "./scene/scrollbars";
-import type { CommentComposerAnchor, CommentThread } from "./comments/types";
+import type {
+  CommentCandidate,
+  CommentComposerAnchor,
+  CommentThread,
+} from "./comments/types";
 import type React from "react";
 import type { JSX } from "react";
 
@@ -1106,6 +1110,18 @@ export interface ExcalidrawProps {
     appState: AppState,
   ) => JSX.Element | null;
   aiEnabled?: boolean;
+  /**
+   * The people who can be @mentioned in a comment — the team's or the
+   * board's members, when the host app knows them.
+   *
+   * Optional: without it the mentions fall back to the people the editor
+   * knows about on its own — the people in the live session, the ones who
+   * commented on this board, and the ones who left a note on it.
+   *
+   * The array is compared by reference, so a host that builds it inline
+   * re-renders the editor on every render of its own.
+   */
+  commentMembers?: readonly CommentCandidate[];
   showDeprecatedFonts?: boolean;
   renderScrollbars?: boolean;
   viewportStatusFrame?: ViewportStatusFrame | null;
@@ -1276,6 +1292,7 @@ export type AppClassProperties = {
   insertEmbeddableElement: App["insertEmbeddableElement"];
   onMagicframeToolSelect: App["onMagicframeToolSelect"];
   getName: App["getName"];
+  getElementAtPosition: App["getElementAtPosition"];
   dismissLinearEditor: App["dismissLinearEditor"];
   flowchart: App["flowchart"];
   drawShape: App["drawShape"];

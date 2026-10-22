@@ -2690,6 +2690,16 @@ export const commentDeleteIcon = createIcon(
   tablerIconProps,
 );
 
+// tabler-icons: link (Mosaic comment attached to an element)
+export const commentAttachIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M10 13a5 5 0 0 0 7.54.54l3 -3a5 5 0 0 0 -7.07 -7.07l-1.72 1.71" />
+    <path d="M14 11a5 5 0 0 0 -7.54 -.54l-3 3a5 5 0 0 0 7.07 7.07l1.71 -1.71" />
+  </g>,
+  tablerIconProps,
+);
+
 // tabler-icons: users-group (Mosaic facilitation menu)
 export const facilitationIcon = createIcon(
   <g strokeWidth="1.5">

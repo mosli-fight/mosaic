@@ -22,21 +22,73 @@ export type CommentAuthor = {
   color?: string;
 };
 
+/**
+ * Somebody who can be @mentioned in a comment.
+ *
+ * The candidates are the people the board knows about: the team or board
+ * members the host app hands over, the people in the live session, and the
+ * people who already commented or left a note on this board.
+ */
+export type CommentCandidate = {
+  /** stable id of the person */
+  id: string;
+  /** the display name — the name a mention is written with */
+  name: string;
+  /** avatar image, when the host app has one */
+  avatarUrl?: string;
+};
+
+/**
+ * A person mentioned in a message.
+ *
+ * Stored with the message so the mention can be rendered as a highlighted
+ * token even when the person is no longer around to be picked from the
+ * candidate list.
+ */
+export type CommentMention = {
+  id: string;
+  name: string;
+};
+
+/**
+ * An emoji reaction on a message, and the people who left it.
+ *
+ * One reaction per emoji: the second person to react with the same emoji
+ * joins the first one's list instead of adding a second row.
+ */
+export type CommentReaction = {
+  /** the emoji itself */
+  emoji: string;
+  /** the ids of the users who reacted with it */
+  authorIds: string[];
+};
+
 export type CommentMessage = {
   id: string;
   author: CommentAuthor;
   text: string;
   /** epoch milliseconds */
   createdAt: number;
+  /** the people @mentioned in the text */
+  mentions?: CommentMention[];
+  /** the emoji reactions on the message */
+  reactions?: CommentReaction[];
+  /** set once the message has been edited */
+  edited?: boolean;
+  /** epoch milliseconds of the last edit */
+  editedAt?: number;
 };
 
 /**
  * Where the thread is pinned.
  *
  * Both variants carry the pin's position in *scene* coordinates so a thread
- * anchored to an element still knows where its pin goes (and where to put
- * the popover) even if the element is later moved — the pin is a fixed
- * point on the canvas, exactly like in Miro.
+ * knows where its pin goes even when the element it was dropped on is gone.
+ *
+ * A thread anchored to an element also carries the pin's offset from the
+ * element's centre. The pin is then drawn relative to the element, which
+ * makes it follow the element around the canvas — drag the element and the
+ * pin comes along, the way a Miro comment does.
  */
 export type CommentAnchor =
   | {
@@ -49,7 +101,15 @@ export type CommentAnchor =
       type: "element";
       /** id of the element the comment was dropped on */
       elementId: string;
-      /** scene coordinates of the pin */
+      /**
+       * The pin's offset from the element's centre, in scene units.
+       *
+       * Absent on threads created before comments could follow an element:
+       * such a thread keeps its pin where it was dropped.
+       */
+      offsetX?: number;
+      offsetY?: number;
+      /** scene coordinates of the pin when the comment was dropped */
       x: number;
       y: number;
     };

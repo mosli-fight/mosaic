@@ -5,12 +5,7 @@ import { t } from "../i18n";
 
 import { COMMENT_EMOJI } from "./commentEmoji";
 
-import type { CommentAuthor } from "./types";
-
-type MentionCandidate = {
-  id: string;
-  name: string;
-};
+import type { CommentCandidate } from "./types";
 
 type CommentComposerProps = {
   value: string;
@@ -20,7 +15,7 @@ type CommentComposerProps = {
   submitLabel: string;
   placeholder: string;
   /** people the author can @mention */
-  mentionCandidates?: MentionCandidate[];
+  mentionCandidates?: CommentCandidate[];
   autoFocus?: boolean;
   className?: string;
   "data-testid"?: string;
@@ -128,7 +123,7 @@ export const CommentComposer = ({
   );
 
   const pickMention = useCallback(
-    (candidate: MentionCandidate) => {
+    (candidate: CommentCandidate) => {
       const textarea = textareaRef.current;
       const text = value;
       const caret = textarea?.selectionStart ?? text.length;
@@ -295,21 +290,4 @@ export const CommentComposer = ({
       </div>
     </div>
   );
-};
-
-/**
- * The people the current user can @mention: everyone else in the session.
- */
-export const getMentionCandidates = (
-  collaborators: Map<string, { username?: string | null }>,
-  currentUser: CommentAuthor,
-): MentionCandidate[] => {
-  const candidates = new Map<string, MentionCandidate>();
-  for (const [socketId, collaborator] of collaborators) {
-    if (!collaborator.username || socketId === currentUser.id) {
-      continue;
-    }
-    candidates.set(socketId, { id: socketId, name: collaborator.username });
-  }
-  return [...candidates.values()];
 };
