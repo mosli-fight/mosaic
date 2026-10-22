@@ -25,6 +25,8 @@ import {
 
 import { clamp } from "@excalidraw/math";
 
+import type { Radians } from "@excalidraw/math";
+
 import { updateBoundElements } from "./binding";
 import { newElementWith } from "./mutateElement";
 import { getPositionAfterHeightChange } from "./sizeHelpers";
@@ -556,7 +558,10 @@ export const getStickyNoteFooter = (
   element: Pick<ExcalidrawStickyNoteElement, "created" | "width" | "height">,
   now = Date.now(),
 ) => {
+  // a note with a broken size has no place to draw its footer on
   if (
+    !Number.isFinite(element.width) ||
+    !Number.isFinite(element.height) ||
     element.width < STICKY_NOTE_MIN_SIZE ||
     element.height < STICKY_NOTE_MIN_SIZE
   ) {
@@ -624,6 +629,8 @@ export const getStickyNoteFooterContent = (
   const tags = element.tags ?? [];
 
   if (
+    !Number.isFinite(element.width) ||
+    !Number.isFinite(element.height) ||
     element.width < STICKY_NOTE_MIN_SIZE ||
     element.height < STICKY_NOTE_MIN_SIZE
   ) {
@@ -753,8 +760,28 @@ type FontFit = {
 const NO_ELEMENTS: ElementsMap = new Map();
 
 const getStickyNoteBaseWidth = (container: ExcalidrawStickyNoteElement) => {
-  return Math.max(container.width, STICKY_NOTE_MIN_SIZE);
+  // a broken width must not spread into the layout
+  const width = Number.isFinite(container.width)
+    ? container.width
+    : STICKY_NOTE_MIN_SIZE;
+  return Math.max(width, STICKY_NOTE_MIN_SIZE);
 };
+
+/**
+ * The note's own geometry with every broken value replaced by a usable one.
+ *
+ * The position math (`getPositionAfterHeightChange`, `computeBoundTextPosition`)
+ * reads `x`/`y`/`height`/`angle` straight off the note, so a single NaN there
+ * would spread to the note's position and to the label's — and a NaN geometry
+ * reaching the canvas makes the paint throw, blanking the whole scene.
+ */
+const getStickyNoteGeometry = (container: ExcalidrawStickyNoteElement) => ({
+  ...container,
+  x: Number.isFinite(container.x) ? container.x : 0,
+  y: Number.isFinite(container.y) ? container.y : 0,
+  height: Number.isFinite(container.height) ? container.height : 0,
+  angle: (Number.isFinite(container.angle) ? container.angle : 0) as Radians,
+});
 
 /**
  * Largest font size on the grid `{ceiling − k·STEP} ∪ {min}` whose wrapped
@@ -805,9 +832,13 @@ const fitStickyNoteFont = (
   }
 
   // the previous fitted size, snapped onto the grid and clamped into the
-  // current interval (a lowered ceiling must not keep the old larger size)
+  // current interval (a lowered ceiling must not keep the old larger size).
+  // A broken warm start would make the search index NaN and return nothing.
   const warm = clamp(
-    Math.round((baseFontSize - warmStart) / STICKY_NOTE_FONT_STEP),
+    Math.round(
+      (baseFontSize - (Number.isFinite(warmStart) ? warmStart : baseFontSize)) /
+        STICKY_NOTE_FONT_STEP,
+    ),
     0,
     steps,
   );
@@ -851,8 +882,13 @@ export const getStickyNoteLayout = (
   opts: StickyNoteLayoutOpts = {},
 ): StickyNoteLayout => {
   const baseWidth = getStickyNoteBaseWidth(container);
+  const geometry = getStickyNoteGeometry(container);
+  const requestedBaseHeight =
+    opts.baseHeight ?? (container.baseHeight || container.height);
   const baseHeight = Math.max(
-    opts.baseHeight ?? (container.baseHeight || container.height),
+    Number.isFinite(requestedBaseHeight)
+      ? requestedBaseHeight
+      : STICKY_NOTE_MIN_SIZE,
     STICKY_NOTE_MIN_SIZE,
   );
   const anchor = opts.anchor ?? "top";
@@ -861,7 +897,7 @@ export const getStickyNoteLayout = (
     // an empty note sits at its base height
     return {
       container: {
-        ...getPositionAfterHeightChange(container, baseHeight, anchor),
+        ...getPositionAfterHeightChange(geometry, baseHeight, anchor),
         width: baseWidth,
         height: baseHeight,
         baseHeight,
@@ -879,7 +915,11 @@ export const getStickyNoteLayout = (
   // a tagged note gives the tag row its own band above the footer
   const bodyInsetY = getStickyNoteBodyInsetY(container.tags?.length ?? 0);
   const maxHeight = Math.max(baseHeight - bodyInsetY, 0);
-  const { fontFamily, lineHeight, fontStyle } = textElement;
+  const { fontFamily, fontStyle } = textElement;
+  // a broken line height would make every measurement NaN
+  const lineHeight = Number.isFinite(textElement.lineHeight)
+    ? textElement.lineHeight
+    : getLineHeight(fontFamily);
 
   const fit = (fontSize: number): FontFit => {
     const font = getFontString({ fontFamily, fontSize, fontStyle });
@@ -906,23 +946,29 @@ export const getStickyNoteLayout = (
         warmStart: textElement.fontSize,
       });
 
+  // a measurement we cannot trust must never reach the element geometry: a
+  // NaN height would spread to the note's position and to the label's, and
+  // a single broken element must never take the whole scene render down
+  const fittedWidth = Number.isFinite(fitted.width) ? fitted.width : 0;
+  const fittedHeight = Number.isFinite(fitted.height) ? fitted.height : 0;
+
   const height = isBlank
     ? baseHeight
-    : Math.max(baseHeight, fitted.height + bodyInsetY);
+    : Math.max(baseHeight, fittedHeight + bodyInsetY);
   const nextContainer = {
-    ...getPositionAfterHeightChange(container, height, anchor),
+    ...getPositionAfterHeightChange(geometry, height, anchor),
     width: baseWidth,
     height,
     baseHeight,
   };
   const { x, y } = computeBoundTextPosition(
-    { ...container, ...nextContainer },
+    { ...geometry, ...nextContainer },
     {
       ...textElement,
       text: fitted.text,
       fontSize: fitted.fontSize,
-      width: fitted.width,
-      height: fitted.height,
+      width: fittedWidth,
+      height: fittedHeight,
     } as ExcalidrawTextElementWithContainer,
     NO_ELEMENTS,
   );
@@ -933,11 +979,11 @@ export const getStickyNoteLayout = (
       text: fitted.text,
       fontSize: fitted.fontSize,
       baseFontSize,
-      width: fitted.width,
-      height: fitted.height,
-      x,
-      y,
-      angle: container.angle,
+      width: fittedWidth,
+      height: fittedHeight,
+      x: Number.isFinite(x) ? x : 0,
+      y: Number.isFinite(y) ? y : 0,
+      angle: geometry.angle,
     },
   };
 };

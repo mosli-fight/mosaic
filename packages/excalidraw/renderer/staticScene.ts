@@ -450,6 +450,10 @@ const _renderStaticScene = ({
   visibleElements
     .filter((el) => !isIframeLikeElement(el))
     .forEach((element) => {
+      // the canvas state stack has to stay balanced: an unbalanced `save()`
+      // leaks the element's clip into the rest of the frame (and into the
+      // next one), which can leave the whole canvas blank
+      let contextSaved = false;
       try {
         if (
           isTextElement(element) &&
@@ -461,6 +465,7 @@ const _renderStaticScene = ({
         }
 
         context.save();
+        contextSaved = true;
         const boundTextElement = getBoundTextElement(element, elementsMap);
 
         const renderState = getRenderState(element);
@@ -489,6 +494,7 @@ const _renderStaticScene = ({
         }
 
         context.restore();
+        contextSaved = false;
 
         if (!isExporting && renderConfig.renderLinks !== false) {
           renderLinkIcon(element, context, appState, elementsMap, renderState);
@@ -502,6 +508,10 @@ const _renderStaticScene = ({
           element.width,
           element.height,
         );
+      } finally {
+        if (contextSaved) {
+          context.restore();
+        }
       }
     });
 
@@ -509,9 +519,11 @@ const _renderStaticScene = ({
   visibleElements
     .filter((el) => isIframeLikeElement(el))
     .forEach((element) => {
+      let contextSaved = false;
       try {
         const renderState = getRenderState(element);
         context.save();
+        contextSaved = true;
         clipElementToFrame(element, renderState);
         renderElement(
           element,
@@ -553,8 +565,13 @@ const _renderStaticScene = ({
           renderLinkIcon(element, context, appState, elementsMap, renderState);
         }
         context.restore();
+        contextSaved = false;
       } catch (error: any) {
         console.error(error);
+      } finally {
+        if (contextSaved) {
+          context.restore();
+        }
       }
     });
 

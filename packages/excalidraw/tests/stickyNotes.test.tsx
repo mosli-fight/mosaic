@@ -5,6 +5,7 @@ import {
   DEFAULT_STICKY_NOTE_SIZE,
   KEYS,
   STICKY_NOTE_MIN_FONT_SIZE,
+  STICKY_NOTE_MIN_SIZE,
   arrayToMap,
 } from "@excalidraw/common";
 import { queryByTestId } from "@testing-library/react";
@@ -27,7 +28,13 @@ import type {
   NonDeleted,
 } from "@excalidraw/element/types";
 
-import { actionBindText, actionGroup, actionUnbindText } from "../actions";
+import {
+  actionAddStickyNoteTag,
+  actionBindText,
+  actionGroup,
+  actionToggleStickyNoteFontStyle,
+  actionUnbindText,
+} from "../actions";
 import {
   actionChangeBackgroundColor,
   actionChangeFontSize,
@@ -1172,6 +1179,190 @@ describe("sticky notes", () => {
         expect.any(Number),
         expect.any(Number),
       );
+    });
+  });
+
+  /**
+   * Regression for the canvas going blank after a sticky tag add or a corner
+   * resize. A styled label's font string is `bold 28px Virgil`, which a bare
+   * `parseFloat` reads as NaN; the NaN spread into the note's height and both
+   * elements' positions, and the paint then threw on the non-finite geometry —
+   * taking the whole scene down. Reloading recovered everything, which is why
+   * this was a render-path crash and not data loss.
+   */
+  describe("edge states keep the canvas rendering", () => {
+    const expectFiniteGeometry = () => {
+      const broken: string[] = [];
+      for (const element of h.elements) {
+        for (const key of ["x", "y", "width", "height"] as const) {
+          if (!Number.isFinite(element[key])) {
+            broken.push(
+              `${element.type} ${element.id} has ${key}=${element[key]}`,
+            );
+          }
+        }
+        if (element.type === "text") {
+          for (const key of ["fontSize", "baseFontSize"] as const) {
+            const value = element[key];
+            if (
+              value !== null &&
+              value !== undefined &&
+              !Number.isFinite(value)
+            ) {
+              broken.push(`text ${element.id} has ${key}=${value}`);
+            }
+          }
+        }
+      }
+      // a NaN here reaches the canvas and makes the paint throw, which is
+      // what blanked the whole scene
+      expect(broken).toEqual([]);
+      expect(Number.isFinite(h.state.zoom.value)).toBe(true);
+      expect(Number.isFinite(h.state.scrollX)).toBe(true);
+      expect(Number.isFinite(h.state.scrollY)).toBe(true);
+    };
+
+    it("survives adding a tag to a bold note", () => {
+      const { note, label } = createNote({
+        id: "note",
+        text: "hello",
+        fontSize: 28,
+      });
+      API.setElements([note, label]);
+      layoutNotes(note.id);
+      API.setSelectedElements([getElement(note.id)]);
+      act(() => {
+        h.app.actionManager.executeAction(
+          actionToggleStickyNoteFontStyle,
+          "ui",
+          { style: "bold" },
+        );
+      });
+      expect(getElement<ExcalidrawTextElement>(label.id).fontStyle?.bold).toBe(
+        true,
+      );
+
+      act(() => {
+        h.app.actionManager.executeAction(actionAddStickyNoteTag, "ui", {
+          tag: "idea",
+        });
+      });
+
+      const tagged = getElement<ExcalidrawStickyNoteElement>(note.id);
+      expect(tagged.tags).toEqual(["idea"]);
+      expectFiniteGeometry();
+      // the note and its label are still a consistent pair
+      const layout = getStickyNoteLayout(
+        tagged,
+        getElement<ExcalidrawTextElement>(label.id),
+      );
+      expect(tagged.height).toBeCloseTo(layout.container.height);
+    });
+
+    it("survives a corner resize to an extreme size", () => {
+      const { note, label } = createNote({
+        id: "note",
+        text: "hello",
+        fontSize: 28,
+      });
+      API.setElements([note, label]);
+      layoutNotes(note.id);
+      API.setSelectedElements([getElement(note.id)]);
+
+      for (const delta of [
+        [5000, 5000],
+        [-5000, -5000],
+        [-250, -250],
+        [1, 1],
+      ] as const) {
+        UI.resize(getElement<ExcalidrawStickyNoteElement>(note.id), "se", [
+          delta[0],
+          delta[1],
+        ]);
+        expectFiniteGeometry();
+      }
+
+      const resized = getElement<ExcalidrawStickyNoteElement>(note.id);
+      expect(resized.width).toBeGreaterThanOrEqual(STICKY_NOTE_MIN_SIZE);
+      expect(resized.height).toBeGreaterThanOrEqual(STICKY_NOTE_MIN_SIZE);
+    });
+
+    it("survives a corner resize of a tagged bold note", () => {
+      const { note, label } = createNote({
+        id: "note",
+        text: "hello",
+        fontSize: 28,
+      });
+      API.setElements([note, label]);
+      layoutNotes(note.id);
+      API.setSelectedElements([getElement(note.id)]);
+      act(() => {
+        h.app.actionManager.executeAction(
+          actionToggleStickyNoteFontStyle,
+          "ui",
+          { style: "bold" },
+        );
+        h.app.actionManager.executeAction(actionAddStickyNoteTag, "ui", {
+          tag: "idea",
+        });
+      });
+      expect(getElement<ExcalidrawTextElement>(label.id).fontStyle?.bold).toBe(
+        true,
+      );
+      expect(getElement<ExcalidrawStickyNoteElement>(note.id).tags).toEqual([
+        "idea",
+      ]);
+
+      for (const handle of ["se", "nw", "ne", "sw"] as const) {
+        for (const delta of [
+          [50, 50],
+          [-1000, -1000],
+          [1000, 1000],
+        ] as const) {
+          UI.resize(getElement<ExcalidrawStickyNoteElement>(note.id), handle, [
+            delta[0],
+            delta[1],
+          ]);
+          expectFiniteGeometry();
+        }
+      }
+    });
+
+    it("keeps the paint path alive when an element's geometry is broken", () => {
+      // the layout can only fix what it owns: an element that reaches the
+      // renderer already broken must be skipped, not take the scene down
+      const rectangle = API.createElement({
+        type: "rectangle",
+        id: "rectangle",
+        x: 400,
+        y: 100,
+      });
+      const broken = {
+        ...API.createElement({
+          type: "stickynote",
+          id: "broken",
+          x: 100,
+          y: 100,
+          width: DEFAULT_STICKY_NOTE_SIZE,
+          height: DEFAULT_STICKY_NOTE_SIZE,
+          baseHeight: DEFAULT_STICKY_NOTE_SIZE,
+        }),
+        width: NaN,
+        height: NaN,
+      };
+      API.setElements([broken, rectangle]);
+
+      expect(() => {
+        act(() => {
+          API.setAppState({ selectedElementIds: { broken: true } });
+        });
+      }).not.toThrow();
+      // the editor is still mounted and the healthy element still renders
+      expect(document.querySelector(".excalidraw")).not.toBeNull();
+      expect(h.elements.map((element) => element.id)).toEqual([
+        "broken",
+        "rectangle",
+      ]);
     });
   });
 });

@@ -138,7 +138,14 @@ const StaticCanvas = (props: StaticCanvasProps) => {
 
     latestScene.current = scene;
 
-    renderStaticScene(scene, isRenderThrottlingEnabled());
+    try {
+      renderStaticScene(scene, isRenderThrottlingEnabled());
+    } catch (error) {
+      // failing to paint the scene must not unmount the editor — this runs
+      // inside React's effect, and an exception here would leave the user
+      // with a blank canvas
+      console.error(error);
+    }
 
     if (hasAnimatedGif(props.visibleElements, props.renderConfig)) {
       startAnimation();
