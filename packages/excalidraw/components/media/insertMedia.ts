@@ -29,10 +29,13 @@ import {
 
 import type { FileId } from "@excalidraw/element/types";
 
+import { ICON_SIZE, iconToDataURL } from "../icons/iconDrawing";
+
 import { STICKER_SIZE, stickerToDataURL } from "./stickerDrawing";
 
 import type { AppClassProperties, DataURL } from "../../types";
 
+import type { IconAsset } from "../icons/iconDrawing";
 import type { Sticker } from "./stickerDrawing";
 
 /** the size an emoji lands on the board at */
@@ -107,6 +110,41 @@ export const insertSticker = (app: AppClassProperties, sticker: Sticker) => {
       [fileId]: {
         id: fileId,
         dataURL: stickerToDataURL(sticker),
+        mimeType: MIME_TYPES.svg,
+        created: Date.now(),
+      },
+    },
+    position: "center",
+  });
+};
+
+/**
+ * Puts an icon on the board as an image.
+ *
+ * An icon travels the same way a sticker does — a data URL stored as a file
+ * of the scene — so it is a real image the user can move, scale and delete.
+ */
+export const insertIcon = (app: AppClassProperties, icon: IconAsset) => {
+  const fileId = randomId() as FileId;
+
+  const element = newImageElement({
+    type: "image",
+    x: 0,
+    y: 0,
+    width: ICON_SIZE,
+    height: ICON_SIZE,
+    fileId,
+    status: "pending",
+    strokeColor: "transparent",
+    backgroundColor: "transparent",
+  });
+
+  app.addElementsFromPasteOrLibrary({
+    elements: [element],
+    files: {
+      [fileId]: {
+        id: fileId,
+        dataURL: iconToDataURL(icon),
         mimeType: MIME_TYPES.svg,
         created: Date.now(),
       },

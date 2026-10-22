@@ -35,6 +35,8 @@ import {
   syncCodeToScene,
 } from "./sync";
 
+import { getDiagramIconFiles } from "./scene";
+
 import "./diagramPanel.scss";
 
 import type { DiagramParseError, DiagramType } from "./types";
@@ -111,6 +113,14 @@ export const DiagramPanelBody = () => {
           elements: result.elements,
           appState: { diagramCode: nextCode, diagramType: nextType },
         });
+
+        // an icon is an image, so the files behind the icons have to travel
+        // with the elements — without them the corner would be a placeholder
+        const files = getDiagramIconFiles(result.elements);
+
+        if (files.length) {
+          app.api.addFiles(files);
+        }
       });
 
       appliedCode.current = nextCode;

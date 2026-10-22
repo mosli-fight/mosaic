@@ -11,11 +11,17 @@ import { TextField } from "../TextField";
 
 import { searchEmojis } from "./emojiData";
 import { GifPanel } from "./GifPanel";
-import { insertEmoji, insertSticker, insertVideo } from "./insertMedia";
+import {
+  insertEmoji,
+  insertIcon,
+  insertSticker,
+  insertVideo,
+} from "./insertMedia";
 
 import "./mediaPanel.scss";
 
 import type { VideoInsertResult } from "./insertMedia";
+import type { IconAsset, IconCategoryId } from "../icons/iconDrawing";
 import type { Sticker, StickerCategoryId } from "./stickerDrawing";
 
 /**
@@ -24,6 +30,13 @@ import type { Sticker, StickerCategoryId } from "./stickerDrawing";
  * should not pay for one.
  */
 const StickerPanel = lazy(() => import("./StickerPanel"));
+
+/**
+ * The icons tab is lazy for the same reason the stickers one is: the
+ * catalogue of icons is large enough that a board which never opens it
+ * should not download it.
+ */
+const IconPanel = lazy(() => import("../icons/IconPanel"));
 
 /**
  * The media panel: a Miro-style shelf of things that can be put on a board.
@@ -38,7 +51,7 @@ const StickerPanel = lazy(() => import("./StickerPanel"));
  * row.
  */
 
-type MediaTab = "emoji" | "stickers" | "gif";
+type MediaTab = "emoji" | "stickers" | "icons" | "gif";
 type MediaMode = MediaTab | "video";
 
 const getVideoErrorKey = (result: VideoInsertResult) => {
@@ -114,6 +127,10 @@ export const MediaPanel = () => {
   const [stickerCategory, setStickerCategory] = useState<
     StickerCategoryId | "all"
   >("all");
+  const [iconQuery, setIconQuery] = useState("");
+  const [iconCategory, setIconCategory] = useState<IconCategoryId | "all">(
+    "all",
+  );
   const [videoUrl, setVideoUrl] = useState("");
   const [videoError, setVideoError] = useState<string | null>(null);
 
@@ -131,6 +148,11 @@ export const MediaPanel = () => {
   const addSticker = (sticker: Sticker) => {
     trackEvent("media", "sticker", sticker.id);
     insertSticker(app, sticker);
+  };
+
+  const addIcon = (icon: IconAsset) => {
+    trackEvent("media", "icon", icon.id);
+    insertIcon(app, icon);
   };
 
   const addVideo = (event: React.FormEvent) => {
@@ -239,6 +261,18 @@ export const MediaPanel = () => {
                 <button
                   type="button"
                   role="tab"
+                  aria-selected={tab === "icons"}
+                  className={clsx("media-panel__tab", {
+                    "media-panel__tab--active": tab === "icons",
+                  })}
+                  data-testid="media-tab-icons"
+                  onClick={() => setTab("icons")}
+                >
+                  {t("labels.media.tabs.icons")}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
                   aria-selected={tab === "gif"}
                   className={clsx("media-panel__tab", {
                     "media-panel__tab--active": tab === "gif",
@@ -296,6 +330,25 @@ export const MediaPanel = () => {
                   onQueryChange={setStickerQuery}
                   onCategoryChange={setStickerCategory}
                   onPick={addSticker}
+                />
+              </Suspense>
+            ) : tab === "icons" ? (
+              <Suspense
+                fallback={
+                  <div
+                    className="media-panel__empty"
+                    data-testid="media-icons-loading"
+                  >
+                    {t("labels.media.iconsLoading")}
+                  </div>
+                }
+              >
+                <IconPanel
+                  query={iconQuery}
+                  category={iconCategory}
+                  onQueryChange={setIconQuery}
+                  onCategoryChange={setIconCategory}
+                  onPick={addIcon}
                 />
               </Suspense>
             ) : (

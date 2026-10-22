@@ -23,17 +23,21 @@ import {
 import {
   computeBoundTextPosition,
   getBoundTextMaxWidth,
+  isImageElement,
   measureText,
   newArrowElement,
   newElement,
   newElementWith,
   newFrameElement,
+  newImageElement,
   newLinearElement,
   newTextElement,
   wrapText,
 } from "@excalidraw/element";
 
 import { pointFrom } from "@excalidraw/math";
+
+import { MIME_TYPES } from "@excalidraw/common";
 
 import type {
   ExcalidrawElement,
@@ -42,6 +46,15 @@ import type {
   ExcalidrawTextElement,
   ExcalidrawTextElementWithContainer,
 } from "@excalidraw/element/types";
+
+import {
+  diagramIconFileId,
+  iconToDataURL,
+  ICON_FILE_ID_PREFIX,
+} from "../icons/iconDrawing";
+import { findIconById, findIconByName } from "../icons/icons";
+
+import type { BinaryFileData } from "../../types";
 
 import type {
   DiagramLayout,
@@ -86,6 +99,12 @@ const TABLE_FONT_SIZE = 14;
 
 /** the size an icon glyph is drawn at */
 const ICON_FONT_SIZE = 18;
+
+/** the size a library icon is drawn at in a node's corner */
+const DIAGRAM_ICON_SIZE = 28;
+
+/** how far a library icon sits from the node's corner */
+const DIAGRAM_ICON_INSET = 8;
 
 /** the size an edge's label is written in */
 const EDGE_LABEL_FONT_SIZE = 12;
@@ -472,8 +491,38 @@ export const buildDiagramElements = (
       newElementWith(label, { frameId }),
     );
 
-    // an icon is a small glyph in the corner, not part of the label
-    const glyph = resolveIconGlyph(node.icon);
+    // an icon is a small mark in the corner, not part of the label.
+    //
+    // A name from the icon library (`postgres`, `s3`, `k8s-pod`, ...) is
+    // drawn as the very same tile the media panel offers, so a diagram and a
+    // board speak one visual language. A name that is not in the library
+    // falls back to the glyph table below, which is what the pane has always
+    // understood.
+    const iconAsset =
+      type !== "erd" && !isParticipant ? findIconByName(node.icon) : null;
+
+    if (iconAsset) {
+      elements.push(
+        newImageElement({
+          type: "image",
+          x: laidOut.x + DIAGRAM_ICON_INSET,
+          y: laidOut.y + DIAGRAM_ICON_INSET,
+          width: DIAGRAM_ICON_SIZE,
+          height: DIAGRAM_ICON_SIZE,
+          fileId: diagramIconFileId(iconAsset),
+          status: "saved",
+          strokeColor: "transparent",
+          backgroundColor: "transparent",
+          frameId,
+          ...(elementIdFor("icon", node.id, reuse)
+            ? { id: elementIdFor("icon", node.id, reuse)! }
+            : {}),
+          customData: tag("icon", { node: node.id }),
+        }),
+      );
+    }
+
+    const glyph = iconAsset ? null : resolveIconGlyph(node.icon);
 
     if (glyph && type !== "erd" && !isParticipant) {
       const lineHeight = getLineHeight(DIAGRAM_FONT_FAMILY);
@@ -658,6 +707,50 @@ const bindArrow = (
 export const getDiagramElements = (
   elements: readonly ExcalidrawElement[],
 ): ExcalidrawElement[] => elements.filter(isDiagramElement);
+
+/**
+ * The files the icons of a diagram need.
+ *
+ * An icon is an image, and an image is nothing without its file. The file
+ * id is derived from the icon's id, so two nodes carrying the same icon
+ * share one file, and a re-parse asks for nothing new.
+ */
+export const getDiagramIconFiles = (
+  elements: readonly ExcalidrawElement[],
+): BinaryFileData[] => {
+  const files = new Map<string, BinaryFileData>();
+
+  for (const element of elements) {
+    if (getDiagramTag(element)?.diagramRole !== "icon") {
+      continue;
+    }
+
+    if (!isImageElement(element) || !element.fileId) {
+      continue;
+    }
+
+    const fileId = element.fileId;
+
+    if (files.has(fileId)) {
+      continue;
+    }
+
+    const icon = findIconById(fileId.slice(ICON_FILE_ID_PREFIX.length));
+
+    if (!icon) {
+      continue;
+    }
+
+    files.set(fileId, {
+      id: fileId,
+      dataURL: iconToDataURL(icon),
+      mimeType: MIME_TYPES.svg,
+      created: Date.now(),
+    });
+  }
+
+  return [...files.values()];
+};
 
 /**
  * Reconciles a diagram with what is already on the board.
