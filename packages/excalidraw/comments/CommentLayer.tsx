@@ -40,7 +40,12 @@ import {
 
 import "./comments.scss";
 
-import type { CommentAnchor, CommentMention, CommentThread } from "./types";
+import type {
+  CommentAnchor,
+  CommentComposerAnchor,
+  CommentMention,
+  CommentThread,
+} from "./types";
 
 /** how far the popovers sit from their pin */
 const POPOVER_OFFSET = 14;
@@ -192,7 +197,34 @@ export const CommentLayer = () => {
   });
 
   const composerAnchor = appState.commentComposerAnchor;
-  const [composerText, setComposerText] = useState("");
+
+  /**
+   * The text of the open composer, together with the anchor it was typed for.
+   *
+   * `CommentLayer` never unmounts, so a plain `useState` for the text would
+   * outlive the composer: the comment that was just posted (or cancelled)
+   * would still be in the box the next time a pin opens one. Every pin arms a
+   * fresh anchor object, so comparing the anchor by identity tells us when a
+   * different composer is opening and its draft has to start empty.
+   */
+  const [composerDraft, setComposerDraft] = useState<{
+    anchor: CommentComposerAnchor | null;
+    text: string;
+    /**
+     * bumped whenever a different composer opens — the composer is keyed by
+     * it, so its own state (the mention and emoji popups) starts fresh too
+     */
+    generation: number;
+  }>({ anchor: null, text: "", generation: 0 });
+
+  if (composerDraft.anchor !== composerAnchor) {
+    // a different pin opened a composer — it starts empty
+    setComposerDraft({
+      anchor: composerAnchor,
+      text: "",
+      generation: composerDraft.generation + 1,
+    });
+  }
 
   const submitComposer = useCallback(
     (text: string) => {
@@ -440,11 +472,16 @@ export const CommentLayer = () => {
           onKeyDown={(event) => event.stopPropagation()}
         >
           <CommentComposer
-            value={composerText}
-            onChange={setComposerText}
-            onSubmit={() => submitComposer(composerText)}
+            // a different pin re-mounts the composer, so its own state — the
+            // mention and emoji popups — does not outlive the comment either
+            key={composerDraft.generation}
+            value={composerDraft.text}
+            onChange={(text) =>
+              setComposerDraft((draft) => ({ ...draft, text }))
+            }
+            onSubmit={() => submitComposer(composerDraft.text)}
             onCancel={() => {
-              setComposerText("");
+              setComposerDraft((draft) => ({ ...draft, text: "" }));
               setAppState({ commentComposerAnchor: null });
             }}
             submitLabel={t("comment.submit")}
@@ -466,6 +503,10 @@ export const CommentLayer = () => {
           data-testid="comment-thread-popover"
         >
           <CommentThreadPopover
+            // the popover owns the reply draft; keying it by thread makes
+            // switching threads start a fresh reply box instead of carrying
+            // the previous thread's half-written reply over
+            key={openThreadData.id}
             thread={openThreadData}
             currentUser={currentUser}
             mentionCandidates={mentionCandidates}
