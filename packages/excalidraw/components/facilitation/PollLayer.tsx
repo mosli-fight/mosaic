@@ -95,6 +95,12 @@ export const PollLayer = () => {
             }}
             data-testid="facilitation-poll-card"
             data-poll-id={poll.id}
+            onKeyDown={(event) => {
+              // the widget has the focus: the editor must not steal the
+              // keys — Enter would start editing the card's shape, and
+              // Space would pan the board instead of casting the vote
+              event.stopPropagation();
+            }}
           >
             <div className="facilitation-poll-card__question">
               {poll.question}

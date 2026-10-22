@@ -7,6 +7,11 @@
   --zIndex-svgLayer: 3;
   --zIndex-wysiwyg: 3;
   --zIndex-canvasButtons: 3;
+  // the widgets that are drawn *on* the board (the poll cards, the vote
+  // badges): they have to be painted above the canvas, or the canvas —
+  // which covers the whole board and takes the pointer events — hides them
+  // and swallows their clicks
+  --zIndex-canvasWidgets: 3;
   --zIndex-layerUI: 4;
   --zIndex-viewportStatusFrame: 5;
   --zIndex-eyeDropperBackdrop: 5;

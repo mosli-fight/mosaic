@@ -2508,6 +2508,16 @@ class App extends React.Component<AppProps, AppState> {
                             {this.props.children}
                           </LayerUI>
 
+                          {/*
+                            the facilitation widgets are drawn on the board:
+                            they are painted above the canvas — which covers
+                            the whole board and takes the pointer events —
+                            but below the other overlays of the canvas (the
+                            text editor, the trails, the comment pins), so
+                            that they do not hide them
+                          */}
+                          <FacilitationLayer />
+
                           <div className="excalidraw-textEditorContainer" />
                           <div className="excalidraw-contextMenuContainer" />
                           <div className="excalidraw-eye-dropper-container" />
@@ -2740,7 +2750,6 @@ class App extends React.Component<AppProps, AppState> {
                             )}
                           {this.renderFrameNames()}
                           <CommentLayer />
-                          <FacilitationLayer />
                           <TimerWidget />
                           {this.isDefaultUIEnabled() &&
                             this.state.activeLockedId && (

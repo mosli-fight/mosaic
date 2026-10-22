@@ -79,6 +79,12 @@ export const VotingLayer = () => {
               event.stopPropagation();
               castVote({ elementId: element.id, participantId });
             }}
+            onKeyDown={(event) => {
+              // the badge has the focus: the editor must not steal the
+              // keys — Enter would start editing the element, and Space
+              // would pan the board instead of casting the vote
+              event.stopPropagation();
+            }}
           >
             {voters.length > 0 ? voters.length : "+"}
           </button>
