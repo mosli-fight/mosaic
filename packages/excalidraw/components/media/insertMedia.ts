@@ -29,11 +29,11 @@ import {
 
 import type { FileId } from "@excalidraw/element/types";
 
-import { STICKER_SIZE, stickerToDataURL } from "./stickers";
+import { STICKER_SIZE, stickerToDataURL } from "./stickerDrawing";
 
 import type { AppClassProperties, DataURL } from "../../types";
 
-import type { Sticker } from "./stickers";
+import type { Sticker } from "./stickerDrawing";
 
 /** the size an emoji lands on the board at */
 export const EMOJI_FONT_SIZE = 64;

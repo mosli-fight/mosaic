@@ -2,8 +2,10 @@
  * The stickers the media panel offers.
  *
  * A sticker is a small drawing that lands on the board as an image. They
- * are bundled with the editor — plain SVG, a couple of kilobytes each —
- * so that a sticker costs nothing to load and works offline.
+ * are plain SVG, a couple of kilobytes each — but there are enough of them
+ * that the catalogue is kept out of the main bundle: the media panel asks
+ * for this module only once its stickers tab is opened, so a board that is
+ * never given a sticker never pays for one.
  *
  * The stickers are drawn on a 100x100 canvas and are described as the
  * inside of an `<svg>` element: the frame around them is added when the
@@ -17,20 +19,13 @@
  * at besides the names of the stickers themselves.
  */
 
-import { MIME_TYPES } from "@excalidraw/common";
-
 import type { TranslationKeys } from "../../i18n";
-import type { DataURL } from "../../types";
 
-/** the categories the stickers are grouped into */
-export type StickerCategoryId =
-  | "faces"
-  | "animals"
-  | "gestures"
-  | "objects"
-  | "symbols"
-  | "nature"
-  | "celebration";
+import type { Sticker, StickerCategoryId } from "./stickerDrawing";
+
+export { STICKER_SIZE, stickerToDataURL, stickerToSVG } from "./stickerDrawing";
+
+export type { Sticker, StickerCategoryId } from "./stickerDrawing";
 
 export type StickerCategory = {
   id: StickerCategoryId;
@@ -77,24 +72,6 @@ export const STICKER_CATEGORIES: readonly StickerCategory[] = [
     keywords: ["celebration", "celebrate", "party"],
   },
 ];
-
-export type Sticker = {
-  /** a stable id, used for the sticker in the scene */
-  id: string;
-  /** the name of the sticker, shown as its tooltip */
-  name: string;
-  /** the category the sticker belongs to */
-  category: StickerCategoryId;
-  /** the inside of the sticker, drawn on a 100x100 canvas */
-  body: string;
-  /** whether the sticker is drawn upside down */
-  flip?: boolean;
-  /** other words the sticker is found by */
-  keywords?: readonly string[];
-};
-
-/** the size a sticker lands on the board at */
-export const STICKER_SIZE = 120;
 
 export const STICKERS: readonly Sticker[] = [
   // ---------------------------------------------------------------- faces
@@ -560,31 +537,6 @@ export const STICKERS: readonly Sticker[] = [
     body: `<circle cx="50" cy="50" r="8" fill="#fbbf24" stroke="#b45309" stroke-width="3"/><path d="M50 6 V28 M50 72 V94 M6 50 H28 M72 50 H94 M18 18 L34 34 M66 66 L82 82 M82 18 L66 34 M34 66 L18 82" stroke="#f472b6" stroke-width="6" stroke-linecap="round"/><path d="M32 4 L28 18 M68 4 L72 18 M4 32 L18 28" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>`,
   },
 ];
-
-/**
- * The sticker as a standalone SVG document.
- *
- * The document carries an explicit size and a viewBox, so that it renders
- * the same wherever it lands — the editor normalizes the frame of an SVG it
- * is given, and it will not do so for a document that only has a viewBox.
- */
-export const stickerToSVG = (sticker: Sticker): string => {
-  const transform = sticker.flip
-    ? `<g transform="translate(0,100) scale(1,-1)">${sticker.body}</g>`
-    : sticker.body;
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">${transform}</svg>`;
-};
-
-/**
- * The sticker as a data URL, ready to be handed to the editor as an image.
- *
- * The drawing is plain ASCII, so it is encoded as base64 — which is what
- * the editor expects of an SVG it stores, and what it needs in order to
- * normalize the document when the sticker is added to the scene.
- */
-export const stickerToDataURL = (sticker: Sticker): DataURL =>
-  `data:${MIME_TYPES.svg};base64,${btoa(stickerToSVG(sticker))}` as DataURL;
 
 export const getStickerById = (id: string) =>
   STICKERS.find((sticker) => sticker.id === id);
