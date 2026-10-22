@@ -13,8 +13,10 @@ import { commentsHiddenIcon, commentsVisibleIcon } from "../components/icons";
 
 import {
   formatCommentTime,
+  getMessageReactionCount,
   getThreadPreview,
   getThreadReplyCount,
+  isThreadAttached,
   sortThreadsByActivity,
 } from "./commentUtils";
 
@@ -158,6 +160,10 @@ export const CommentsPanel = () => {
           {threads.map((thread) => {
             const first = thread.messages[0];
             const replyCount = getThreadReplyCount(thread);
+            const reactionCount = thread.messages.reduce(
+              (total, message) => total + getMessageReactionCount(message),
+              0,
+            );
             return (
               <button
                 key={thread.id}
@@ -193,6 +199,26 @@ export const CommentsPanel = () => {
                       {replyCount === 1
                         ? t("comment.replyCount", { count: replyCount })
                         : t("comment.replyCount_plural", { count: replyCount })}
+                    </span>
+                  )}
+                  {reactionCount > 0 && (
+                    <span
+                      className="comments-panel__reactions"
+                      data-testid="comments-panel-reactions"
+                    >
+                      {reactionCount === 1
+                        ? t("comment.reactionCount", { count: reactionCount })
+                        : t("comment.reactionCount_plural", {
+                            count: reactionCount,
+                          })}
+                    </span>
+                  )}
+                  {isThreadAttached(thread) && (
+                    <span
+                      className="comments-panel__attached-badge"
+                      data-testid="comments-panel-attached"
+                    >
+                      {t("comment.attachedToElement")}
                     </span>
                   )}
                   {thread.resolved && (

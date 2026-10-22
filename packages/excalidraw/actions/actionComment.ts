@@ -5,15 +5,17 @@ import { CaptureUpdateAction } from "@excalidraw/element";
 import {
   addCommentReply,
   addCommentThread,
+  editCommentMessage,
   removeCommentThread,
   setCommentThreadResolved,
+  toggleCommentReaction,
 } from "../comments/commentActions";
 import { getCommentAuthor } from "../comments/commentUtils";
 import { commentToolIcon } from "../components/icons";
 
 import { register } from "./register";
 
-import type { CommentAnchor } from "../comments/types";
+import type { CommentAnchor, CommentMention } from "../comments/types";
 
 /**
  * Toggles the visibility of every comment pin on the canvas (Shift+C).
@@ -68,6 +70,7 @@ export const actionToggleResolvedComments = register({
 export const actionAddComment = register<{
   anchor: CommentAnchor;
   text: string;
+  mentions?: CommentMention[];
 }>({
   name: "addComment",
   label: "comment.submit",
@@ -83,6 +86,7 @@ export const actionAddComment = register<{
           anchor: value.anchor,
           author: getCommentAuthor(appState),
           text: value.text.trim(),
+          mentions: value.mentions,
         }),
       },
       captureUpdate: CaptureUpdateAction.NEVER,
@@ -96,6 +100,7 @@ export const actionAddComment = register<{
 export const actionAddCommentReply = register<{
   threadId: string;
   text: string;
+  mentions?: CommentMention[];
 }>({
   name: "addCommentReply",
   label: "comment.reply",
@@ -111,6 +116,68 @@ export const actionAddCommentReply = register<{
           threadId: value.threadId,
           author: getCommentAuthor(appState),
           text: value.text.trim(),
+          mentions: value.mentions,
+        }),
+      },
+      captureUpdate: CaptureUpdateAction.NEVER,
+    };
+  },
+});
+
+/**
+ * Rewrites the text of a comment.
+ */
+export const actionEditComment = register<{
+  threadId: string;
+  messageId: string;
+  text: string;
+  mentions?: CommentMention[];
+}>({
+  name: "editComment",
+  label: "comment.edit",
+  viewMode: true,
+  trackEvent: { category: "comment" },
+  perform(elements, appState, value) {
+    if (!value?.text?.trim() || !value.threadId || !value.messageId) {
+      return false;
+    }
+    return {
+      appState: {
+        commentThreads: editCommentMessage(appState.commentThreads, {
+          threadId: value.threadId,
+          messageId: value.messageId,
+          text: value.text.trim(),
+          mentions: value.mentions,
+        }),
+      },
+      captureUpdate: CaptureUpdateAction.NEVER,
+    };
+  },
+});
+
+/**
+ * Adds the current user's reaction to a comment, or takes it back.
+ */
+export const actionToggleCommentReaction = register<{
+  threadId: string;
+  messageId: string;
+  emoji: string;
+}>({
+  name: "toggleCommentReaction",
+  label: "comment.addReaction",
+  viewMode: true,
+  trackEvent: { category: "comment" },
+  perform(elements, appState, value) {
+    if (!value?.threadId || !value.messageId || !value.emoji) {
+      return false;
+    }
+    return {
+      appState: {
+        commentThreads: toggleCommentReaction(appState.commentThreads, {
+          threadId: value.threadId,
+          messageId: value.messageId,
+          emoji: value.emoji,
+          authorId: getCommentAuthor(appState).id,
         }),
       },
       captureUpdate: CaptureUpdateAction.NEVER,

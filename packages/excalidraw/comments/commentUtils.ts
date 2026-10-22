@@ -1,4 +1,7 @@
 import { randomId } from "@excalidraw/common";
+import { isFreeDrawElement, isLinearElement } from "@excalidraw/element";
+
+import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 import { getStickyNoteAuthor } from "../components/sticky-note/stickyNoteAuthor";
 
@@ -6,7 +9,10 @@ import type { AppState } from "../types";
 import type {
   CommentAnchor,
   CommentAuthor,
+  CommentCandidate,
+  CommentMention,
   CommentMessage,
+  CommentReaction,
   CommentThread,
 } from "./types";
 
@@ -67,27 +73,271 @@ export const getCommentAuthor = (appState: AppState): CommentAuthor => {
   };
 };
 
-/** the scene coordinates the pin of a thread is drawn at */
+// -----------------------------------------------------------------------------
+// anchoring a thread to the canvas
+// -----------------------------------------------------------------------------
+
+/**
+ * The centre of an element, in scene coordinates.
+ *
+ * The centre is the point an element keeps when it is turned, which makes it
+ * the right reference for a comment pin: the pin keeps its place on the
+ * element even after the element is rotated.
+ */
+export const getElementAnchorCenter = (
+  element: ExcalidrawElement,
+): { x: number; y: number } => {
+  if (isLinearElement(element) || isFreeDrawElement(element)) {
+    // the points of a linear element are relative to its origin
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const [px, py] of element.points) {
+      minX = Math.min(minX, px);
+      maxX = Math.max(maxX, px);
+      minY = Math.min(minY, py);
+      maxY = Math.max(maxY, py);
+    }
+
+    if (!isFinite(minX) || !isFinite(minY)) {
+      return { x: element.x, y: element.y };
+    }
+
+    return {
+      x: element.x + (minX + maxX) / 2,
+      y: element.y + (minY + maxY) / 2,
+    };
+  }
+
+  return {
+    x: element.x + element.width / 2,
+    y: element.y + element.height / 2,
+  };
+};
+
+/** the id of the element a thread is attached to, if any */
+export const getThreadElementId = (thread: CommentThread): string | null =>
+  thread.anchor.type === "element" ? thread.anchor.elementId : null;
+
+/**
+ * Whether the thread's pin follows an element around the canvas.
+ *
+ * Threads created before comments could be attached carry no offset; their
+ * pin stays where it was dropped.
+ */
+export const isThreadAttached = (thread: CommentThread): boolean =>
+  thread.anchor.type === "element" &&
+  thread.anchor.offsetX != null &&
+  thread.anchor.offsetY != null;
+
+/**
+ * The scene coordinates the pin of a thread is drawn at.
+ *
+ * A thread attached to an element is drawn relative to the element, so the
+ * pin travels with it. When the element is gone the pin falls back to the
+ * position it was dropped at.
+ */
 export const getThreadAnchorPoint = (
   thread: CommentThread,
-): { x: number; y: number } => ({
-  x: thread.anchor.x,
-  y: thread.anchor.y,
-});
+  element?: ExcalidrawElement | null,
+): { x: number; y: number } => {
+  const anchor = thread.anchor;
+
+  if (
+    anchor.type === "element" &&
+    element &&
+    anchor.offsetX != null &&
+    anchor.offsetY != null
+  ) {
+    const center = getElementAnchorCenter(element);
+    return {
+      x: center.x + anchor.offsetX,
+      y: center.y + anchor.offsetY,
+    };
+  }
+
+  return { x: anchor.x, y: anchor.y };
+};
+
+// -----------------------------------------------------------------------------
+// mentions
+// -----------------------------------------------------------------------------
+
+/** a piece of a comment's text — plain text, or a mention of somebody */
+export type CommentTextSegment =
+  | { type: "text"; text: string }
+  | { type: "mention"; text: string; mention: CommentMention };
+
+const isWordCharacter = (char: string) => !!char && /[\w@]/.test(char);
+
+/**
+ * The people mentioned in a piece of text.
+ *
+ * A mention is written "@Name". The name is matched against the candidates
+ * the composer offers; where two names match at the same place, the longer
+ * one wins, so that "@Ada Lovelace" is a mention of Ada Lovelace and not of
+ * Ada. A mention only counts when it stands on its own — "@Ada!" is a
+ * mention, "ada@example.com" is not.
+ */
+export const parseMentions = (
+  text: string,
+  candidates: readonly CommentCandidate[],
+): CommentMention[] => {
+  const lowerText = text.toLowerCase();
+  const matches: {
+    index: number;
+    length: number;
+    candidate: CommentCandidate;
+  }[] = [];
+
+  for (const candidate of candidates) {
+    const needle = `@${candidate.name}`.toLowerCase();
+    let index = lowerText.indexOf(needle);
+
+    while (index !== -1) {
+      const before = index === 0 ? "" : text[index - 1];
+      const after = text[index + needle.length] ?? "";
+
+      if (!isWordCharacter(before) && !isWordCharacter(after)) {
+        matches.push({ index, length: needle.length, candidate });
+      }
+
+      index = lowerText.indexOf(needle, index + 1);
+    }
+  }
+
+  // the longest name wins where two of them match at the same place
+  matches.sort((a, b) => a.index - b.index || b.length - a.length);
+
+  const mentions = new Map<string, CommentMention>();
+  let consumedUntil = -1;
+
+  for (const match of matches) {
+    if (match.index < consumedUntil) {
+      continue;
+    }
+    consumedUntil = match.index + match.length;
+    mentions.set(match.candidate.id, {
+      id: match.candidate.id,
+      name: match.candidate.name,
+    });
+  }
+
+  return [...mentions.values()];
+};
+
+/**
+ * Splits a comment's text into plain text and mentions.
+ *
+ * The rendering uses this to draw a mention as a highlighted token; the text
+ * itself is left untouched.
+ */
+export const splitTextByMentions = (
+  text: string,
+  mentions: readonly CommentMention[],
+): CommentTextSegment[] => {
+  if (!mentions.length || !text) {
+    return [{ type: "text", text }];
+  }
+
+  const sorted = [...mentions].sort((a, b) => b.name.length - a.name.length);
+
+  const segments: CommentTextSegment[] = [];
+  let rest = text;
+
+  while (rest.length) {
+    const lowerRest = rest.toLowerCase();
+    let found: {
+      index: number;
+      length: number;
+      mention: CommentMention;
+    } | null = null;
+
+    for (const mention of sorted) {
+      const needle = `@${mention.name}`.toLowerCase();
+      const index = lowerRest.indexOf(needle);
+
+      if (index === -1) {
+        continue;
+      }
+
+      if (
+        !found ||
+        index < found.index ||
+        (index === found.index && needle.length > found.length)
+      ) {
+        found = { index, length: needle.length, mention };
+      }
+    }
+
+    if (!found) {
+      segments.push({ type: "text", text: rest });
+      break;
+    }
+
+    if (found.index > 0) {
+      segments.push({ type: "text", text: rest.slice(0, found.index) });
+    }
+
+    segments.push({
+      type: "mention",
+      text: rest.slice(found.index, found.index + found.length),
+      mention: found.mention,
+    });
+
+    rest = rest.slice(found.index + found.length);
+  }
+
+  return segments;
+};
+
+/** the mentions of a message, whoever wrote it */
+export const getMessageMentions = (message: CommentMessage): CommentMention[] =>
+  message.mentions ?? [];
+
+// -----------------------------------------------------------------------------
+// reactions
+// -----------------------------------------------------------------------------
+
+/** how many reactions a message carries, all told */
+export const getMessageReactionCount = (message: CommentMessage): number =>
+  (message.reactions ?? []).reduce(
+    (total, reaction) => total + reaction.authorIds.length,
+    0,
+  );
+
+/** whether the given user has already reacted with this emoji */
+export const hasReactedWith = (
+  message: CommentMessage,
+  { emoji, authorId }: { emoji: string; authorId: string },
+): boolean =>
+  (message.reactions ?? []).some(
+    (reaction) =>
+      reaction.emoji === emoji && reaction.authorIds.includes(authorId),
+  );
+
+// -----------------------------------------------------------------------------
+// creating threads and messages
+// -----------------------------------------------------------------------------
 
 export const createCommentMessage = ({
   author,
   text,
   createdAt,
+  mentions,
 }: {
   author: CommentAuthor;
   text: string;
   createdAt?: number;
+  mentions?: CommentMention[];
 }): CommentMessage => ({
   id: randomId(),
   author,
   text,
   createdAt: createdAt ?? Date.now(),
+  ...(mentions?.length ? { mentions } : {}),
 });
 
 export const createCommentThread = ({
@@ -185,6 +435,43 @@ const restoreAuthor = (value: unknown): CommentAuthor | null => {
   };
 };
 
+const restoreMentions = (value: unknown): CommentMention[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const mentions = value
+    .filter(
+      (mention): mention is Partial<CommentMention> =>
+        !!mention && typeof mention === "object",
+    )
+    .filter((mention) => isString(mention.id) && isString(mention.name))
+    .map((mention) => ({ id: mention.id!, name: mention.name! }));
+
+  return mentions.length ? mentions : undefined;
+};
+
+const restoreReactions = (value: unknown): CommentReaction[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const reactions = value
+    .filter(
+      (reaction): reaction is Partial<CommentReaction> =>
+        !!reaction && typeof reaction === "object",
+    )
+    .filter((reaction) => isString(reaction.emoji))
+    .map((reaction) => ({
+      emoji: reaction.emoji!,
+      authorIds: Array.isArray(reaction.authorIds)
+        ? reaction.authorIds.filter(isString)
+        : [],
+    }))
+    // a reaction nobody left is no reaction at all
+    .filter((reaction) => reaction.authorIds.length > 0);
+
+  return reactions.length ? reactions : undefined;
+};
+
 const restoreMessage = (value: unknown): CommentMessage | null => {
   if (!value || typeof value !== "object") {
     return null;
@@ -194,6 +481,8 @@ const restoreMessage = (value: unknown): CommentMessage | null => {
   if (!author || !isString(message.text) || !isString(message.id)) {
     return null;
   }
+  const mentions = restoreMentions(message.mentions);
+  const reactions = restoreReactions(message.reactions);
   return {
     id: message.id,
     author,
@@ -202,6 +491,12 @@ const restoreMessage = (value: unknown): CommentMessage | null => {
       typeof message.createdAt === "number" && isFinite(message.createdAt)
         ? message.createdAt
         : Date.now(),
+    ...(mentions ? { mentions } : {}),
+    ...(reactions ? { reactions } : {}),
+    ...(message.edited === true ? { edited: true } : {}),
+    ...(typeof message.editedAt === "number" && isFinite(message.editedAt)
+      ? { editedAt: message.editedAt }
+      : {}),
   };
 };
 
@@ -222,11 +517,23 @@ const restoreAnchor = (value: unknown): CommentAnchor | null => {
     if (!isString(anchor.elementId)) {
       return null;
     }
+    const hasOffset =
+      typeof anchor.offsetX === "number" &&
+      isFinite(anchor.offsetX) &&
+      typeof anchor.offsetY === "number" &&
+      isFinite(anchor.offsetY);
+
     return {
       type: "element",
       elementId: anchor.elementId,
       x: anchor.x,
       y: anchor.y,
+      ...(hasOffset
+        ? {
+            offsetX: anchor.offsetX as number,
+            offsetY: anchor.offsetY as number,
+          }
+        : {}),
     };
   }
   return { type: "point", x: anchor.x, y: anchor.y };
