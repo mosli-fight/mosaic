@@ -192,6 +192,34 @@ const splitFields = (text: string): { label: string; fields: string[] } => {
 };
 
 /**
+ * Where a label sits on a raw line.
+ *
+ * The label is compared cleaned (whitespace collapsed), so it is not always
+ * literally present in the raw line. The direct search covers the ordinary
+ * case; the fallback takes the first non-space run of the label's length,
+ * which is what a rename needs to splice over.
+ */
+const findLabelSpan = (
+  raw: string,
+  label: string,
+  from: number,
+): { start: number; end: number } => {
+  const direct = raw.indexOf(label, Math.max(0, from));
+
+  if (direct !== -1) {
+    return { start: direct, end: direct + label.length };
+  }
+
+  let start = Math.max(0, from);
+
+  while (start < raw.length && raw[start] === " ") {
+    start++;
+  }
+
+  return { start, end: Math.min(raw.length, start + label.length) };
+};
+
+/**
  * Reads a diagram written in the pane.
  *
  * @param code the text as it was typed
@@ -352,23 +380,21 @@ export const parseDiagram = (
         continue;
       }
 
-      const leftOffset = raw.indexOf(left);
-      const rightOffset = raw.indexOf(rightLabel, arrow.index);
+      // the spans are on the raw line, not the trimmed one, so a rename can
+      // splice into the line the person actually typed
+      const indent = Math.max(0, raw.indexOf(trimmed));
+      const arrowAt = indent + arrow.index;
+      const fromSpan = findLabelSpan(raw, fromText, indent);
+      const toSpan = findLabelSpan(raw, toText, arrowAt + arrow.length);
 
       const from = upsertNode(
         fromText,
         lineNumber,
-        Math.max(0, leftOffset),
-        Math.max(0, leftOffset) + fromText.length,
+        fromSpan.start,
+        fromSpan.end,
         true,
       );
-      const to = upsertNode(
-        toText,
-        lineNumber,
-        Math.max(0, rightOffset),
-        Math.max(0, rightOffset) + toText.length,
-        true,
-      );
+      const to = upsertNode(toText, lineNumber, toSpan.start, toSpan.end, true);
 
       if (!from || !to) {
         errors.push({
@@ -398,10 +424,10 @@ export const parseDiagram = (
         both: arrow.both,
         label,
         line: lineNumber,
-        fromStart: from.labelStart,
-        fromEnd: from.labelEnd,
-        toStart: to.labelStart,
-        toEnd: to.labelEnd,
+        fromStart: fromSpan.start,
+        fromEnd: fromSpan.end,
+        toStart: toSpan.start,
+        toEnd: toSpan.end,
         labelStart: 0,
         labelEnd: 0,
       });
@@ -424,7 +450,7 @@ export const parseDiagram = (
 
     const labelStart = raw.indexOf(label.trim());
 
-    upsertNode(
+    const node = upsertNode(
       cleaned,
       lineNumber,
       Math.max(0, labelStart),
@@ -433,6 +459,16 @@ export const parseDiagram = (
       attrs,
       fields,
     );
+
+    // a label made only of punctuation has no identity to keep in `customData`,
+    // so it cannot become a node — say so rather than dropping the line, or
+    // the caller would read the result as an empty diagram and clear the board
+    if (!node) {
+      errors.push({
+        line: lineNumber,
+        message: "This line has no usable name for a node.",
+      });
+    }
   }
 
   if (groupStack.length) {
@@ -479,22 +515,55 @@ export const renameNodeInCode = (
   }
 
   const lines = code.split(/\r?\n/);
-  const line = lines[node.line - 1];
 
-  if (line === undefined) {
+  /** the spans to replace, per line, so one line can hold both endpoints */
+  const editsByLine = new Map<number, { start: number; end: number }[]>();
+
+  const addEdit = (line: number, start: number, end: number) => {
+    const edits = editsByLine.get(line) ?? [];
+    edits.push({ start, end });
+    editsByLine.set(line, edits);
+  };
+
+  // the node's own line, unless an edge declared it and there is no line of
+  // its own to rewrite
+  if (!node.implicit) {
+    addEdit(node.line, node.labelStart, node.labelEnd);
+  }
+
+  // every edge line that names the node, so a rename does not fork it into
+  // a second node the edges no longer point at
+  for (const edge of model.edges) {
+    if (edge.from === nodeId) {
+      addEdit(edge.line, edge.fromStart, edge.fromEnd);
+    }
+    if (edge.to === nodeId) {
+      addEdit(edge.line, edge.toStart, edge.toEnd);
+    }
+  }
+
+  if (!editsByLine.size) {
     return null;
   }
 
-  // the offsets are relative to the raw line; re-find the label there so a
-  // stale offset can never splice into the middle of a word
-  const at = line.indexOf(node.label, node.labelStart);
+  for (const [lineNumber, edits] of editsByLine) {
+    const line = lines[lineNumber - 1];
 
-  if (at === -1) {
-    return null;
+    if (line === undefined) {
+      continue;
+    }
+
+    // right to left, so an earlier splice cannot move a later one
+    const sorted = [...edits].sort((a, b) => b.start - a.start);
+
+    let next = line;
+
+    for (const edit of sorted) {
+      next = next.slice(0, edit.start) + label + next.slice(edit.end);
+    }
+
+    lines[lineNumber - 1] = next;
   }
-
-  lines[node.line - 1] =
-    line.slice(0, at) + label + line.slice(at + node.label.length);
 
   return lines.join("\n");
 };
