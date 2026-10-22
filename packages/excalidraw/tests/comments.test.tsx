@@ -246,6 +246,124 @@ describe("comments", () => {
       expect(screen.queryByTestId("comment-delete-button")).toBeNull();
     });
 
+    it("starts a new comment composer empty after a comment was posted", () => {
+      selectCommentTool();
+      dropPin(120, 90);
+      typeInComposer("First");
+      fireEvent.click(screen.getByTestId("comment-composer-submit"));
+
+      // the thread popover took the composer's place — close it and drop a
+      // second pin somewhere else
+      fireEvent.click(screen.getByTestId("comment-thread-close"));
+      dropPin(300, 240);
+
+      expect(
+        (screen.getByTestId("comment-composer-input") as HTMLTextAreaElement)
+          .value,
+      ).toBe("");
+    });
+
+    it("starts a new comment composer empty after the previous one was cancelled", () => {
+      selectCommentTool();
+      dropPin(120, 90);
+      typeInComposer("half-written");
+      fireEvent.click(screen.getByTestId("comment-composer-cancel"));
+
+      dropPin(300, 240);
+
+      expect(
+        (screen.getByTestId("comment-composer-input") as HTMLTextAreaElement)
+          .value,
+      ).toBe("");
+    });
+
+    it("starts a new comment composer empty when another pin is dropped over an open draft", () => {
+      selectCommentTool();
+      dropPin(120, 90);
+      typeInComposer("half-written");
+
+      // dropping another pin replaces the composer's anchor without going
+      // through cancel — the new composer must not inherit the draft
+      dropPin(300, 240);
+
+      expect(
+        (screen.getByTestId("comment-composer-input") as HTMLTextAreaElement)
+          .value,
+      ).toBe("");
+    });
+
+    it("keeps the draft while the same composer stays open", () => {
+      selectCommentTool();
+      dropPin(120, 90);
+      typeInComposer("still typing");
+
+      // an unrelated app-state change re-renders the layer — the open
+      // composer must keep what was typed into it
+      act(() => {
+        h.app.setState({ showResolvedComments: true });
+      });
+
+      expect(
+        (screen.getByTestId("comment-composer-input") as HTMLTextAreaElement)
+          .value,
+      ).toBe("still typing");
+    });
+
+    it("starts a reply composer empty for every thread", () => {
+      const leaveComment = (text: string, x: number, y: number) => {
+        dropPin(x, y);
+        typeInComposer(text);
+        fireEvent.click(screen.getByTestId("comment-composer-submit"));
+        return h.state.commentThreads[h.state.commentThreads.length - 1];
+      };
+
+      selectCommentTool();
+      const first = leaveComment("First", 120, 90);
+      const second = leaveComment("Second", 300, 240);
+
+      // open the first thread and start a reply in it
+      fireEvent.click(screen.getByTestId("comment-thread-close"));
+      act(() => {
+        h.app.setState({ openCommentThreadId: first.id });
+      });
+      typeInComposer("a reply in progress", "comment-reply-input");
+
+      // switching straight to another thread must not carry the draft over
+      act(() => {
+        h.app.setState({ openCommentThreadId: second.id });
+      });
+
+      expect(
+        (screen.getByTestId("comment-reply-input") as HTMLTextAreaElement)
+          .value,
+      ).toBe("");
+    });
+
+    it("does not carry the composer's own popups into a new composer", () => {
+      const socketId = "socket-1" as SocketId;
+      act(() => {
+        h.app.updateScene({
+          collaborators: new Map<SocketId, Collaborator>([
+            [socketId, { socketId, username: "Ada", isCurrentUser: false }],
+          ]),
+        });
+      });
+
+      selectCommentTool();
+      dropPin(120, 90);
+      fireEvent.click(screen.getByTestId("comment-emoji-button"));
+      typeInComposer("@A");
+      expect(screen.getByTestId("comment-emoji-grid")).toBeTruthy();
+      expect(screen.getByTestId("comment-mentions")).toBeTruthy();
+
+      // both popups belonged to the previous draft — the new composer must
+      // not open with either of them showing
+      dropPin(300, 240);
+
+      expect(screen.queryByTestId("comment-emoji-grid")).toBeNull();
+      expect(screen.queryByTestId("comment-mentions")).toBeNull();
+    });
+
     it("mentions a collaborator", () => {
       const socketId = "socket-1" as SocketId;
       const collaborators = new Map<SocketId, Collaborator>([
