@@ -701,7 +701,7 @@ export const ICONS: readonly IconAsset[] = [
     name: "Kubernetes Node",
     category: "kubernetes",
     keywords: ["k8s", "worker", "machine", "cluster"],
-    aliases: ["node"],
+    aliases: ["k8s-node"],
     body: kube("#326ce5", "NODE"),
   },
   {
