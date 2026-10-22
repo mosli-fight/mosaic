@@ -477,6 +477,14 @@
     inset: 0;
     pointer-events: none;
     overflow: hidden;
+
+    // The widgets live *on* the board. The board itself is drawn in two
+    // canvas layers — the static one, and the interactive one, which
+    // covers the whole board and takes the pointer events. A widget that is
+    // not painted above them is hidden behind the shapes it belongs to,
+    // and the canvas swallows its clicks: the whole layer therefore sits
+    // above the canvas.
+    z-index: var(--zIndex-canvasWidgets);
   }
 
   .facilitation-voting-layer {
@@ -487,6 +495,8 @@
 
   .facilitation-vote-badge {
     position: absolute;
+    // the badge is a small control: it stays above the bigger widgets of
+    // the board, so that it can always be clicked
     z-index: var(--zIndex-canvasButtons);
 
     display: flex;
