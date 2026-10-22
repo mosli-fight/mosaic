@@ -9,6 +9,7 @@ import { fireEvent, waitFor } from "@testing-library/react";
 
 import type {
   ExcalidrawFrameElement,
+  ExcalidrawGenericElement,
   NonDeleted,
 } from "@excalidraw/element/types";
 
@@ -45,6 +46,7 @@ const createFrame = ({
   height = 200,
   name = null,
   notes = "",
+  backgroundColor,
 }: {
   id?: string;
   x?: number;
@@ -53,6 +55,7 @@ const createFrame = ({
   height?: number;
   name?: string | null;
   notes?: string;
+  backgroundColor?: ExcalidrawGenericElement["backgroundColor"];
 } = {}) => {
   const frame = API.createElement({
     type: "frame",
@@ -61,6 +64,7 @@ const createFrame = ({
     y,
     width,
     height,
+    backgroundColor,
   }) as NonDeleted<ExcalidrawFrameElement>;
   frame.name = name;
   frame.notes = notes;
@@ -89,6 +93,35 @@ const openFramesPanel = () => {
     });
   });
 };
+
+/**
+ * The editor takes its size from the window, which jsdom has no opinion
+ * about — the tests that care about the viewport say how big it is.
+ */
+const setViewportSize = (width: number, height: number) => {
+  act(() => {
+    API.setAppState({ width, height });
+  });
+};
+
+/** the drawing operations the canvas mock recorded for a canvas */
+const getDrawCalls = (canvas: HTMLCanvasElement) =>
+  (
+    canvas.getContext("2d") as unknown as {
+      __getDrawCalls: () => unknown[];
+    }
+  ).__getDrawCalls();
+
+/** the colors the canvas mock was told to fill with */
+const getFillStyles = (canvas: HTMLCanvasElement) =>
+  (
+    canvas.getContext("2d") as unknown as {
+      __getEvents: () => { type: string; props: { value?: unknown } }[];
+    }
+  )
+    .__getEvents()
+    .filter((event) => event.type === "fillStyle")
+    .map((event) => String(event.props.value));
 
 describe("frames (Miro-style)", () => {
   describe("the format picker", () => {
@@ -351,6 +384,269 @@ describe("frames (Miro-style)", () => {
       fireEvent.keyDown(input, { key: "Enter" });
 
       expect(getFrame("a").name).toBe("Opening");
+    });
+
+    it("renames a frame on a double click", async () => {
+      await render(<Excalidraw />);
+      API.setElements([createFrame({ id: "a", name: "First" })]);
+
+      openFramesPanel();
+
+      await waitFor(() => {
+        expect(
+          document.querySelector('[data-testid="frames-panel-item-0"]'),
+        ).not.toBe(null);
+      });
+
+      fireEvent.doubleClick(
+        document.querySelector<HTMLElement>(
+          '[data-testid="frames-panel-item-0"] .frames-panel__item-main',
+        )!,
+      );
+
+      const input = document.querySelector<HTMLInputElement>(
+        '[data-testid="frames-panel-rename-input"]',
+      );
+      expect(input).not.toBe(null);
+
+      fireEvent.change(input!, { target: { value: "Opening" } });
+      fireEvent.keyDown(input!, { key: "Enter" });
+
+      expect(getFrame("a").name).toBe("Opening");
+    });
+
+    it("jumps to the frame that is clicked", async () => {
+      await render(<Excalidraw />);
+      API.setElements([
+        createFrame({ id: "a", x: 0, y: 0, width: 200, height: 200 }),
+      ]);
+      setViewportSize(1000, 800);
+
+      openFramesPanel();
+
+      await waitFor(() => {
+        expect(
+          document.querySelector('[data-testid="frames-panel-item-0"]'),
+        ).not.toBe(null);
+      });
+
+      fireEvent.click(
+        document.querySelector<HTMLElement>(
+          '[data-testid="frames-panel-item-0"] .frames-panel__item-main',
+        )!,
+      );
+
+      // the jump is animated — let it land
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      });
+
+      // the frame is fitted to the viewport, and it ends up in its middle
+      expect(h.state.zoom.value).toBeCloseTo(3.76, 5);
+
+      expect(
+        h.state.width / 2 / h.state.zoom.value - h.state.scrollX,
+      ).toBeCloseTo(100, 3);
+      expect(
+        h.state.height / 2 / h.state.zoom.value - h.state.scrollY,
+      ).toBeCloseTo(100, 3);
+    });
+
+    it("highlights the frame that is in view", async () => {
+      await render(<Excalidraw />);
+      API.setElements([
+        createFrame({ id: "a", x: 0, y: 0, width: 200, height: 200 }),
+        createFrame({ id: "b", x: 5000, y: 5000, width: 200, height: 200 }),
+      ]);
+      setViewportSize(1000, 800);
+
+      openFramesPanel();
+
+      await waitFor(() => {
+        expect(
+          document.querySelector('[data-testid="frames-panel-item-0"]')
+            ?.className,
+        ).toContain("frames-panel__item--in-view");
+      });
+
+      expect(
+        document.querySelector('[data-testid="frames-panel-item-1"]')
+          ?.className,
+      ).not.toContain("frames-panel__item--in-view");
+    });
+
+    it("moves the highlight to the frame it jumps to", async () => {
+      await render(<Excalidraw />);
+      API.setElements([
+        createFrame({ id: "a", x: 0, y: 0, width: 200, height: 200 }),
+        createFrame({ id: "b", x: 5000, y: 5000, width: 200, height: 200 }),
+      ]);
+      setViewportSize(1000, 800);
+
+      openFramesPanel();
+
+      await waitFor(() => {
+        expect(
+          document.querySelector('[data-testid="frames-panel-item-1"]'),
+        ).not.toBe(null);
+      });
+
+      fireEvent.click(
+        document.querySelector<HTMLElement>(
+          '[data-testid="frames-panel-item-1"] .frames-panel__item-main',
+        )!,
+      );
+
+      // the jump is animated — let it land
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      });
+
+      expect(
+        document.querySelector('[data-testid="frames-panel-item-1"]')
+          ?.className,
+      ).toContain("frames-panel__item--in-view");
+      expect(
+        document.querySelector('[data-testid="frames-panel-item-0"]')
+          ?.className,
+      ).not.toContain("frames-panel__item--in-view");
+    });
+
+    it("does not highlight a frame that is hidden", async () => {
+      await render(<Excalidraw />);
+
+      const hidden = createFrame({
+        id: "a",
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 200,
+      });
+      hidden.hidden = true;
+      API.setElements([hidden]);
+      setViewportSize(1000, 800);
+
+      openFramesPanel();
+
+      await waitFor(() => {
+        expect(
+          document.querySelector('[data-testid="frames-panel-item-0"]'),
+        ).not.toBe(null);
+      });
+
+      expect(
+        document.querySelector('[data-testid="frames-panel-item-0"]')
+          ?.className,
+      ).not.toContain("frames-panel__item--in-view");
+    });
+
+    it("shows a thumbnail of every frame", async () => {
+      await render(<Excalidraw />);
+      API.setElements([
+        createFrame({ id: "a", x: 0, y: 0, width: 400, height: 300 }),
+        createFrame({ id: "b", x: 1000, y: 0, width: 400, height: 300 }),
+      ]);
+
+      openFramesPanel();
+
+      await waitFor(() => {
+        expect(
+          document.querySelectorAll(".frames-panel__thumbnail-canvas"),
+        ).toHaveLength(2);
+      });
+
+      const canvas = document.querySelector<HTMLCanvasElement>(
+        ".frames-panel__thumbnail-canvas",
+      )!;
+
+      await waitFor(() => {
+        expect(getDrawCalls(canvas).length).toBeGreaterThan(0);
+      });
+    });
+
+    it("paints the frame's own fill into its thumbnail", async () => {
+      await render(<Excalidraw />);
+
+      const frame = createFrame({
+        id: "a",
+        x: 0,
+        y: 0,
+        width: 400,
+        height: 300,
+        backgroundColor: "#d0ebff",
+      });
+      API.setElements([frame]);
+
+      openFramesPanel();
+
+      await waitFor(() => {
+        expect(
+          document.querySelector(".frames-panel__thumbnail-canvas"),
+        ).not.toBe(null);
+      });
+
+      const canvas = document.querySelector<HTMLCanvasElement>(
+        ".frames-panel__thumbnail-canvas",
+      )!;
+
+      await waitFor(
+        () => {
+          expect(getFillStyles(canvas)).toContain("#d0ebff");
+        },
+        { timeout: 3000 },
+      );
+    });
+
+    it("redraws the thumbnail when the frame's contents change", async () => {
+      await render(<Excalidraw />);
+      API.setElements([
+        createFrame({ id: "a", x: 0, y: 0, width: 400, height: 300 }),
+      ]);
+
+      openFramesPanel();
+
+      await waitFor(() => {
+        expect(
+          document.querySelector(".frames-panel__thumbnail-canvas"),
+        ).not.toBe(null);
+      });
+
+      const canvas = document.querySelector<HTMLCanvasElement>(
+        ".frames-panel__thumbnail-canvas",
+      )!;
+
+      await waitFor(() => {
+        expect(getDrawCalls(canvas).length).toBeGreaterThan(0);
+      });
+
+      const drawn = getDrawCalls(canvas).length;
+
+      // the empty frame has nothing to show
+      expect(getFillStyles(canvas)).not.toContain("#ffc9c9");
+
+      // something is put on the frame
+      API.setElements([
+        createFrame({ id: "a", x: 0, y: 0, width: 400, height: 300 }),
+        API.createElement({
+          type: "rectangle",
+          id: "on-frame",
+          x: 20,
+          y: 20,
+          width: 100,
+          height: 80,
+          backgroundColor: "#ffc9c9",
+          frameId: "a",
+        }),
+      ]);
+
+      // the thumbnail catches up with the frame — and shows what is on it
+      await waitFor(
+        () => {
+          expect(getDrawCalls(canvas).length).toBeGreaterThan(drawn);
+          expect(getFillStyles(canvas)).toContain("#ffc9c9");
+        },
+        { timeout: 3000 },
+      );
     });
   });
 

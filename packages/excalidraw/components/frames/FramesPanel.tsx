@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 
 import { getFrameLikeTitle, isFrameHidden } from "@excalidraw/element";
 
@@ -17,12 +17,15 @@ import {
 import {
   getBoardFrames,
   getFrameContentCount,
+  getFrameContentKeys,
+  getFrameInView,
   getFrameTitle,
 } from "../../frames";
 import { t } from "../../i18n";
 
 import { useApp } from "../App";
 import { useUIAppState } from "../../context/ui-appState";
+import { useAppStateValue } from "../../hooks/useAppStateValue";
 import {
   collapseDownIcon,
   collapseUpIcon,
@@ -40,12 +43,23 @@ import "./framesPanel.scss";
 import type App from "../App";
 
 /**
+ * The thumbnails are drawn by the canvas' own renderer, which is a good
+ * deal of code for a picture the size of a stamp — so it is fetched when
+ * the panel needs it, not with the editor.
+ */
+const FrameThumbnail = lazy(() =>
+  import("./FrameThumbnail").then((module) => ({
+    default: module.FrameThumbnail,
+  })),
+);
+
+/**
  * The frames panel: every frame on the board, in the order a presentation
  * walks them.
  *
- * The panel is the board's table of contents — it names the frames, says
- * what is on them, and offers the three things one does to a slide: bring
- * it on stage, reorder it, take it off the board.
+ * The panel is the board's table of contents — it shows what is on each
+ * frame, names them, and offers the three things one does to a slide:
+ * bring it on stage, reorder it, take it off the board.
  */
 export const FramesPanel = () => {
   const app = useApp() as App;
@@ -57,14 +71,48 @@ export const FramesPanel = () => {
   useSceneRevision();
 
   const elements = app.scene.getNonDeletedElements();
-  const frames = getBoardFrames(elements);
+  const frames = useMemo(() => getBoardFrames(elements), [elements]);
+
+  // the viewport, as the panel needs to see it: where the canvas looks,
+  // and how much of it there is
+  const viewport = useAppStateValue([
+    "scrollX",
+    "scrollY",
+    "zoom",
+    "width",
+    "height",
+  ]);
+
+  // the frame the viewport is looking at — the panel highlights it, so
+  // that one can tell where on the board one is
+  const frameInViewId = getFrameInView({
+    frames,
+    appState: viewport,
+    elementsMap: app.scene.getNonDeletedElementsMap(),
+  })?.id;
+
+  // what each frame holds, fingerprinted: a thumbnail is redrawn when
+  // its frame's fingerprint changes, and only then
+  const contentKeys = getFrameContentKeys(frames, elements, app.imageCache);
 
   const selectFrame = (frame: ExcalidrawFrameLikeElement) => {
     app.setState({ selectedElementIds: { [frame.id]: true } });
   };
 
-  const revealFrame = (frame: ExcalidrawFrameLikeElement) => {
-    app.viewport.setViewport({ target: frame.id, fit: "contain" });
+  const jumpToFrame = (frame: ExcalidrawFrameLikeElement) => {
+    // the frame is fitted to the space the editor chrome leaves, so that
+    // it does not come to rest half behind the sidebar
+    app.viewport.setViewport({
+      target: frame.id,
+      fit: "contain",
+      offsets: { ui: true },
+    });
+  };
+
+  const startRename = (frame: ExcalidrawFrameLikeElement) => {
+    selectFrame(frame);
+    setEditingId(frame.id);
+    setNameDraft(getFrameTitle(frame));
   };
 
   const commitName = (frame: ExcalidrawFrameLikeElement) => {
@@ -121,6 +169,7 @@ export const FramesPanel = () => {
                   "frames-panel__item--hidden": isHidden,
                   "frames-panel__item--selected":
                     appState.selectedElementIds[frame.id] === true,
+                  "frames-panel__item--in-view": frameInViewId === frame.id,
                 })}
                 data-testid={`frames-panel-item-${index}`}
               >
@@ -129,39 +178,70 @@ export const FramesPanel = () => {
                   className="frames-panel__item-main"
                   title={title}
                   onClick={() => {
+                    if (isEditing) {
+                      return;
+                    }
                     selectFrame(frame);
-                    revealFrame(frame);
+                    jumpToFrame(frame);
+                  }}
+                  onDoubleClick={() => {
+                    if (isEditing) {
+                      return;
+                    }
+                    startRename(frame);
                   }}
                 >
-                  <span className="frames-panel__item-index">{index + 1}</span>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      className="frames-panel__item-name-input"
-                      value={nameDraft}
-                      autoFocus
-                      aria-label={t("labels.frame.rename")}
-                      data-testid="frames-panel-rename-input"
-                      onChange={(event) => setNameDraft(event.target.value)}
-                      onBlur={() => commitName(frame)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          commitName(frame);
-                        }
-                        if (event.key === "Escape") {
-                          event.preventDefault();
-                          setEditingId(null);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <span className="frames-panel__item-name">{title}</span>
-                  )}
-                  <span className="frames-panel__item-count">
-                    {count === 1
-                      ? t("labels.frame.contents.one", { count })
-                      : t("labels.frame.contents.other", { count })}
+                  <span className="frames-panel__thumbnail" aria-hidden="true">
+                    <Suspense
+                      fallback={
+                        <span className="frames-panel__thumbnail-placeholder" />
+                      }
+                    >
+                      <FrameThumbnail
+                        frame={frame}
+                        elements={elements}
+                        contentKey={contentKeys.get(frame.id) ?? ""}
+                        theme={appState.theme}
+                        viewBackgroundColor={appState.viewBackgroundColor}
+                        imageCache={app.imageCache}
+                      />
+                    </Suspense>
+                  </span>
+                  <span className="frames-panel__item-details">
+                    <span className="frames-panel__item-title">
+                      <span className="frames-panel__item-index">
+                        {index + 1}
+                      </span>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="frames-panel__item-name-input"
+                          value={nameDraft}
+                          autoFocus
+                          aria-label={t("labels.frame.rename")}
+                          data-testid="frames-panel-rename-input"
+                          onChange={(event) => setNameDraft(event.target.value)}
+                          onBlur={() => commitName(frame)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              commitName(frame);
+                            }
+                            if (event.key === "Escape") {
+                              event.preventDefault();
+                              setEditingId(null);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span className="frames-panel__item-name">{title}</span>
+                      )}
+                    </span>
+                    <span className="frames-panel__item-count">
+                      {count === 1
+                        ? t("labels.frame.contents.one", { count })
+                        : t("labels.frame.contents.other", { count })}
+                    </span>
                   </span>
                 </button>
 
@@ -171,11 +251,7 @@ export const FramesPanel = () => {
                     title={t("labels.frame.rename")}
                     aria-label={t("labels.frame.rename")}
                     data-testid={`frames-panel-rename-${index}`}
-                    onClick={() => {
-                      selectFrame(frame);
-                      setEditingId(frame.id);
-                      setNameDraft(title);
-                    }}
+                    onClick={() => startRename(frame)}
                   >
                     {pencilIcon}
                   </button>
