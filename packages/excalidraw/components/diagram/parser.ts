@@ -44,13 +44,19 @@ const SHAPE_ALIASES: Record<string, DiagramNode["shape"]> = {
   decision: "diamond",
 };
 
-/** the arrow spellings, longest first so `<>` wins over `<` and `>` */
-const ARROWS: readonly { token: string; both: boolean }[] = [
-  { token: "<>", both: true },
-  { token: ">-", both: false },
-  { token: "-<", both: false },
-  { token: ">", both: false },
-  { token: "<", both: false },
+/**
+ * The arrow spellings, longest first so `<>` wins over `<` and `>`.
+ *
+ * `reverse` is what the arrowhead says, not where it is written: `A < B`
+ * points at A, so the edge runs from B to A. Reading it the other way would
+ * draw an arrow that points away from the thing the code names first.
+ */
+const ARROWS: readonly { token: string; both: boolean; reverse: boolean }[] = [
+  { token: "<>", both: true, reverse: false },
+  { token: ">-", both: false, reverse: false },
+  { token: "-<", both: false, reverse: true },
+  { token: ">", both: false, reverse: false },
+  { token: "<", both: false, reverse: true },
 ];
 
 /**
@@ -135,7 +141,12 @@ const extractAttributes = (
  */
 const findArrow = (
   line: string,
-): { index: number; length: number; both: boolean } | null => {
+): {
+  index: number;
+  length: number;
+  both: boolean;
+  reverse: boolean;
+} | null => {
   let depth = 0;
 
   for (let index = 0; index < line.length; index++) {
@@ -157,7 +168,12 @@ const findArrow = (
 
     for (const arrow of ARROWS) {
       if (line.startsWith(arrow.token, index)) {
-        return { index, length: arrow.token.length, both: arrow.both };
+        return {
+          index,
+          length: arrow.token.length,
+          both: arrow.both,
+          reverse: arrow.reverse,
+        };
       }
     }
   }
@@ -369,10 +385,10 @@ export const parseDiagram = (
 
       // a label may follow the target: `Client > Server: request`
       const { label: rightLabel, fields: trailing } = splitFields(right);
-      const fromText = cleanLabel(extractAttributes(left).rest);
-      const toText = cleanLabel(extractAttributes(rightLabel).rest);
+      const leftText = cleanLabel(extractAttributes(left).rest);
+      const rightText = cleanLabel(extractAttributes(rightLabel).rest);
 
-      if (!fromText || !toText) {
+      if (!leftText || !rightText) {
         errors.push({
           line: lineNumber,
           message: "An edge needs a node on each side of its arrow.",
@@ -384,25 +400,38 @@ export const parseDiagram = (
       // splice into the line the person actually typed
       const indent = Math.max(0, raw.indexOf(trimmed));
       const arrowAt = indent + arrow.index;
-      const fromSpan = findLabelSpan(raw, fromText, indent);
-      const toSpan = findLabelSpan(raw, toText, arrowAt + arrow.length);
+      const leftSpan = findLabelSpan(raw, leftText, indent);
+      const rightSpan = findLabelSpan(raw, rightText, arrowAt + arrow.length);
 
-      const from = upsertNode(
-        fromText,
+      const leftNode = upsertNode(
+        leftText,
         lineNumber,
-        fromSpan.start,
-        fromSpan.end,
+        leftSpan.start,
+        leftSpan.end,
         true,
       );
-      const to = upsertNode(toText, lineNumber, toSpan.start, toSpan.end, true);
+      const rightNode = upsertNode(
+        rightText,
+        lineNumber,
+        rightSpan.start,
+        rightSpan.end,
+        true,
+      );
 
-      if (!from || !to) {
+      if (!leftNode || !rightNode) {
         errors.push({
           line: lineNumber,
           message: "An edge needs a node on each side of its arrow.",
         });
         continue;
       }
+
+      // the arrowhead decides the direction, not the order of the words:
+      // `A < B` points at A, so the edge runs from B to A
+      const from = arrow.reverse ? rightNode : leftNode;
+      const to = arrow.reverse ? leftNode : rightNode;
+      const fromSpan = arrow.reverse ? rightSpan : leftSpan;
+      const toSpan = arrow.reverse ? leftSpan : rightSpan;
 
       // an edge is identified by its endpoints and direction, so writing the
       // same edge twice updates it rather than drawing it twice

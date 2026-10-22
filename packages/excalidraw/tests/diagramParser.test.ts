@@ -137,10 +137,26 @@ describe("parseDiagram: edges", () => {
     });
   });
 
-  it("reads the reverse arrow", () => {
+  it("points the reverse arrow at the node written first", () => {
     const { model } = parseDiagram("A < B", "flowchart");
 
-    expect(model.edges[0]).toMatchObject({ from: "a", to: "b", both: false });
+    // the arrowhead is next to A, so the edge runs B → A
+    expect(model.edges[0]).toMatchObject({ from: "b", to: "a", both: false });
+  });
+
+  it("reads the reverse arrow written with a tail", () => {
+    const { model } = parseDiagram("A -< B", "flowchart");
+
+    expect(model.edges[0]).toMatchObject({ from: "b", to: "a", both: false });
+  });
+
+  it("keeps the reverse arrow's spans on the side they were written", () => {
+    const { model } = parseDiagram("A < B", "flowchart");
+    const edge = model.edges[0];
+
+    // `from` is B, which sits on the right of the line
+    expect("A < B".slice(edge.fromStart, edge.fromEnd)).toBe("B");
+    expect("A < B".slice(edge.toStart, edge.toEnd)).toBe("A");
   });
 
   it("reads a two-way arrow", () => {
@@ -361,6 +377,17 @@ describe("renameNodeInCode", () => {
 
   it("does nothing for a node that is not in the code", () => {
     expect(renameNodeInCode("A", "nope", "B", "flowchart")).toBe(null);
+  });
+
+  it("renames the right side of a reverse arrow", () => {
+    // the edge runs B → A, but each name still has to be spliced where it
+    // was written, not where the arrow points
+    expect(renameNodeInCode("A < B", "a", "Alpha", "flowchart")).toBe(
+      "Alpha < B",
+    );
+    expect(renameNodeInCode("A < B", "b", "Beta", "flowchart")).toBe(
+      "A < Beta",
+    );
   });
 
   it("does nothing for an empty or unchanged label", () => {

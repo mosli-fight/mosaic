@@ -160,7 +160,7 @@ describe("buildDiagramElements", () => {
     )!;
     const label = elements.find(
       (element) => getDiagramTag(element)?.diagramRole === "edge-label",
-    ) as { originalText: string; containerId?: string };
+    ) as { id: string; originalText: string; containerId?: string };
 
     expect(label.originalText).toBe("request");
     expect(label.containerId).toBe(arrow.id);
