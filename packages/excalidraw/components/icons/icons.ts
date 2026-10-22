@@ -283,7 +283,6 @@ export const ICONS: readonly IconAsset[] = [
     name: "Redis",
     category: "databases",
     keywords: ["cache", "key value", "in memory", "database"],
-    aliases: ["cache"],
     body: tile("#dc382d", label("R")),
   },
   {
@@ -414,7 +413,7 @@ export const ICONS: readonly IconAsset[] = [
     name: "RabbitMQ",
     category: "devops",
     keywords: ["queue", "message broker", "amqp", "messaging"],
-    aliases: ["queue", "amqp"],
+    aliases: ["amqp"],
     body: tile("#ff6600", label("RMQ")),
   },
   {
@@ -454,8 +453,7 @@ export const ICONS: readonly IconAsset[] = [
     id: "aws-lambda",
     name: "AWS Lambda",
     category: "aws",
-    keywords: ["amazon", "serverless", "function", "compute"],
-    aliases: ["lambda"],
+    keywords: ["amazon", "serverless", "function", "compute", "lambda"],
     body: provider("#ff9900", "FN"),
   },
   {
@@ -669,7 +667,7 @@ export const ICONS: readonly IconAsset[] = [
     name: "Kubernetes Service",
     category: "kubernetes",
     keywords: ["k8s", "networking", "load balancer", "endpoint"],
-    aliases: ["service", "svc"],
+    aliases: ["svc"],
     body: kube("#326ce5", "SVC"),
   },
   {
