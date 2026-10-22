@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { lazy, Suspense, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { getFrameLikeTitle, isFrameHidden } from "@excalidraw/element";
 
@@ -40,6 +41,7 @@ import { useSceneRevision } from "./useSceneRevision";
 
 import "./framesPanel.scss";
 
+import type { Action } from "../../actions/types";
 import type App from "../App";
 
 /**
@@ -97,6 +99,27 @@ export const FramesPanel = () => {
 
   const selectFrame = (frame: ExcalidrawFrameLikeElement) => {
     app.setState({ selectedElementIds: { [frame.id]: true } });
+  };
+
+  /**
+   * The panel's buttons act on the frame of their own row, but the actions
+   * they call work on the *selected* frames — and they read the selection
+   * from the app state as it is committed. React applies a state update
+   * only once the click handler is done, so an action run right after a
+   * `setState` would still see the selection of before the click: it would
+   * act on the wrong frame, or on none at all (which is why hiding a frame
+   * worked — the frame was already selected — but showing it again did
+   * not: the hide had cleared the selection, and the show's own selection
+   * was still pending).
+   *
+   * Committing the selection first keeps the button and the action in
+   * agreement.
+   */
+  const actOnFrame = (frame: ExcalidrawFrameLikeElement, action: Action) => {
+    flushSync(() => {
+      app.setState({ selectedElementIds: { [frame.id]: true } });
+    });
+    app.actionManager.executeAction(action, "ui");
   };
 
   const jumpToFrame = (frame: ExcalidrawFrameLikeElement) => {
@@ -265,11 +288,7 @@ export const FramesPanel = () => {
                     }
                     data-testid={`frames-panel-hide-${index}`}
                     onClick={() => {
-                      selectFrame(frame);
-                      app.actionManager.executeAction(
-                        actionToggleFrameHidden,
-                        "ui",
-                      );
+                      actOnFrame(frame, actionToggleFrameHidden);
                     }}
                   >
                     {isHidden ? eyeClosedIcon : eyeIcon}
@@ -280,8 +299,7 @@ export const FramesPanel = () => {
                     aria-label={t("labels.frame.moveUp")}
                     data-testid={`frames-panel-move-up-${index}`}
                     onClick={() => {
-                      selectFrame(frame);
-                      app.actionManager.executeAction(actionMoveFrameUp, "ui");
+                      actOnFrame(frame, actionMoveFrameUp);
                     }}
                   >
                     {collapseUpIcon}
@@ -292,11 +310,7 @@ export const FramesPanel = () => {
                     aria-label={t("labels.frame.moveDown")}
                     data-testid={`frames-panel-move-down-${index}`}
                     onClick={() => {
-                      selectFrame(frame);
-                      app.actionManager.executeAction(
-                        actionMoveFrameDown,
-                        "ui",
-                      );
+                      actOnFrame(frame, actionMoveFrameDown);
                     }}
                   >
                     {collapseDownIcon}
@@ -307,11 +321,7 @@ export const FramesPanel = () => {
                     aria-label={t("labels.frame.delete")}
                     data-testid={`frames-panel-delete-${index}`}
                     onClick={() => {
-                      selectFrame(frame);
-                      app.actionManager.executeAction(
-                        actionDeleteSelected,
-                        "ui",
-                      );
+                      actOnFrame(frame, actionDeleteSelected);
                     }}
                   >
                     {TrashIcon}

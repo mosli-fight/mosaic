@@ -5,6 +5,7 @@ import {
   FRAME_FORMAT_PRESETS,
   getFrameFormatSize,
 } from "@excalidraw/common";
+import { CaptureUpdateAction, isElementHidden } from "@excalidraw/element";
 import { fireEvent, waitFor } from "@testing-library/react";
 
 import type {
@@ -27,7 +28,7 @@ import {
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
-import { Pointer } from "./helpers/ui";
+import { Keyboard, Pointer } from "./helpers/ui";
 import { act, render } from "./test-utils";
 
 const { h } = window;
@@ -37,6 +38,15 @@ const getFrame = (id: string) =>
   h.elements.find(
     (element) => element.id === id,
   ) as NonDeleted<ExcalidrawFrameElement>;
+
+/**
+ * Whether the element is on the board — a hidden frame takes what sits on
+ * it off the board along with itself.
+ */
+const isOnBoard = (id: string) => {
+  const element = h.elements.find((e) => e.id === id)!;
+  return !isElementHidden(element, h.app.scene.getNonDeletedElementsMap());
+};
 
 const createFrame = ({
   id = "frame-1",
@@ -647,6 +657,111 @@ describe("frames (Miro-style)", () => {
         },
         { timeout: 3000 },
       );
+    });
+  });
+
+  describe("hiding and showing a frame from the panel", () => {
+    const toggleOf = (index: number) =>
+      document.querySelector<HTMLButtonElement>(
+        `[data-testid="frames-panel-hide-${index}"]`,
+      )!;
+
+    const panelSaysHidden = (index: number) =>
+      !!document
+        .querySelector<HTMLElement>(
+          `[data-testid="frames-panel-item-${index}"]`,
+        )
+        ?.className.includes("frames-panel__item--hidden");
+
+    it("shows a hidden frame again", async () => {
+      await render(<Excalidraw />);
+      API.setElements([
+        createFrame({ id: "a" }),
+        API.createElement({
+          type: "rectangle",
+          id: "r",
+          frameId: "a",
+        }),
+      ]);
+
+      openFramesPanel();
+
+      await waitFor(() => {
+        expect(toggleOf(0)).not.toBe(null);
+      });
+
+      // the frame goes off the board, and what sits on it goes with it
+      fireEvent.click(toggleOf(0));
+      expect(getFrame("a").hidden).toBe(true);
+      expect(isOnBoard("r")).toBe(false);
+      expect(panelSaysHidden(0)).toBe(true);
+
+      // and comes back when it is shown again
+      fireEvent.click(toggleOf(0));
+      expect(getFrame("a").hidden).toBe(false);
+      expect(isOnBoard("r")).toBe(true);
+      expect(panelSaysHidden(0)).toBe(false);
+    });
+
+    it("hides and shows the frame of the row it is on", async () => {
+      await render(<Excalidraw />);
+      API.setElements([
+        createFrame({ id: "a" }),
+        createFrame({ id: "b", x: 1000 }),
+      ]);
+      // another frame is selected on the canvas — the button of a row is
+      // about the frame of that row, not about the selection
+      selectFrame("a");
+
+      openFramesPanel();
+
+      await waitFor(() => {
+        expect(toggleOf(1)).not.toBe(null);
+      });
+
+      fireEvent.click(toggleOf(1));
+      expect(getFrame("b").hidden).toBe(true);
+      expect(panelSaysHidden(1)).toBe(true);
+
+      // the frame that was on the board all along is left alone
+      expect(getFrame("a").hidden).toBeFalsy();
+      expect(panelSaysHidden(0)).toBe(false);
+
+      fireEvent.click(toggleOf(1));
+      expect(getFrame("b").hidden).toBe(false);
+      expect(panelSaysHidden(1)).toBe(false);
+      expect(getFrame("a").hidden).toBeFalsy();
+    });
+
+    it("shows a frame again after an undo", async () => {
+      await render(<Excalidraw handleKeyboardGlobally={true} />);
+      // the scene is handed over the way the app hands it over — so that
+      // the store knows of the frame, and the undo can bring it back
+      API.updateScene({
+        elements: [createFrame({ id: "a" })],
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+
+      openFramesPanel();
+
+      await waitFor(() => {
+        expect(toggleOf(0)).not.toBe(null);
+      });
+
+      fireEvent.click(toggleOf(0));
+      expect(getFrame("a").hidden).toBe(true);
+
+      // the undo brings the frame back on the board...
+      Keyboard.undo();
+      expect(getFrame("a").hidden).toBeFalsy();
+
+      await waitFor(() => {
+        expect(panelSaysHidden(0)).toBe(false);
+      });
+
+      // ...and the panel's buttons still act on the frame of their row
+      fireEvent.click(toggleOf(0));
+      expect(getFrame("a").hidden).toBe(true);
     });
   });
 
