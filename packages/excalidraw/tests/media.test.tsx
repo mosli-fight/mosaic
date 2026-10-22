@@ -16,6 +16,9 @@ import {
 } from "../components/media/emojiData";
 import { GIF_SETTINGS_STORAGE_KEY } from "../components/media/gifSettings";
 import {
+  getStickerCount,
+  searchStickers,
+  STICKER_CATEGORIES,
   STICKERS,
   stickerToDataURL,
   stickerToSVG,
@@ -45,6 +48,16 @@ const getEmojiButtons = () =>
 
 const getStickerButtons = () =>
   document.querySelectorAll('[data-testid^="media-sticker-"]');
+
+const getStickerSearchInput = () =>
+  document.querySelector(
+    '[data-testid="media-stickers-search"] input',
+  ) as HTMLInputElement;
+
+const getStickerCategoryButton = (id: string) =>
+  document.querySelector<HTMLButtonElement>(
+    `[data-testid="media-stickers-category-${id}"]`,
+  );
 
 const getSearchInput = () =>
   document.querySelector(
@@ -220,6 +233,117 @@ describe("media panel", () => {
         expect(dataURL.length).toBeGreaterThan(64);
       }
     });
+
+    it("offers a decent number of stickers", () => {
+      expect(getStickerCount()).toBe(STICKERS.length);
+      expect(getStickerCount()).toBeGreaterThanOrEqual(50);
+    });
+  });
+
+  describe("the sticker categories", () => {
+    it("has stickers in every category", () => {
+      for (const category of STICKER_CATEGORIES) {
+        const stickers = STICKERS.filter(
+          (sticker) => sticker.category === category.id,
+        );
+
+        expect(stickers.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("gives every category its own id and a name", () => {
+      const ids = STICKER_CATEGORIES.map((category) => category.id);
+
+      expect(new Set(ids).size).toBe(ids.length);
+
+      for (const category of STICKER_CATEGORIES) {
+        expect(category.labelKey).toBeTruthy();
+        expect(category.keywords.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("puts every sticker in a category that exists", () => {
+      const known = new Set(STICKER_CATEGORIES.map((category) => category.id));
+
+      for (const sticker of STICKERS) {
+        expect(known.has(sticker.category)).toBe(true);
+      }
+    });
+
+    it("gives every sticker a name", () => {
+      for (const sticker of STICKERS) {
+        expect(sticker.name.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("keeps every sticker of the catalogue in the search", () => {
+      const found = searchStickers("").flatMap((group) => group.stickers);
+
+      expect(found).toHaveLength(STICKERS.length);
+    });
+
+    it("shows one category at a time when one is asked for", () => {
+      const groups = searchStickers("", "animals");
+
+      expect(groups).toHaveLength(1);
+      expect(groups[0].category.id).toBe("animals");
+
+      for (const sticker of groups[0].stickers) {
+        expect(sticker.category).toBe("animals");
+      }
+    });
+
+    it("finds a sticker by its name", () => {
+      const groups = searchStickers("penguin-less", "animals");
+
+      expect(groups).toHaveLength(0);
+
+      const found = searchStickers("panda");
+
+      expect(found.length).toBeGreaterThan(0);
+      expect(
+        found.some((group) =>
+          group.stickers.some((sticker) => sticker.name === "Panda"),
+        ),
+      ).toBe(true);
+    });
+
+    it("finds a sticker by a word it is filed under", () => {
+      const groups = searchStickers("ribbit");
+
+      expect(
+        groups.some((group) =>
+          group.stickers.some((sticker) => sticker.id === "frog"),
+        ),
+      ).toBe(true);
+    });
+
+    it("finds a sticker by the category it belongs to", () => {
+      const groups = searchStickers("gestures");
+
+      expect(groups.length).toBeGreaterThan(0);
+
+      for (const group of groups) {
+        expect(group.category.id).toBe("gestures");
+      }
+    });
+
+    it("drops the categories that have nothing to show", () => {
+      const groups = searchStickers("zzzzzz");
+
+      expect(groups).toHaveLength(0);
+    });
+
+    it("searches inside the category that was asked for", () => {
+      const groups = searchStickers("star", "symbols");
+
+      expect(groups).toHaveLength(1);
+      expect(groups[0].category.id).toBe("symbols");
+
+      for (const sticker of groups[0].stickers) {
+        expect(sticker.category).toBe("symbols");
+      }
+    });
   });
 
   describe("the panel", () => {
@@ -308,6 +432,167 @@ describe("media panel", () => {
           '[data-testid="media-tab-stickers"]',
         )!,
       );
+
+      await waitFor(() => {
+        expect(getStickerButtons()).toHaveLength(STICKERS.length);
+      });
+    });
+
+    it("offers a category for every kind of sticker", async () => {
+      await openPanel();
+
+      fireEvent.click(
+        document.querySelector<HTMLButtonElement>(
+          '[data-testid="media-tab-stickers"]',
+        )!,
+      );
+
+      await waitFor(() => {
+        expect(getStickerCategoryButton("all")).not.toBe(null);
+      });
+
+      for (const category of STICKER_CATEGORIES) {
+        expect(getStickerCategoryButton(category.id)).not.toBe(null);
+      }
+    });
+
+    it("shows only the stickers of the category that is picked", async () => {
+      await openPanel();
+
+      fireEvent.click(
+        document.querySelector<HTMLButtonElement>(
+          '[data-testid="media-tab-stickers"]',
+        )!,
+      );
+
+      await waitFor(() => {
+        expect(getStickerButtons()).toHaveLength(STICKERS.length);
+      });
+
+      fireEvent.click(getStickerCategoryButton("animals")!);
+
+      await waitFor(() => {
+        expect(getStickerButtons().length).toBeGreaterThan(0);
+      });
+
+      expect(getStickerButtons().length).toBeLessThan(STICKERS.length);
+
+      for (const button of Array.from(getStickerButtons())) {
+        const id = button
+          .getAttribute("data-testid")!
+          .replace("media-sticker-", "");
+        const sticker = STICKERS.find((entry) => entry.id === id);
+
+        expect(sticker?.category).toBe("animals");
+      }
+    });
+
+    it("narrows the stickers down to a search", async () => {
+      await openPanel();
+
+      fireEvent.click(
+        document.querySelector<HTMLButtonElement>(
+          '[data-testid="media-tab-stickers"]',
+        )!,
+      );
+
+      await waitFor(() => {
+        expect(getStickerButtons()).toHaveLength(STICKERS.length);
+      });
+
+      fireEvent.change(getStickerSearchInput(), {
+        target: { value: "panda" },
+      });
+
+      await waitFor(() => {
+        expect(getStickerButtons().length).toBeGreaterThan(0);
+      });
+
+      expect(getStickerButtons().length).toBeLessThan(STICKERS.length);
+
+      const ids = Array.from(getStickerButtons()).map((button) =>
+        button.getAttribute("data-testid"),
+      );
+
+      expect(ids).toContain("media-sticker-panda");
+    });
+
+    it("searches inside the category that is picked", async () => {
+      await openPanel();
+
+      fireEvent.click(
+        document.querySelector<HTMLButtonElement>(
+          '[data-testid="media-tab-stickers"]',
+        )!,
+      );
+
+      await waitFor(() => {
+        expect(getStickerButtons()).toHaveLength(STICKERS.length);
+      });
+
+      fireEvent.click(getStickerCategoryButton("animals")!);
+
+      fireEvent.change(getStickerSearchInput(), {
+        target: { value: "panda" },
+      });
+
+      await waitFor(() => {
+        expect(getStickerButtons().length).toBeGreaterThan(0);
+      });
+
+      const ids = Array.from(getStickerButtons()).map((button) =>
+        button.getAttribute("data-testid"),
+      );
+
+      expect(ids).toEqual(["media-sticker-panda"]);
+    });
+
+    it("says so when no sticker matches the search", async () => {
+      await openPanel();
+
+      fireEvent.click(
+        document.querySelector<HTMLButtonElement>(
+          '[data-testid="media-tab-stickers"]',
+        )!,
+      );
+
+      await waitFor(() => {
+        expect(getStickerButtons()).toHaveLength(STICKERS.length);
+      });
+
+      fireEvent.change(getStickerSearchInput(), {
+        target: { value: "nothing at all" },
+      });
+
+      await waitFor(() => {
+        expect(
+          document.querySelector('[data-testid="media-stickers-empty"]'),
+        ).not.toBe(null);
+      });
+
+      expect(getStickerButtons()).toHaveLength(0);
+    });
+
+    it("goes back to every sticker when the category is let go of", async () => {
+      await openPanel();
+
+      fireEvent.click(
+        document.querySelector<HTMLButtonElement>(
+          '[data-testid="media-tab-stickers"]',
+        )!,
+      );
+
+      await waitFor(() => {
+        expect(getStickerButtons()).toHaveLength(STICKERS.length);
+      });
+
+      fireEvent.click(getStickerCategoryButton("animals")!);
+
+      await waitFor(() => {
+        expect(getStickerButtons().length).toBeLessThan(STICKERS.length);
+      });
+
+      fireEvent.click(getStickerCategoryButton("all")!);
 
       await waitFor(() => {
         expect(getStickerButtons()).toHaveLength(STICKERS.length);

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { trackEvent } from "../../analytics";
 import { useUIAppState } from "../../context/ui-appState";
@@ -12,11 +12,18 @@ import { TextField } from "../TextField";
 import { searchEmojis } from "./emojiData";
 import { GifPanel } from "./GifPanel";
 import { insertEmoji, insertSticker, insertVideo } from "./insertMedia";
-import { STICKERS, stickerToSVG } from "./stickers";
 
 import "./mediaPanel.scss";
 
 import type { VideoInsertResult } from "./insertMedia";
+import type { Sticker, StickerCategoryId } from "./stickerDrawing";
+
+/**
+ * The stickers tab is only fetched when it is opened: it carries the whole
+ * catalogue of stickers with it, and a board that is never given a sticker
+ * should not pay for one.
+ */
+const StickerPanel = lazy(() => import("./StickerPanel"));
 
 /**
  * The media panel: a Miro-style shelf of things that can be put on a board.
@@ -95,29 +102,6 @@ const EmojiGrid = ({
   );
 };
 
-const StickerGrid = ({ onPick }: { onPick: (id: string) => void }) => {
-  return (
-    <div className="media-panel__scroll">
-      <div className="media-panel__sticker-grid" data-testid="media-stickers">
-        {STICKERS.map((sticker) => (
-          <button
-            type="button"
-            key={sticker.id}
-            className="media-panel__sticker"
-            title={sticker.name}
-            aria-label={sticker.name}
-            data-testid={`media-sticker-${sticker.id}`}
-            onClick={() => onPick(sticker.id)}
-            // the sticker is drawn by the editor itself, so the panel shows
-            // the very same drawing the board will get
-            dangerouslySetInnerHTML={{ __html: stickerToSVG(sticker) }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
 export const MediaPanel = () => {
   const appState = useUIAppState();
   const setAppState = useExcalidrawSetAppState();
@@ -126,6 +110,10 @@ export const MediaPanel = () => {
   const [tab, setTab] = useState<MediaTab>("emoji");
   const [mode, setMode] = useState<MediaMode>("emoji");
   const [query, setQuery] = useState("");
+  const [stickerQuery, setStickerQuery] = useState("");
+  const [stickerCategory, setStickerCategory] = useState<
+    StickerCategoryId | "all"
+  >("all");
   const [videoUrl, setVideoUrl] = useState("");
   const [videoError, setVideoError] = useState<string | null>(null);
 
@@ -140,11 +128,7 @@ export const MediaPanel = () => {
     insertEmoji(app, char);
   };
 
-  const addSticker = (id: string) => {
-    const sticker = STICKERS.find((entry) => entry.id === id);
-    if (!sticker) {
-      return;
-    }
+  const addSticker = (sticker: Sticker) => {
     trackEvent("media", "sticker", sticker.id);
     insertSticker(app, sticker);
   };
@@ -296,7 +280,24 @@ export const MediaPanel = () => {
             {tab === "emoji" ? (
               <EmojiGrid query={query} onPick={addEmoji} />
             ) : tab === "stickers" ? (
-              <StickerGrid onPick={addSticker} />
+              <Suspense
+                fallback={
+                  <div
+                    className="media-panel__empty"
+                    data-testid="media-stickers-loading"
+                  >
+                    {t("labels.media.stickersLoading")}
+                  </div>
+                }
+              >
+                <StickerPanel
+                  query={stickerQuery}
+                  category={stickerCategory}
+                  onQueryChange={setStickerQuery}
+                  onCategoryChange={setStickerCategory}
+                  onPick={addSticker}
+                />
+              </Suspense>
             ) : (
               <GifPanel />
             )}

@@ -144,6 +144,45 @@
     gap: 0.5rem;
   }
 
+  .media-panel__stickers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 0;
+    flex: 1;
+  }
+
+  .media-panel__sticker-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .media-panel__sticker-category {
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--default-border-color);
+    border-radius: var(--border-radius-lg);
+    background: var(--island-bg-color);
+    color: var(--text-primary-color);
+    font-family: var(--ui-font);
+    font-size: 0.75rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-primary-light);
+    }
+
+    &--active {
+      background: var(--color-primary-light);
+      border-color: var(--color-primary);
+      color: var(--color-primary-darkest);
+      font-weight: 600;
+    }
+  }
+
   .media-panel__sticker {
     display: flex;
     align-items: center;
