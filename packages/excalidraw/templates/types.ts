@@ -28,6 +28,10 @@ export const TEMPLATE_CATEGORY_IDS = [
   "strategy",
   "diagramming",
   "business",
+  "data",
+  "software",
+  "process",
+  "systems",
 ] as const;
 
 export type TemplateCategoryId = typeof TEMPLATE_CATEGORY_IDS[number];
@@ -127,12 +131,40 @@ export type TemplateArrowSpec = {
   inFrame?: string;
 };
 
+/**
+ * An arrow between two shapes of the template, named by their spec ids.
+ *
+ * The endpoints are not written down: they are derived from the two shapes,
+ * so the arrow leaves and meets each one's outline however the shapes are
+ * laid out. That is what keeps a diagram's arrows attached to its nodes.
+ */
+export type TemplateConnectorSpec = {
+  kind: "connector";
+  id: string;
+  /** the id of the spec the arrow starts at */
+  from: string;
+  /** the id of the spec the arrow points at */
+  to: string;
+  /** the words written on the arrow */
+  label?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+  strokeStyle?: TemplateStrokeStyle;
+  /** whether the arrow's head is drawn */
+  arrowhead?: boolean;
+  /** whether the arrow's tail is drawn, for a two-way arrow */
+  startArrowhead?: boolean;
+  /** the id of the frame of this template the arrow belongs to, if any */
+  inFrame?: string;
+};
+
 export type TemplateElementSpec =
   | TemplateFrameSpec
   | TemplateShapeSpec
   | TemplateStickySpec
   | TemplateTextSpec
-  | TemplateArrowSpec;
+  | TemplateArrowSpec
+  | TemplateConnectorSpec;
 
 /**
  * A template: a name, a line about it, the category it belongs to, and the

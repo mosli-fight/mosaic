@@ -10,7 +10,12 @@ import {
 
 import { useUIAppState } from "../../context/ui-appState";
 import { getTemplateBounds } from "../../templates/builder";
+import { connectorGeometry } from "../../templates/connector";
 
+import type {
+  ConnectorBox,
+  ConnectorGeometry,
+} from "../../templates/connector";
 import type {
   ExcalidrawTemplate,
   TemplateElementSpec,
@@ -164,12 +169,144 @@ const TextRun = ({
   );
 };
 
+/**
+ * The head of an arrow, drawn at `(x, y)` pointing along `(dx, dy)`.
+ *
+ * The head is a triangle turned to the line it ends, so an arrow that runs
+ * up or sideways looks like an arrow and not like a flag.
+ */
+const ArrowHead = ({
+  x,
+  y,
+  dx,
+  dy,
+  ink,
+  color,
+}: {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  ink: Ink;
+  color: string;
+}) => {
+  const length = Math.hypot(dx, dy);
+
+  if (!length) {
+    return null;
+  }
+
+  const ux = dx / length;
+  const uy = dy / length;
+  const size = 10;
+  const spread = 5;
+
+  return (
+    <polygon
+      points={`${x},${y} ${x - ux * size - uy * spread},${
+        y - uy * size + ux * spread
+      } ${x - ux * size + uy * spread},${y - uy * size - ux * spread}`}
+      fill={ink(color)}
+    />
+  );
+};
+
+/** the dash pattern of a stroke style, as SVG spells it */
+const dashArray = (style: string) =>
+  style === "dashed" ? "8 6" : style === "dotted" ? "2 5" : undefined;
+
+/** a line from one point to another, with a head at whichever end asks */
+const ArrowLine = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  strokeWidth,
+  strokeStyle,
+  endHead,
+  startHead,
+  ink,
+}: {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color: string;
+  strokeWidth: number;
+  strokeStyle?: string;
+  endHead: boolean;
+  startHead: boolean;
+  ink: Ink;
+}) => (
+  <>
+    <line
+      x1={x1}
+      y1={y1}
+      x2={x2}
+      y2={y2}
+      stroke={ink(color)}
+      strokeWidth={strokeWidth}
+      strokeDasharray={dashArray(strokeStyle ?? "solid")}
+      vectorEffect="non-scaling-stroke"
+    />
+    {endHead && (
+      <ArrowHead
+        x={x2}
+        y={y2}
+        dx={x2 - x1}
+        dy={y2 - y1}
+        ink={ink}
+        color={color}
+      />
+    )}
+    {startHead && (
+      <ArrowHead
+        x={x1}
+        y={y1}
+        dx={x1 - x2}
+        dy={y1 - y2}
+        ink={ink}
+        color={color}
+      />
+    )}
+  </>
+);
+
+/** the words written on an arrow, drawn at its middle */
+const ArrowLabel = ({
+  x,
+  y,
+  text,
+  ink,
+}: {
+  x: number;
+  y: number;
+  text: string;
+  ink: Ink;
+}) => (
+  <text
+    x={x}
+    y={y}
+    textAnchor="middle"
+    dominantBaseline="middle"
+    fontSize={14}
+    fill={ink(DEFAULT_STROKE)}
+    fontFamily="inherit"
+  >
+    {text}
+  </text>
+);
+
 const SpecPreview = ({
   spec,
   ink,
+  shapes,
 }: {
   spec: TemplateElementSpec;
   ink: Ink;
+  /** the boxes of the template's shapes, for the connectors between them */
+  shapes: Map<string, ConnectorBox>;
 }) => {
   switch (spec.kind) {
     case "frame":
@@ -282,28 +419,54 @@ const SpecPreview = ({
     case "arrow": {
       const x2 = spec.x + spec.dx;
       const y2 = spec.y + spec.dy;
+      const color = spec.strokeColor ?? DEFAULT_STROKE;
+
+      return (
+        <ArrowLine
+          x1={spec.x}
+          y1={spec.y}
+          x2={x2}
+          y2={y2}
+          color={color}
+          strokeWidth={spec.strokeWidth ?? 2}
+          strokeStyle={spec.strokeStyle}
+          endHead={spec.arrowhead !== false}
+          startHead={false}
+          ink={ink}
+        />
+      );
+    }
+    case "connector": {
+      const from = shapes.get(spec.from);
+      const to = shapes.get(spec.to);
+
+      if (!from || !to) {
+        return null;
+      }
+
+      const geometry: ConnectorGeometry = connectorGeometry(from, to);
+      const color = spec.strokeColor ?? DEFAULT_STROKE;
+
       return (
         <>
-          <line
-            x1={spec.x}
-            y1={spec.y}
-            x2={x2}
-            y2={y2}
-            stroke={ink(spec.strokeColor ?? DEFAULT_STROKE)}
+          <ArrowLine
+            x1={geometry.x}
+            y1={geometry.y}
+            x2={geometry.x + geometry.dx}
+            y2={geometry.y + geometry.dy}
+            color={color}
             strokeWidth={spec.strokeWidth ?? 2}
-            strokeDasharray={
-              spec.strokeStyle === "dashed"
-                ? "8 6"
-                : spec.strokeStyle === "dotted"
-                ? "2 5"
-                : undefined
-            }
-            vectorEffect="non-scaling-stroke"
+            strokeStyle={spec.strokeStyle}
+            endHead={spec.arrowhead !== false}
+            startHead={!!spec.startArrowhead}
+            ink={ink}
           />
-          {spec.arrowhead !== false && (
-            <polygon
-              points={`${x2},${y2} ${x2 - 10},${y2 - 5} ${x2 - 10},${y2 + 5}`}
-              fill={ink(spec.strokeColor ?? DEFAULT_STROKE)}
+          {spec.label && (
+            <ArrowLabel
+              x={geometry.x + geometry.dx / 2}
+              y={geometry.y + geometry.dy / 2}
+              text={spec.label}
+              ink={ink}
             />
           )}
         </>
@@ -328,6 +491,26 @@ export const TemplatePreview = ({
   // the ink of the board, in the theme the board is in
   const ink: Ink = (color) => applyDarkModeFilter(color, theme === THEME.DARK);
 
+  // the boxes of the shapes, so a connector can be drawn between the very
+  // shapes its ends are written against
+  const shapes = new Map<string, ConnectorBox>();
+
+  for (const spec of template.elements) {
+    if (
+      spec.kind === "rectangle" ||
+      spec.kind === "ellipse" ||
+      spec.kind === "diamond"
+    ) {
+      shapes.set(spec.id, {
+        x: spec.x,
+        y: spec.y,
+        width: spec.width,
+        height: spec.height,
+        kind: spec.kind,
+      });
+    }
+  }
+
   return (
     <svg
       className={clsx("templates-preview", className)}
@@ -337,7 +520,7 @@ export const TemplatePreview = ({
       aria-label={label}
     >
       {template.elements.map((spec) => (
-        <SpecPreview key={spec.id} spec={spec} ink={ink} />
+        <SpecPreview key={spec.id} spec={spec} ink={ink} shapes={shapes} />
       ))}
     </svg>
   );
