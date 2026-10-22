@@ -14,6 +14,8 @@ import {
   getFrameLikeTitle,
   isFrameHidden,
   isFrameLikeElement,
+  isImageElement,
+  isTextElement,
 } from "@excalidraw/element";
 
 import type {
@@ -25,7 +27,7 @@ import type {
 
 import { zoomToFitBounds } from "./viewport";
 
-import type { Offsets } from "./types";
+import type { AppClassProperties, Offsets } from "./types";
 import type { AppState } from "./types";
 
 /**
@@ -131,6 +133,155 @@ export const getFrameContentCount = (
  */
 export const getFrameTitle = (frame: ExcalidrawFrameLikeElement) =>
   getFrameLikeTitle(frame);
+
+/**
+ * The frame the viewport is looking at — the one the frames panel
+ * highlights.
+ *
+ * "Looking at" is about how much of the frame is on screen: the frame
+ * covering most of the canvas is the one being looked at. A frame that is
+ * entirely off screen is not, and neither is a hidden one — it is not on
+ * the board to look at.
+ */
+export const getFrameInView = ({
+  frames,
+  appState,
+  elementsMap,
+}: {
+  frames: readonly ExcalidrawFrameLikeElement[];
+  appState: Pick<AppState, "scrollX" | "scrollY" | "zoom" | "width" | "height">;
+  elementsMap: ElementsMap;
+}): ExcalidrawFrameLikeElement | null => {
+  const zoom = appState.zoom.value;
+
+  if (!(zoom > 0) || !(appState.width > 0) || !(appState.height > 0)) {
+    return null;
+  }
+
+  // the part of the scene the canvas shows
+  const left = -appState.scrollX;
+  const top = -appState.scrollY;
+  const right = appState.width / zoom - appState.scrollX;
+  const bottom = appState.height / zoom - appState.scrollY;
+
+  let frameInView: ExcalidrawFrameLikeElement | null = null;
+  let visibleArea = 0;
+
+  for (const frame of frames) {
+    if (isFrameHidden(frame)) {
+      continue;
+    }
+
+    const [x1, y1, x2, y2] = getFrameBounds(frame, elementsMap);
+
+    const visibleWidth = Math.min(x2, right) - Math.max(x1, left);
+    const visibleHeight = Math.min(y2, bottom) - Math.max(y1, top);
+
+    if (visibleWidth <= 0 || visibleHeight <= 0) {
+      continue;
+    }
+
+    const area = visibleWidth * visibleHeight;
+
+    if (area > visibleArea) {
+      visibleArea = area;
+      frameInView = frame;
+    }
+  }
+
+  return frameInView;
+};
+
+/**
+ * A fingerprint of what each frame holds: it changes when the frame, or
+ * anything on it, changes.
+ *
+ * The frames panel uses it to know when a thumbnail is stale, without
+ * having to compare the contents of every frame on every scene change.
+ *
+ * All the frames are fingerprinted in one pass over the scene, so that a
+ * board of many frames does not cost a pass each.
+ */
+export const getFrameContentKeys = (
+  frames: readonly ExcalidrawFrameLikeElement[],
+  elements: readonly ExcalidrawElement[],
+  imageCache?: AppClassProperties["imageCache"],
+): Map<string, string> => {
+  // the frame itself is part of its own fingerprint: it may have been
+  // moved or resized
+  const versions = new Map<string, string[]>(
+    frames.map((frame) => [frame.id, [`${frame.id}:${frame.version}`]]),
+  );
+
+  // where each element sits: on one of these frames, or nowhere
+  const frameOfElement = new Map<string, string>();
+
+  for (const element of elements) {
+    if (element.frameId && versions.has(element.frameId)) {
+      frameOfElement.set(element.id, element.frameId);
+    }
+  }
+
+  for (const element of elements) {
+    let frameId = frameOfElement.get(element.id);
+
+    // the label bound to an element on the frame is on the frame too
+    if (!frameId && isTextElement(element) && element.containerId) {
+      frameId = frameOfElement.get(element.containerId);
+    }
+
+    if (!frameId) {
+      continue;
+    }
+
+    versions
+      .get(frameId)!
+      .push(
+        `${element.id}:${element.version}:${getImageState(
+          element,
+          imageCache,
+        )}`,
+      );
+  }
+
+  const keys = new Map<string, string>();
+
+  for (const [frameId, frameVersions] of versions) {
+    keys.set(frameId, frameVersions.sort().join("|"));
+  }
+
+  return keys;
+};
+
+/**
+ * How an image on a frame stands at the moment: still loading, or there.
+ *
+ * An image does not change the element it belongs to when it finishes
+ * loading, so the element's version cannot tell the two apart — but the
+ * thumbnail has to.
+ */
+const getImageState = (
+  element: ExcalidrawElement,
+  imageCache: AppClassProperties["imageCache"] | undefined,
+) => {
+  if (!isImageElement(element)) {
+    return "";
+  }
+
+  const fileId = element.fileId;
+
+  if (!fileId) {
+    return "none";
+  }
+
+  const cached = imageCache?.get(fileId);
+
+  if (!cached) {
+    return "none";
+  }
+
+  return cached.image instanceof Promise ? "loading" : "ready";
+};
 
 /**
  * The type of a frame that is not deleted.
