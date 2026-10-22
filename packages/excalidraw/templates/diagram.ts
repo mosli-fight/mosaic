@@ -348,6 +348,8 @@ export type SequenceMessage = {
   label: string;
   /** a reply is drawn without a head and with a dashed line */
   reply?: boolean;
+  /** a dashed line, for a message that is optional or asynchronous */
+  dashed?: boolean;
 };
 
 /** the width of a participant's box, and the distance between two of them */
@@ -445,9 +447,10 @@ export const sequenceElements = ({
           ? COLOR_PALETTE.gray[4]
           : COLOR_PALETTE.black,
         strokeWidth: 2,
-        strokeStyle: message.reply
-          ? ("dashed" as const)
-          : ("solid" as const),
+        strokeStyle:
+          message.reply || message.dashed
+            ? ("dashed" as const)
+            : ("solid" as const),
         arrowhead: !message.reply,
       },
       {

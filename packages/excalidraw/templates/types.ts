@@ -187,4 +187,8 @@ export const TEMPLATE_CATEGORIES: readonly TemplateCategory[] = [
   { id: "strategy", labelKey: "labels.templates.categories.strategy" },
   { id: "diagramming", labelKey: "labels.templates.categories.diagramming" },
   { id: "business", labelKey: "labels.templates.categories.business" },
+  { id: "data", labelKey: "labels.templates.categories.data" },
+  { id: "software", labelKey: "labels.templates.categories.software" },
+  { id: "process", labelKey: "labels.templates.categories.process" },
+  { id: "systems", labelKey: "labels.templates.categories.systems" },
 ];
