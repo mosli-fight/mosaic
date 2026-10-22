@@ -27,6 +27,7 @@ export const TEMPLATE_CATEGORY_IDS = [
   "agile",
   "strategy",
   "diagramming",
+  "business",
 ] as const;
 
 export type TemplateCategoryId = typeof TEMPLATE_CATEGORY_IDS[number];
@@ -153,4 +154,5 @@ export const TEMPLATE_CATEGORIES: readonly TemplateCategory[] = [
   { id: "agile", labelKey: "labels.templates.categories.agile" },
   { id: "strategy", labelKey: "labels.templates.categories.strategy" },
   { id: "diagramming", labelKey: "labels.templates.categories.diagramming" },
+  { id: "business", labelKey: "labels.templates.categories.business" },
 ];

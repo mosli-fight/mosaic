@@ -85,6 +85,14 @@
     font-size: 0.875rem;
   }
 
+  .templates-dialog__loading {
+    margin-top: 2rem;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--color-muted-darker);
+    font-size: 0.875rem;
+  }
+
   .templates-card {
     display: flex;
     flex-direction: column;

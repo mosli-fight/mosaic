@@ -216,13 +216,15 @@
       "preview": "Preview",
       "hidePreview": "Hide preview",
       "empty": "No templates match your search",
+      "loading": "Fetching the templates…",
       "categories": {
         "meetings": "Meetings & workshops",
         "ideation": "Ideation & brainstorming",
         "research": "Research & design",
         "agile": "Agile workflows",
         "strategy": "Strategy & planning",
-        "diagramming": "Diagramming & mapping"
+        "diagramming": "Diagramming & mapping",
+        "business": "Business & operations"
       },
       "items": {
         "brainstorming": {
@@ -264,6 +266,94 @@
         "flowchartStarter": {
           "name": "Flowchart Starter",
           "description": "The shapes a flowchart is made of, joined by arrows"
+        },
+        "businessModelCanvas": {
+          "name": "Business Model Canvas",
+          "description": "The nine blocks of a business model, with the questions each one asks"
+        },
+        "leanCanvas": {
+          "name": "Lean Canvas",
+          "description": "The same nine questions, in the order a new venture asks them"
+        },
+        "costBenefitAnalysis": {
+          "name": "Cost–Benefit Analysis",
+          "description": "What a proposal costs, beside what it brings"
+        },
+        "orgChart": {
+          "name": "Org Chart",
+          "description": "One box at the top, a line across, and the branches below"
+        },
+        "meetingNotes": {
+          "name": "Meeting Notes",
+          "description": "Agenda, notes, decisions, and the actions underneath"
+        },
+        "startStopContinue": {
+          "name": "Start · Stop · Continue",
+          "description": "Three columns, one question each, and the notes that answer them"
+        },
+        "timeboxedAgenda": {
+          "name": "Timeboxed Agenda",
+          "description": "Every item with a start, a length and an owner"
+        },
+        "dotVotingBoard": {
+          "name": "Dot Voting",
+          "description": "The ideas of a session, each one waiting for its votes"
+        },
+        "howMightWe": {
+          "name": "How Might We",
+          "description": "One problem, three questions about it, and the ideas that answer them"
+        },
+        "sixThinkingHats": {
+          "name": "Six Thinking Hats",
+          "description": "One problem seen from six angles"
+        },
+        "empathyMap": {
+          "name": "Empathy Map",
+          "description": "What a person says, thinks, does and feels"
+        },
+        "serviceBlueprint": {
+          "name": "Service Blueprint",
+          "description": "The journey of a service, layer by layer and stage by stage"
+        },
+        "personaCard": {
+          "name": "Persona Card",
+          "description": "One person, written down so a team argues about the same person"
+        },
+        "userStoryMap": {
+          "name": "User Story Map",
+          "description": "Activities across the top, stories under them, slices at the bottom"
+        },
+        "sprintBoard": {
+          "name": "Sprint Board",
+          "description": "The goal of the sprint, and the work under it in four columns"
+        },
+        "bugTriageBoard": {
+          "name": "Bug Triage Board",
+          "description": "Bugs as they are found, judged, worked on and closed"
+        },
+        "prioritizationMatrix": {
+          "name": "Prioritization Matrix",
+          "description": "The work sorted by how important it is and how urgent it is"
+        },
+        "okrPlanning": {
+          "name": "OKR Planning",
+          "description": "An objective, the key results that measure it, and the work that moves them"
+        },
+        "quarterlyRoadmap": {
+          "name": "Quarterly Roadmap",
+          "description": "A lane for every team and a column for every quarter"
+        },
+        "vennDiagram": {
+          "name": "Venn Diagram",
+          "description": "Three circles, and the work where they meet"
+        },
+        "sequenceDiagram": {
+          "name": "Sequence Diagram",
+          "description": "Participants, and the messages that pass between them"
+        },
+        "decisionTree": {
+          "name": "Decision Tree",
+          "description": "A question, and what happens on each side of the answer"
         }
       }
     },
