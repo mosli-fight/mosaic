@@ -364,6 +364,7 @@
       "tabs": {
         "emoji": "Emoji",
         "stickers": "Stickers",
+        "icons": "Icons",
         "gif": "GIFs"
       },
       "categories": {
@@ -388,6 +389,19 @@
         "symbols": "Symbols",
         "nature": "Nature",
         "celebration": "Celebration"
+      },
+      "iconSearch": "Search icons",
+      "iconNoResults": "No icon matches your search",
+      "iconsLoading": "Loading icons...",
+      "iconCategories": {
+        "all": "All",
+        "tech": "Tech",
+        "databases": "Databases",
+        "devops": "DevOps",
+        "aws": "AWS",
+        "azure": "Azure",
+        "gcp": "GCP",
+        "kubernetes": "Kubernetes"
       },
       "video": {
         "add": "Add video",

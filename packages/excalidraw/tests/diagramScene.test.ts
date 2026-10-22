@@ -7,6 +7,7 @@ import { parseDiagram } from "../components/diagram/parser";
 import {
   buildDiagramElements,
   findGroupFrame,
+  getDiagramIconFiles,
   getDiagramTag,
   getNodeLabelFromCanvas,
   isDiagramElement,
@@ -239,6 +240,108 @@ describe("resolveIconGlyph", () => {
   it("returns null for an unknown icon", () => {
     expect(resolveIconGlyph("frobnicator")).toBeNull();
     expect(resolveIconGlyph(undefined)).toBeNull();
+  });
+});
+
+describe("icons from the icon library", () => {
+  const iconElements = (elements: ReturnType<typeof elementsFor>) =>
+    elements.filter(
+      (element) => getDiagramTag(element)?.diagramRole === "icon",
+    );
+
+  it("draws a library icon as an image in the node's corner", () => {
+    const elements = elementsFor("Database [icon: postgresql]");
+    const icons = iconElements(elements);
+
+    expect(icons).toHaveLength(1);
+    expect(icons[0].type).toBe("image");
+  });
+
+  it("gives the icon the file that carries its drawing", () => {
+    const elements = elementsFor("Database [icon: postgresql]");
+    const icon = iconElements(elements)[0] as { fileId: string };
+
+    expect(icon.fileId).toBe("diagram-icon-postgresql");
+  });
+
+  it("accepts the names the catalogue files an icon under", () => {
+    for (const name of ["postgres", "pg", "PostgreSQL"]) {
+      const icons = iconElements(elementsFor(`DB [icon: ${name}]`));
+
+      expect(icons).toHaveLength(1);
+      expect((icons[0] as { fileId: string }).fileId).toBe(
+        "diagram-icon-postgresql",
+      );
+    }
+  });
+
+  it("puts the icon inside the node, not over its label", () => {
+    const elements = elementsFor("Database [icon: redis]");
+    const node = nodeElements(elements)[0];
+    const icon = iconElements(elements)[0];
+
+    expect(icon.x).toBeGreaterThanOrEqual(node.x);
+    expect(icon.y).toBeGreaterThanOrEqual(node.y);
+    expect(icon.x + icon.width).toBeLessThanOrEqual(node.x + node.width);
+    expect(icon.y + icon.height).toBeLessThanOrEqual(node.y + node.height);
+  });
+
+  it("keeps the glyph for a name the glyph table already knows", () => {
+    // `server` is a glyph name, and every diagram written before the icon
+    // library used it — a saved board must not change shape under its author
+    const elements = elementsFor("Server [icon: server]");
+    const icons = iconElements(elements);
+
+    expect(icons).toHaveLength(1);
+    expect(icons[0].type).toBe("text");
+  });
+
+  it("draws a library icon for a name the glyph table does not know", () => {
+    const icons = iconElements(elementsFor("Database [icon: postgresql]"));
+
+    expect(icons).toHaveLength(1);
+    expect(icons[0].type).toBe("image");
+  });
+
+  it("leaves a table card without an icon", () => {
+    const elements = elementsFor("users: id, name [icon: postgresql]", "erd");
+
+    expect(iconElements(elements)).toHaveLength(0);
+  });
+
+  it("keeps a library icon's element across a re-parse", () => {
+    const first = elementsFor("A [icon: docker]\nB");
+    const iconId = iconElements(first)[0].id;
+
+    const { model, layout } = build("A [icon: docker]\nB");
+    const second = reconcileDiagram(first, model, layout, "flowchart");
+
+    expect(iconElements(second)[0].id).toBe(iconId);
+  });
+
+  it("collects the files its icons need", () => {
+    const elements = elementsFor(
+      "A [icon: docker]\nB [icon: docker]\nC [icon: aws-s3]",
+    );
+    const files = getDiagramIconFiles(elements);
+
+    expect(files).toHaveLength(2);
+    expect(files.map((file) => file.id).sort()).toEqual([
+      "diagram-icon-aws-s3",
+      "diagram-icon-docker",
+    ]);
+
+    for (const file of files) {
+      expect(file.mimeType).toBe("image/svg+xml");
+      expect(file.dataURL.startsWith("data:image/svg+xml;base64,")).toBe(true);
+    }
+  });
+
+  it("asks for no file when there is no library icon", () => {
+    expect(getDiagramIconFiles(elementsFor("A [icon: server]"))).toHaveLength(
+      0,
+    );
+    expect(getDiagramIconFiles(elementsFor("A"))).toHaveLength(0);
   });
 });
 
