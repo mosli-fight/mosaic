@@ -1,4 +1,3 @@
-import { trackEvent } from "../../analytics";
 import { t } from "../../i18n";
 
 import { IconButton } from "../IconButton";
@@ -41,7 +40,6 @@ export const DiagramButton = () => {
       data-testid="toolbar-diagram"
       className={isOpen ? "ToolIcon--checked" : undefined}
       onClick={() => {
-        trackEvent("ai", "toggle", "diagram");
         toggleDiagramPanel();
       }}
     />
