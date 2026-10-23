@@ -471,7 +471,7 @@ import UnlockPopup from "./UnlockPopup";
 import {
   CodeBlockEditorOverlay,
   CodeBlockToolbarOverlay,
-} from "./codeblock/CodeBlockEditor";
+} from "./codeblock/CodeBlockOverlay";
 
 import type { ExcalidrawLibraryIds } from "../data/types";
 

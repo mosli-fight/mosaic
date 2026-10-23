@@ -26,7 +26,6 @@ import {
   CODE_BLOCK_FONT_FAMILY,
   CODE_BLOCK_LABEL_FONT_SIZE,
   getCodeBlockColors,
-  isCodeBlockElement,
 } from "@excalidraw/element";
 
 import type { CodeBlockLanguage } from "@excalidraw/common";
@@ -238,38 +237,8 @@ export const CodeBlockToolbar = ({
 };
 
 /**
- * The overlay over the block being edited, if it is one.
- *
- * Mounted once, by the app, and renders nothing unless a block is being
- * edited — so a board with no code block never pays for it.
+ * The overlays themselves live in `./CodeBlockOverlay`, which lazy-loads
+ * this module — so this file, and the SCSS it imports, are only fetched
+ * when a block is opened or selected. The two components below are what
+ * that chunk exports.
  */
-export const CodeBlockEditorOverlay = () => {
-  const app = useApp();
-  const appState = useExcalidrawAppState();
-  const editing = appState.editingCodeBlock
-    ? app.scene.getElement(appState.editingCodeBlock)
-    : null;
-
-  if (!isCodeBlockElement(editing)) {
-    return null;
-  }
-
-  return <CodeBlockEditor element={editing} />;
-};
-
-/** the toolbar over a selected block, if exactly one is selected */
-export const CodeBlockToolbarOverlay = () => {
-  const app = useApp();
-  const appState = useExcalidrawAppState();
-  const selected = app.scene.getSelectedElements(appState);
-
-  if (
-    selected.length !== 1 ||
-    !isCodeBlockElement(selected[0]) ||
-    appState.editingCodeBlock === selected[0].id
-  ) {
-    return null;
-  }
-
-  return <CodeBlockToolbar element={selected[0]} />;
-};
