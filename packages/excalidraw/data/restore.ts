@@ -34,6 +34,7 @@ import {
   type StrokeWidthKey,
   isTransparent,
   DEFAULT_ZOOM,
+  normalizeCodeBlockLanguage,
 } from "@excalidraw/common";
 import {
   calculateFixedPointForNonElbowArrowBinding,
@@ -753,6 +754,13 @@ export const restoreElement = (
           tags: normalizeStickyNoteTags(element.tags),
         }),
       );
+    case "codeblock":
+      return restoreElementWithProperties(element, {
+        // a block saved before the language was a field, or written by a
+        // newer editor, keeps its code and falls back to plain text
+        code: typeof element.code === "string" ? element.code : "",
+        language: normalizeCodeBlockLanguage(element.language),
+      });
     case "magicframe":
       return restoreElementWithProperties(element, {
         name: element.name ?? null,
