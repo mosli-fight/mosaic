@@ -50,6 +50,7 @@ exports[`exportToSvg > with default arguments 1`] = `
   "defaultSidebarDockedPreference": false,
   "diagramCode": "",
   "diagramType": "flowchart",
+  "editingCodeBlock": null,
   "editingFrame": null,
   "editingGroupId": null,
   "editingTextElement": null,
