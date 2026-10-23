@@ -361,9 +361,7 @@ describe("starting from a diagram type", () => {
       fireEvent.click(examples[0]);
     });
 
-    expect(inputValue(container)).toBe(
-      "AWS 3-tier web app with ALB, EC2, RDS",
-    );
+    expect(inputValue(container)).toBe("AWS 3-tier web app with ALB, EC2, RDS");
   });
 });
 

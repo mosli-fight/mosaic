@@ -130,7 +130,11 @@ describe("loadAIPresets", () => {
 describe("createPreset", () => {
   it("adds a preset with a fresh id", () => {
     const before = emptyAIPresetsState();
-    const created = createPreset(before, "  House style  ", "  Use British spelling.  ");
+    const created = createPreset(
+      before,
+      "  House style  ",
+      "  Use British spelling.  ",
+    );
 
     expect(created).not.toBe(null);
     expect(created!.preset.name).toBe("House style");
@@ -141,7 +145,10 @@ describe("createPreset", () => {
   });
 
   it("does not change which preset is applied", () => {
-    const before = setActivePreset(emptyAIPresetsState(), DEFAULT_AI_PRESETS[0].id);
+    const before = setActivePreset(
+      emptyAIPresetsState(),
+      DEFAULT_AI_PRESETS[0].id,
+    );
     const created = createPreset(before, "New", "Rules");
 
     expect(created!.state.activeId).toBe(DEFAULT_AI_PRESETS[0].id);
@@ -191,13 +198,16 @@ describe("deletePreset", () => {
     const deleted = deletePreset(state, state.presets[0].id);
 
     expect(deleted.presets).toHaveLength(state.presets.length - 1);
-    expect(deleted.presets.some((preset) => preset.id === state.presets[0].id)).toBe(
-      false,
-    );
+    expect(
+      deleted.presets.some((preset) => preset.id === state.presets[0].id),
+    ).toBe(false);
   });
 
   it("leaves nothing applied when the applied preset is deleted", () => {
-    const state = setActivePreset(emptyAIPresetsState(), DEFAULT_AI_PRESETS[0].id);
+    const state = setActivePreset(
+      emptyAIPresetsState(),
+      DEFAULT_AI_PRESETS[0].id,
+    );
 
     const deleted = deletePreset(state, DEFAULT_AI_PRESETS[0].id);
 
@@ -206,7 +216,10 @@ describe("deletePreset", () => {
   });
 
   it("keeps another preset applied when a different one is deleted", () => {
-    const state = setActivePreset(emptyAIPresetsState(), DEFAULT_AI_PRESETS[0].id);
+    const state = setActivePreset(
+      emptyAIPresetsState(),
+      DEFAULT_AI_PRESETS[0].id,
+    );
 
     const deleted = deletePreset(state, DEFAULT_AI_PRESETS[1].id);
 
@@ -216,7 +229,10 @@ describe("deletePreset", () => {
 
 describe("setActivePreset", () => {
   it("applies a preset that exists", () => {
-    const state = setActivePreset(emptyAIPresetsState(), DEFAULT_AI_PRESETS[1].id);
+    const state = setActivePreset(
+      emptyAIPresetsState(),
+      DEFAULT_AI_PRESETS[1].id,
+    );
 
     expect(state.activeId).toBe(DEFAULT_AI_PRESETS[1].id);
     expect(getActivePreset(state)?.name).toBe("Developer docs style");
@@ -230,7 +246,10 @@ describe("setActivePreset", () => {
   });
 
   it("clears the applied preset with null", () => {
-    const applied = setActivePreset(emptyAIPresetsState(), DEFAULT_AI_PRESETS[0].id);
+    const applied = setActivePreset(
+      emptyAIPresetsState(),
+      DEFAULT_AI_PRESETS[0].id,
+    );
 
     expect(setActivePreset(applied, null).activeId).toBe(null);
   });
@@ -242,8 +261,15 @@ describe("getActivePresetRules", () => {
   });
 
   it("follows the rules when they are edited", () => {
-    const applied = setActivePreset(emptyAIPresetsState(), DEFAULT_AI_PRESETS[0].id);
-    const edited = updatePresetRules(applied, DEFAULT_AI_PRESETS[0].id, "New rules.");
+    const applied = setActivePreset(
+      emptyAIPresetsState(),
+      DEFAULT_AI_PRESETS[0].id,
+    );
+    const edited = updatePresetRules(
+      applied,
+      DEFAULT_AI_PRESETS[0].id,
+      "New rules.",
+    );
 
     expect(getActivePresetRules(edited)).toBe("New rules.");
   });
