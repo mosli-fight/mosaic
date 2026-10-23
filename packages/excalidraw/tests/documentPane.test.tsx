@@ -155,6 +155,21 @@ describe("the document pane", () => {
     expect(preview.querySelectorAll("table td")).toHaveLength(2);
   });
 
+  it("nests a numbered list under a bulleted one as its own list type", async () => {
+    const { container } = await render(<Excalidraw />);
+
+    await openPane(container);
+    typeNotes(container, "- a\n  1. one\n  2. two\n- b");
+
+    const preview = getByTestId(container, "document-preview")!;
+
+    // the outer list is bulleted, the nested one numbered — reading the tag
+    // off the block instead would have drawn both as `<ul>`
+    expect(preview.querySelectorAll("ul")).toHaveLength(1);
+    expect(preview.querySelectorAll("ol")).toHaveLength(1);
+    expect(preview.querySelector("ol")!.parentElement!.tagName).toBe("LI");
+  });
+
   it("ticks a checklist item back into the source", async () => {
     const { container } = await render(<Excalidraw />);
 

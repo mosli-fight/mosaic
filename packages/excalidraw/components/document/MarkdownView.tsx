@@ -55,14 +55,19 @@ const renderInline = (nodes: InlineNode[], keyPrefix: string) =>
     }
   });
 
-/** draws one list, nesting the items that are indented under another */
+/**
+ * draws one list, nesting the items that are indented under another
+ *
+ * The tag is read from the items themselves rather than from the block, so
+ * a numbered list nested under a bulleted one is an `<ol>` inside a `<ul>` —
+ * which is what was written, and what markdown renders.
+ */
 const renderList = (
   items: NestedListItem[],
-  ordered: boolean,
   onToggleItem: (line: number) => void,
   keyPrefix: string,
 ) => {
-  const ListTag = ordered ? "ol" : "ul";
+  const ListTag = items.some((item) => item.marker === "number") ? "ol" : "ul";
 
   return (
     <ListTag key={keyPrefix} className="document-markdown__list">
@@ -102,7 +107,6 @@ const renderList = (
           {item.children.length > 0 &&
             renderList(
               item.children,
-              ordered,
               onToggleItem,
               `${keyPrefix}-${item.line}-nested`,
             )}
@@ -173,7 +177,6 @@ export const MarkdownView = ({
               <div key={key} className="document-markdown__list-block">
                 {renderList(
                   nestListItems(block.items),
-                  block.ordered,
                   onToggleChecklistItem,
                   `list-${listItemKey(block.items[0])}`,
                 )}
