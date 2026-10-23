@@ -1,6 +1,7 @@
 import React from "react";
 
 import {
+  DEVICE_FRAME_PRESETS,
   FRAMES_SIDEBAR_TAB,
   FRAME_FORMAT_PRESETS,
   getFrameFormatSize,
@@ -151,10 +152,14 @@ describe("frames (Miro-style)", () => {
         );
       });
 
-      const options = document.querySelectorAll(
+      // the picker has two grids: the paper formats, then the devices
+      const grids = document.querySelectorAll(".frame-format-picker__grid");
+      expect(grids).toHaveLength(2);
+
+      const paperOptions = grids[0].querySelectorAll(
         '[data-testid^="toolbar-frame-format-"]',
       );
-      expect(options).toHaveLength(FRAME_FORMAT_PRESETS.length);
+      expect(paperOptions).toHaveLength(FRAME_FORMAT_PRESETS.length);
       expect(FRAME_FORMAT_PRESETS.map((preset) => preset.id)).toEqual([
         "custom",
         "16:9",
@@ -165,6 +170,18 @@ describe("frames (Miro-style)", () => {
         "mobile",
         "tablet",
         "desktop",
+      ]);
+
+      // the devices sit beside the paper formats, not in place of them
+      const deviceOptions = grids[1].querySelectorAll(
+        '[data-testid^="toolbar-frame-format-"]',
+      );
+      expect(deviceOptions).toHaveLength(DEVICE_FRAME_PRESETS.length);
+      expect(DEVICE_FRAME_PRESETS.map((preset) => preset.id)).toEqual([
+        "device-phone",
+        "device-tablet",
+        "device-desktop",
+        "device-browser",
       ]);
     });
 
