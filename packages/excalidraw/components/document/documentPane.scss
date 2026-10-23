@@ -11,7 +11,7 @@
  *
  * The three views change the pane's width, not the canvas's:
  *
- *   document  the pane takes most of the width, the canvas is behind it
+ *   document  the pane spans the editor, so the document is what is read
  *   both      the pane takes half, so the board stays readable beside it
  *   canvas    the pane is not rendered at all
  */
@@ -42,7 +42,7 @@
     }
 
     &--document {
-      width: min(46rem, calc(100% - 1.5rem));
+      right: 0.75rem;
     }
   }
 
