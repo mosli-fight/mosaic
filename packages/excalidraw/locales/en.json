@@ -815,6 +815,20 @@
         "erd": "ER diagram",
         "sequence": "Sequence"
       }
+    },
+    "document": {
+      "title": "Notes",
+      "close": "Close",
+      "shortcut": "Alt+N",
+      "write": "Write",
+      "preview": "Preview",
+      "notSaved": "These notes could not be saved in this browser.",
+      "views": {
+        "label": "View",
+        "document": "Document",
+        "both": "Both",
+        "canvas": "Canvas"
+      }
     }
   },
   "elementLink": {

@@ -1,0 +1,383 @@
+@use "../../css/variables.module" as *;
+
+/**
+ * The document pane.
+ *
+ * It sits beside the canvas the way the assistant and diagram panes do —
+ * an island on top of the board rather than a column that shrinks it. That
+ * is deliberate: resizing the canvas container would fire the editor's
+ * resize observer and re-fit the viewport, so switching views would move the
+ * scene under the user. An overlay leaves the scene exactly where it was.
+ *
+ * The three views change the pane's width, not the canvas's:
+ *
+ *   document  the pane spans the editor, so the document is what is read
+ *   both      the pane takes half, so the board stays readable beside it
+ *   canvas    the pane is not rendered at all
+ */
+
+.excalidraw {
+  .document-pane {
+    position: absolute;
+    top: 4rem;
+    left: 0.75rem;
+    bottom: 3.5rem;
+    display: flex;
+    flex-direction: column;
+    z-index: var(--zIndex-ui-library);
+
+    background: var(--island-bg-color);
+    border: 1px solid var(--default-border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--sidebar-shadow);
+    overflow: hidden;
+
+    pointer-events: var(--ui-pointerEvents);
+    color: var(--text-primary-color);
+    font-family: var(--ui-font);
+    font-size: 0.8125rem;
+
+    &--both {
+      width: min(38rem, calc(100% - 1.5rem));
+    }
+
+    &--document {
+      right: 0.75rem;
+    }
+  }
+
+  .document-pane__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--default-border-color);
+    flex-shrink: 0;
+  }
+
+  .document-pane__title {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .document-pane__icon {
+    display: flex;
+    align-items: center;
+
+    svg {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+
+  .document-pane__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .document-pane__header-button {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius-lg);
+    color: var(--text-primary-color);
+    cursor: pointer;
+    font-family: var(--ui-font);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+
+    &:hover {
+      background: var(--color-primary-light);
+    }
+
+    &--close {
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0.125rem 0.375rem;
+    }
+  }
+
+  .document-pane__views {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--default-border-color);
+    flex-shrink: 0;
+  }
+
+  .document-pane__view {
+    border: 1px solid var(--default-border-color);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-primary-color);
+    cursor: pointer;
+    font-family: var(--ui-font);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.625rem;
+
+    &:hover {
+      background: var(--color-primary-light);
+    }
+
+    &--active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #fff;
+    }
+  }
+
+  .document-pane__split {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: row;
+  }
+
+  .document-pane__column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+
+    &--write {
+      flex: 1 1 50%;
+      border-right: 1px solid var(--default-border-color);
+    }
+
+    &--preview {
+      flex: 1 1 50%;
+      background: var(--color-surface-low);
+    }
+  }
+
+  // in the document-only view the writing column keeps its half but the
+  // preview is given the rest, so the rendered page is what is read
+  .document-pane--document .document-pane__column--write {
+    flex: 0 0 45%;
+  }
+
+  .document-pane__column-label {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.55;
+    flex-shrink: 0;
+  }
+
+  .document-pane__editor {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
+    resize: none;
+    border: none;
+    outline: none;
+    background: var(--island-bg-color);
+    color: var(--text-primary-color);
+    font-family: ui-monospace, SFMono-Regular, Menlo, "Cascadia Code", monospace;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    padding: 0 0.75rem 0.75rem;
+    tab-size: 2;
+    overflow: auto;
+  }
+
+  .document-pane__preview {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 0 0.75rem 0.75rem;
+  }
+
+  .document-pane__status {
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--default-border-color);
+    color: var(--color-danger-darker);
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  // ---------------------------------------------------------------------------
+  // the rendered document
+  // ---------------------------------------------------------------------------
+
+  .document-markdown {
+    color: var(--text-primary-color);
+    line-height: 1.6;
+    font-size: 0.8125rem;
+    word-break: break-word;
+
+    &--empty {
+      opacity: 0.6;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin: 0.75rem 0 0.375rem;
+      line-height: 1.3;
+      font-weight: 600;
+
+      &:first-child {
+        margin-top: 0;
+      }
+    }
+
+    &__heading--1 {
+      font-size: 1.375rem;
+    }
+
+    &__heading--2 {
+      font-size: 1.125rem;
+    }
+
+    &__heading--3 {
+      font-size: 1rem;
+    }
+
+    &__heading--4,
+    &__heading--5,
+    &__heading--6 {
+      font-size: 0.875rem;
+    }
+
+    &__paragraph {
+      margin: 0 0 0.625rem;
+    }
+
+    &__list-block {
+      margin: 0 0 0.625rem;
+    }
+
+    &__list {
+      margin: 0;
+      padding-left: 1.25rem;
+
+      .document-markdown__list {
+        margin: 0.125rem 0 0;
+      }
+    }
+
+    &__list-item {
+      margin: 0.125rem 0;
+
+      &--check {
+        list-style: none;
+        margin-left: -1.125rem;
+      }
+    }
+
+    &__check {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.375rem;
+      cursor: pointer;
+
+      input {
+        margin: 0.3rem 0 0;
+        flex-shrink: 0;
+        cursor: pointer;
+        accent-color: var(--color-primary);
+      }
+    }
+
+    &__check-text--done {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    &__code-inline {
+      font-family: ui-monospace, SFMono-Regular, Menlo, "Cascadia Code",
+        monospace;
+      font-size: 0.9em;
+      background: var(--color-surface-primary-container);
+      border-radius: 0.25rem;
+      padding: 0.0625rem 0.25rem;
+    }
+
+    &__code-block {
+      position: relative;
+      margin: 0 0 0.625rem;
+      background: var(--color-surface-lowest);
+      border: 1px solid var(--default-border-color);
+      border-radius: var(--border-radius-lg);
+      overflow: hidden;
+    }
+
+    &__code-language {
+      display: block;
+      padding: 0.25rem 0.625rem;
+      border-bottom: 1px solid var(--default-border-color);
+      font-family: ui-monospace, SFMono-Regular, Menlo, "Cascadia Code",
+        monospace;
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.6;
+    }
+
+    &__pre {
+      margin: 0;
+      padding: 0.625rem;
+      overflow-x: auto;
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, "Cascadia Code",
+          monospace;
+        font-size: 0.75rem;
+        line-height: 1.5;
+        white-space: pre;
+      }
+    }
+
+    &__table-wrap {
+      margin: 0 0 0.625rem;
+      overflow-x: auto;
+    }
+
+    &__table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.75rem;
+
+      th,
+      td {
+        border: 1px solid var(--default-border-color);
+        padding: 0.3125rem 0.5rem;
+        text-align: left;
+      }
+
+      th {
+        background: var(--color-surface-primary-container);
+        font-weight: 600;
+      }
+    }
+
+    &__cell--center {
+      text-align: center;
+    }
+
+    &__cell--right {
+      text-align: right;
+    }
+
+    &__divider {
+      border: none;
+      border-top: 1px solid var(--default-border-color);
+      margin: 0.75rem 0;
+    }
+
+    a {
+      color: var(--link-color);
+      text-decoration: underline;
+    }
+  }
+}
