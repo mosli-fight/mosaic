@@ -14,8 +14,11 @@
 import {
   CODE_BLOCK_FONT_SIZE,
   CODE_BLOCK_RADIUS,
+  FONT_FAMILY,
   THEME,
+  getCodeBlockLanguagePreset,
   getCodeBlockLayout,
+  getFontFamilyString,
   tokenizeCode,
 } from "@excalidraw/common";
 
@@ -119,6 +122,31 @@ export type CodeBlockPaintOptions = {
   theme: Theme;
 };
 
+/** the size of the language label in the header, in scene units */
+export const CODE_BLOCK_LABEL_FONT_SIZE = 12;
+
+/** the language label the header shows */
+export const getCodeBlockLanguageLabel = (
+  element: ExcalidrawCodeBlockElement,
+): string => {
+  return getCodeBlockLanguagePreset(element.language).label;
+};
+
+/**
+ * Where the header's language label sits, in the block's own coordinates.
+ *
+ * The label is vertically centred in the header and inset by the card's
+ * padding, so it lines up with the code below it.
+ */
+export const getCodeBlockLabelPosition = (
+  layout: CodeBlockLayout,
+): { x: number; y: number } => {
+  return {
+    x: layout.padding,
+    y: layout.headerHeight / 2,
+  };
+};
+
 /**
  * Draws a code block onto a canvas.
  *
@@ -160,6 +188,20 @@ export const drawCodeBlockOnCanvas = (
   context.strokeStyle = colors.border;
   context.lineWidth = 1;
   context.stroke();
+
+  // the language, in the header — the copy button beside it is the editor's
+  // own HTML button, so the painted header carries only the label
+  const label = getCodeBlockLanguageLabel(element);
+  const labelPosition = getCodeBlockLabelPosition(layout);
+  context.save();
+  context.font = `${CODE_BLOCK_LABEL_FONT_SIZE}px ${getFontFamilyString({
+    fontFamily: FONT_FAMILY.Nunito,
+  })}`;
+  context.textAlign = "left";
+  context.textBaseline = "middle";
+  context.fillStyle = colors.muted;
+  context.fillText(label, labelPosition.x, labelPosition.y);
+  context.restore();
 
   // the card's outline
   context.beginPath();

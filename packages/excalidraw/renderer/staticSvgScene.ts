@@ -1,5 +1,6 @@
 import {
   BOUND_TEXT_PADDING,
+  FONT_FAMILY,
   FRAME_STYLE,
   MAX_DECIMALS_FOR_SVG_EXPORT,
   SVG_NS,
@@ -41,7 +42,9 @@ import {
 
 import {
   CODE_BLOCK_FONT_FAMILY,
+  CODE_BLOCK_LABEL_FONT_SIZE,
   getCodeBlockColors,
+  getCodeBlockLanguageLabel,
   getCodeBlockSvgLayout,
   getCodeBlockSvgLines,
   getCodeBlockTokenColor,
@@ -860,6 +863,23 @@ const renderElementToSvg = (
       rule.setAttribute("stroke", colors.border);
       rule.setAttribute("stroke-width", "1");
       group.appendChild(rule);
+
+      // the language label, where the canvas paints it
+      const label = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
+      label.setAttribute("x", `${layout.padding}`);
+      label.setAttribute("y", `${layout.headerHeight / 2}`);
+      label.setAttribute(
+        "font-family",
+        getFontFamilyString({ fontFamily: FONT_FAMILY.Nunito }).replace(
+          /"/g,
+          "'",
+        ),
+      );
+      label.setAttribute("font-size", `${CODE_BLOCK_LABEL_FONT_SIZE}px`);
+      label.setAttribute("dominant-baseline", "middle");
+      label.setAttribute("fill", colors.muted);
+      label.textContent = getCodeBlockLanguageLabel(element);
+      group.appendChild(label);
 
       const codeGroup = svgRoot.ownerDocument.createElementNS(SVG_NS, "g");
       codeGroup.setAttribute("clip-path", `url(#${clipPath.id})`);
