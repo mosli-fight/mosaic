@@ -51,6 +51,9 @@ const subscribe = (listener: () => void) => {
   };
 };
 
+/** registers a listener for view changes (what the hook subscribes with) */
+export const subscribeDocumentView = subscribe;
+
 /** the view the pane is in */
 export const getDocumentView = (): DocumentView => view;
 

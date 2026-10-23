@@ -149,12 +149,9 @@ export const DocumentPaneBody = () => {
 
   const blocks = useMemo(() => parseMarkdown(notes), [notes]);
 
-  const toggleItem = useCallback(
-    (line: number) => {
-      setNotes((current) => toggleChecklistItem(current, line));
-    },
-    [],
-  );
+  const toggleItem = useCallback((line: number) => {
+    setNotes((current) => toggleChecklistItem(current, line));
+  }, []);
 
   if (!isVisible) {
     return null;
@@ -209,7 +206,10 @@ export const DocumentPaneBody = () => {
 
       <div className="document-pane__split">
         <div className="document-pane__column document-pane__column--write">
-          <label className="document-pane__column-label" htmlFor="document-notes">
+          <label
+            className="document-pane__column-label"
+            htmlFor="document-notes"
+          >
             {t("labels.document.write")}
           </label>
           <textarea
@@ -230,11 +230,11 @@ export const DocumentPaneBody = () => {
           <span className="document-pane__column-label">
             {t("labels.document.preview")}
           </span>
-          <div className="document-pane__preview" data-testid="document-preview">
-            <MarkdownView
-              blocks={blocks}
-              onToggleChecklistItem={toggleItem}
-            />
+          <div
+            className="document-pane__preview"
+            data-testid="document-preview"
+          >
+            <MarkdownView blocks={blocks} onToggleChecklistItem={toggleItem} />
           </div>
         </div>
       </div>

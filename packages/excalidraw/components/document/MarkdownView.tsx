@@ -9,6 +9,8 @@
 
 import { normalizeLink } from "@excalidraw/common";
 
+import { nestListItems } from "./markdown";
+
 import type {
   InlineNode,
   ListItem,
@@ -16,8 +18,6 @@ import type {
   NestedListItem,
   TableAlignment,
 } from "./markdown";
-
-import { nestListItems } from "./markdown";
 
 /** how a table column is aligned */
 const alignmentClass = (alignment: TableAlignment) =>
@@ -94,7 +94,9 @@ const renderList = (
               </span>
             </label>
           ) : (
-            <span>{renderInline(item.content, `${keyPrefix}-${item.line}`)}</span>
+            <span>
+              {renderInline(item.content, `${keyPrefix}-${item.line}`)}
+            </span>
           )}
 
           {item.children.length > 0 &&
@@ -234,9 +236,7 @@ export const MarkdownView = ({
             );
 
           case "divider":
-            return (
-              <hr key={key} className="document-markdown__divider" />
-            );
+            return <hr key={key} className="document-markdown__divider" />;
 
           default:
             return null;

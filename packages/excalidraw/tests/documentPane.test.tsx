@@ -139,7 +139,10 @@ describe("the document pane", () => {
     const { container } = await render(<Excalidraw />);
 
     await openPane(container);
-    typeNotes(container, "# Title\n\n- [x] done\n\n| a | b |\n| - | - |\n| 1 | 2 |");
+    typeNotes(
+      container,
+      "# Title\n\n- [x] done\n\n| a | b |\n| - | - |\n| 1 | 2 |",
+    );
 
     const preview = getByTestId(container, "document-preview")!;
 
@@ -176,9 +179,9 @@ describe("the document pane", () => {
     // blurring writes immediately rather than waiting for the debounce
     fireEvent.blur(notesOf(container));
 
-    expect(
-      window.localStorage.getItem(notesStorageKey("board-a")),
-    ).toContain("notes for board a");
+    expect(window.localStorage.getItem(notesStorageKey("board-a"))).toContain(
+      "notes for board a",
+    );
 
     unmount();
     resetDocumentView();
@@ -210,12 +213,12 @@ describe("the document pane", () => {
     typeNotes(second.container, "board b notes");
     fireEvent.blur(notesOf(second.container));
 
-    expect(
-      window.localStorage.getItem(notesStorageKey("board-a")),
-    ).toContain("board a notes");
-    expect(
-      window.localStorage.getItem(notesStorageKey("board-b")),
-    ).toContain("board b notes");
+    expect(window.localStorage.getItem(notesStorageKey("board-a"))).toContain(
+      "board a notes",
+    );
+    expect(window.localStorage.getItem(notesStorageKey("board-b"))).toContain(
+      "board b notes",
+    );
   });
 
   it("toggles with Alt+N", async () => {
