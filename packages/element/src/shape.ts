@@ -994,9 +994,9 @@ const _generateElementShape = (
       return shapes;
     }
     // sticky notes are painted directly (canvas + SVG) from
-    // `getStickyNoteRenderPoints`, never through roughjs
+    // `getStickyNoteRenderPoints`, never through roughjs; a code block is a
+    // card painted directly too, not a rough shape
     case "stickynote":
-    // a code block is a card painted directly, not a rough shape
     case "codeblock":
     case "frame":
     case "magicframe":

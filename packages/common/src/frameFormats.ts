@@ -12,9 +12,9 @@
  * cycle.
  */
 
-import type { FrameDeviceId } from "./deviceFrames";
-
 import { DEVICE_FRAME_PRESETS } from "./deviceFrames";
+
+import type { FrameDeviceId } from "./deviceFrames";
 
 /**
  * The id of a frame format.
