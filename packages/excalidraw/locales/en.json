@@ -224,7 +224,11 @@
         "agile": "Agile workflows",
         "strategy": "Strategy & planning",
         "diagramming": "Diagramming & mapping",
-        "business": "Business & operations"
+        "business": "Business & operations",
+        "data": "Data models",
+        "software": "Software design",
+        "process": "Business processes",
+        "systems": "System architecture"
       },
       "items": {
         "brainstorming": {
@@ -354,6 +358,250 @@
         "decisionTree": {
           "name": "Decision Tree",
           "description": "A question, and what happens on each side of the answer"
+        },
+        "erdBlog": {
+          "name": "Blog Entity Relationship Diagram",
+          "description": "A user writes posts, a post has comments, and comments belong to their author."
+        },
+        "erdEcommerce": {
+          "name": "E-commerce Entity Relationship Diagram",
+          "description": "A customer places an order, an order holds line items, and each line item points at a product."
+        },
+        "erdMultitenant": {
+          "name": "Multi-tenant SaaS Schema",
+          "description": "Every row belongs to a tenant; membership is the join between a user and a tenant."
+        },
+        "erdBooking": {
+          "name": "Booking System Schema",
+          "description": "A resource is booked for a slot; a booking belongs to one customer and one slot."
+        },
+        "erdLibrary": {
+          "name": "Library Lending Schema",
+          "description": "A copy is one physical book; a loan ties a copy to a member for a while."
+        },
+        "erdTicketing": {
+          "name": "Ticketing Schema",
+          "description": "An event has ticket types; a ticket is issued for one type and one attendee."
+        },
+        "erdStarSchema": {
+          "name": "Star Schema",
+          "description": "One fact table in the middle, a dimension table at each point of the star."
+        },
+        "erdSnowflake": {
+          "name": "Snowflake Schema",
+          "description": "A star schema whose dimensions are normalised into their own tables."
+        },
+        "erdAuditLog": {
+          "name": "Audit Log Schema",
+          "description": "Every change writes an event, and an event names the actor and the entity it touched."
+        },
+        "erdGraphModel": {
+          "name": "Graph Data Model",
+          "description": "Nodes and edges carry their own properties; a relationship is a first-class thing."
+        },
+        "erdDocumentModel": {
+          "name": "Document Store Model",
+          "description": "Documents nest what is read together; references join what is read apart."
+        },
+        "flowOnboarding": {
+          "name": "Customer Onboarding Flow",
+          "description": "Sign up, verify the address, pick a plan, and hand the account to the team."
+        },
+        "flowSupportTicket": {
+          "name": "Support Ticket Flow",
+          "description": "A ticket is triaged, answered, and either resolved or escalated."
+        },
+        "flowOrderFulfilment": {
+          "name": "Order Fulfilment Flow",
+          "description": "Payment, picking, packing and shipping, with the stock check that can stop it."
+        },
+        "flowOffboarding": {
+          "name": "Employee Offboarding Flow",
+          "description": "Hand back the equipment, lose the access, and leave with the exit interview done."
+        },
+        "flowContentPublishing": {
+          "name": "Content Publishing Flow",
+          "description": "Draft, review, edit, and publish \u2014 with the review loop that sends it back."
+        },
+        "flowIncidentResponse": {
+          "name": "Incident Response Flow",
+          "description": "Detect, triage, mitigate, and write the review that stops it happening again."
+        },
+        "flowExpenseApproval": {
+          "name": "Expense Approval Flow",
+          "description": "Submit, check the policy, approve by amount, and pay on the next run."
+        },
+        "flowUserSignup": {
+          "name": "User Sign-up Flow",
+          "description": "The happy path through a sign-up form, and the validation that turns it back."
+        },
+        "flowApprovalChain": {
+          "name": "Approval Chain",
+          "description": "Three gates in a row: the request moves on only when each one says yes."
+        },
+        "flowDeployment": {
+          "name": "Deployment Flow",
+          "description": "Build, test, stage, and release \u2014 with the rollback that a failed check triggers."
+        },
+        "flowRefund": {
+          "name": "Refund Flow",
+          "description": "A request, an eligibility check, and the two ways a refund can be settled."
+        },
+        "flowHiring": {
+          "name": "Hiring Flow",
+          "description": "From the job post to the signed offer, with the interview loop in the middle."
+        },
+        "processPurchaseRequest": {
+          "name": "Purchase Request Process",
+          "description": "A request is raised, checked against the budget, approved, and ordered."
+        },
+        "processVendorOnboarding": {
+          "name": "Vendor Onboarding Process",
+          "description": "Collect the documents, run the checks, and only then open the payee account."
+        },
+        "processInvoice": {
+          "name": "Invoice Processing Flow",
+          "description": "An invoice is matched to the purchase order and the delivery before it is paid."
+        },
+        "processCandidate": {
+          "name": "Candidate Pipeline",
+          "description": "Screening, interviews and a decision, with the offer on the far side."
+        },
+        "processChangeRequest": {
+          "name": "Change Request Process",
+          "description": "A change is assessed, approved by the board, and scheduled into a release."
+        },
+        "processEscalation": {
+          "name": "Support Escalation Process",
+          "description": "Tier one answers, tier two investigates, and engineering takes the hard ones."
+        },
+        "processReturn": {
+          "name": "Returns and Refunds Process",
+          "description": "A return is received, inspected, and refunded or refused."
+        },
+        "processContentLocalisation": {
+          "name": "Content Localisation Process",
+          "description": "Source text, translation, review by a native speaker, and publication."
+        },
+        "archWebApp": {
+          "name": "Web Application Architecture",
+          "description": "A browser talks to a load balancer, which spreads the work over two app servers and a database."
+        },
+        "archMicroservices": {
+          "name": "Microservices Architecture",
+          "description": "A gateway in front, a service per business capability, and a queue between them."
+        },
+        "archServerless": {
+          "name": "Serverless Architecture",
+          "description": "Static files on a CDN, functions behind an API, and managed services underneath."
+        },
+        "archEventDriven": {
+          "name": "Event-driven Architecture",
+          "description": "A producer publishes to a broker, and every consumer subscribes to what it cares about."
+        },
+        "archCqrs": {
+          "name": "CQRS Architecture",
+          "description": "Writes go to a command side, reads come from a projection; the event log joins them."
+        },
+        "archThreeTier": {
+          "name": "Three-tier Architecture",
+          "description": "Presentation, application and data \u2014 the three layers every classic web app has."
+        },
+        "archApiGateway": {
+          "name": "API Gateway Architecture",
+          "description": "One door in, with the cross-cutting concerns handled before a service sees the request."
+        },
+        "archMobileBackend": {
+          "name": "Mobile Backend Architecture",
+          "description": "The app talks to a backend-for-frontend, which fans out to the services the screen needs."
+        },
+        "archDataPlatform": {
+          "name": "Data Platform Architecture",
+          "description": "Sources feed a lake, the lake feeds a warehouse, and the warehouse feeds the dashboards."
+        },
+        "archMultiRegion": {
+          "name": "Multi-region Architecture",
+          "description": "Traffic is routed to the nearest region; the regions replicate to each other."
+        },
+        "archKubernetes": {
+          "name": "Kubernetes Deployment",
+          "description": "Ingress, a service, and the pods behind it, with the registry and the config they need."
+        },
+        "archCicd": {
+          "name": "CI/CD Pipeline Architecture",
+          "description": "A commit becomes an image, the image is scanned, and the scan gates the deploy."
+        },
+        "stateOrder": {
+          "name": "Order Lifecycle State Machine",
+          "description": "An order is created, paid, and either fulfilled or cancelled; a refund ends it."
+        },
+        "stateDocument": {
+          "name": "Document Approval State Machine",
+          "description": "A draft is submitted, reviewed, and either published or sent back to the author."
+        },
+        "stateSubscription": {
+          "name": "Subscription Billing State Machine",
+          "description": "Trials convert or lapse; a subscription past due can recover or be cancelled."
+        },
+        "umlClassLibrary": {
+          "name": "Library UML Class Diagram",
+          "description": "A member borrows copies of books; a loan records which copy went to whom."
+        },
+        "umlClassBank": {
+          "name": "Bank Account UML Class Diagram",
+          "description": "A customer owns accounts; a transaction moves money between two of them."
+        },
+        "umlUsecaseShop": {
+          "name": "Online Shop Use Case Diagram",
+          "description": "What a shopper, a payment provider and an admin can each do with the shop."
+        },
+        "umlComponent": {
+          "name": "Component Diagram",
+          "description": "The pieces of a web app and the interfaces they expose to each other."
+        },
+        "umlDeployment": {
+          "name": "Deployment Diagram",
+          "description": "Which artefact runs on which node, and how the nodes reach each other."
+        },
+        "umlActivityCheckout": {
+          "name": "Checkout Activity Diagram",
+          "description": "The swim of a checkout, from the basket to the confirmation page."
+        },
+        "dddContextMap": {
+          "name": "Bounded Context Map",
+          "description": "The contexts a domain is split into, and the direction the shared language flows."
+        },
+        "seqLogin": {
+          "name": "Login Sequence",
+          "description": "The browser sends credentials, the server checks them, and a session comes back."
+        },
+        "seqPayment": {
+          "name": "Payment Sequence",
+          "description": "An order is charged through a provider, and the result is written back to the order."
+        },
+        "seqOauth": {
+          "name": "OAuth Sign-in Sequence",
+          "description": "The authorisation code exchange: redirect, consent, code, token."
+        },
+        "seqCacheAside": {
+          "name": "Cache-aside Sequence",
+          "description": "Read the cache, fall back to the database, and write the miss back."
+        },
+        "seqPagination": {
+          "name": "Cursor Pagination Sequence",
+          "description": "The client asks for a page, the server answers with a cursor for the next one."
+        },
+        "seqFileUpload": {
+          "name": "File Upload Sequence",
+          "description": "Ask for a signed URL, upload straight to storage, then tell the server it landed."
+        },
+        "seqWebsocket": {
+          "name": "WebSocket Session Sequence",
+          "description": "Upgrade the connection once, then exchange messages over it."
+        },
+        "seqSaga": {
+          "name": "Saga Compensation Sequence",
+          "description": "Each step reserves something; when one fails, the steps before it are undone in reverse."
         }
       }
     },

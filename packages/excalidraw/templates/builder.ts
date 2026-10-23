@@ -43,12 +43,16 @@ import { pointFrom } from "@excalidraw/math";
 
 import type {
   ExcalidrawElement,
+  ExcalidrawLinearElement,
   ExcalidrawTextElement,
   ExcalidrawTextElementWithContainer,
 } from "@excalidraw/element/types";
 
+import { connectorGeometry } from "./connector";
+
 import type {
   ExcalidrawTemplate,
+  TemplateConnectorSpec,
   TemplateShapeSpec,
   TemplateStickySpec,
   TemplateTextSpec,
@@ -245,6 +249,16 @@ export const buildTemplateElements = (
   const frameIdFor = (spec: { inFrame?: string }) =>
     spec.inFrame ? frameIds.get(spec.inFrame) : undefined;
 
+  /**
+   * The shapes, by the id of the spec that made them.
+   *
+   * A connector names the shapes it runs between by their spec ids, so the
+   * shapes have to exist before the connectors can be drawn. The connectors
+   * are built in a second pass, which also puts them above the shapes in the
+   * scene's order — an arrow is drawn over a box, not under it.
+   */
+  const shapesById = new Map<string, ExcalidrawElement>();
+
   for (const spec of template.elements) {
     switch (spec.kind) {
       case "frame":
@@ -277,9 +291,11 @@ export const buildTemplateElements = (
           const bound = newElementWith(shape, {
             boundElements: [{ type: "text", id: label.id }],
           });
+          shapesById.set(spec.id, bound);
           elements.push(bound);
           elements.push(label);
         } else {
+          shapesById.set(spec.id, shape);
           elements.push(shape);
         }
         break;
@@ -334,12 +350,173 @@ export const buildTemplateElements = (
         elements.push(arrow);
         break;
       }
+      case "connector":
+        // built below, once every shape exists
+        break;
+    }
+  }
+
+  for (const spec of template.elements) {
+    if (spec.kind !== "connector") {
+      continue;
+    }
+
+    const connector = buildConnector(spec, shapesById, frameIdFor(spec));
+
+    if (!connector) {
+      continue;
+    }
+
+    elements.push(connector);
+
+    if (spec.label) {
+      const label = createArrowLabel(connector, spec.label);
+      const bound = newElementWith(connector, {
+        boundElements: [{ type: "text", id: label.id }],
+      });
+
+      // the arrow is already in the list; replace it with the bound copy so
+      // the label is owned by the arrow the scene holds
+      elements[elements.indexOf(connector)] = bound;
+      elements.push(label);
     }
   }
 
   // the notes are laid out last: a note's paper is fitted around its label,
   // so the label has to exist before the paper can be sized
   return relayoutStickyNotes(elements, stickyNoteIds) as ExcalidrawElement[];
+};
+
+/**
+ * The arrow of a connector, bound to the shapes at both ends.
+ *
+ * The endpoints come from the shapes themselves, so the arrow touches each
+ * outline rather than a coordinate someone wrote down. The binding is what
+ * keeps it attached when a shape is dragged on the board.
+ */
+const buildConnector = (
+  spec: TemplateConnectorSpec,
+  shapesById: Map<string, ExcalidrawElement>,
+  frameId: string | undefined,
+): ExcalidrawLinearElement | null => {
+  const from = shapesById.get(spec.from);
+  const to = shapesById.get(spec.to);
+
+  if (!from || !to) {
+    return null;
+  }
+
+  const geometry = connectorGeometry(
+    {
+      x: from.x,
+      y: from.y,
+      width: from.width,
+      height: from.height,
+      kind: from.type as "rectangle" | "ellipse" | "diamond",
+    },
+    {
+      x: to.x,
+      y: to.y,
+      width: to.width,
+      height: to.height,
+      kind: to.type as "rectangle" | "ellipse" | "diamond",
+    },
+  );
+
+  const arrow = newArrowElement({
+    type: "arrow",
+    x: geometry.x,
+    y: geometry.y,
+    frameId,
+    points: [pointFrom(0, 0), pointFrom(geometry.dx, geometry.dy)],
+    startArrowhead: spec.startArrowhead ? "arrow" : null,
+    endArrowhead: spec.arrowhead === false ? null : "arrow",
+    strokeColor: spec.strokeColor ?? DEFAULT_STROKE_COLOR,
+    strokeWidth: spec.strokeWidth ?? 2,
+    strokeStyle: spec.strokeStyle ?? "solid",
+    fillStyle: "solid",
+    roughness: 0,
+    opacity: 100,
+  });
+
+  const bound = newElementWith(arrow, {
+    startBinding: {
+      elementId: from.id,
+      fixedPoint: geometry.startFixedPoint as [number, number],
+      mode: "orbit",
+    },
+    endBinding: {
+      elementId: to.id,
+      fixedPoint: geometry.endFixedPoint as [number, number],
+      mode: "orbit",
+    },
+  });
+
+  // the shapes have to know the arrow too, or dragging one would leave the
+  // arrow behind
+  for (const shape of [from, to]) {
+    const boundElements = shape.boundElements ?? [];
+    const withoutArrow = boundElements.filter((entry) => entry.id !== bound.id);
+
+    Object.assign(
+      shape,
+      newElementWith(shape, {
+        boundElements: [...withoutArrow, { type: "arrow", id: bound.id }],
+      }),
+    );
+  }
+
+  return bound;
+};
+
+/**
+ * The label of an arrow: a text element bound to the line, which the editor
+ * places at the middle of the arrow.
+ */
+const createArrowLabel = (
+  arrow: ExcalidrawLinearElement,
+  text: string,
+): ExcalidrawTextElement => {
+  const fontSize = 14;
+  const lineHeight = getTemplateLineHeight();
+
+  const label = newTextElement({
+    x: arrow.x,
+    y: arrow.y,
+    text,
+    originalText: text,
+    fontSize,
+    fontFamily: TEMPLATE_FONT_FAMILY,
+    lineHeight,
+    textAlign: "center",
+    verticalAlign: VERTICAL_ALIGN.MIDDLE,
+    autoResize: true,
+    containerId: arrow.id,
+    strokeColor: DEFAULT_STROKE_COLOR,
+    backgroundColor: "transparent",
+    fillStyle: "solid",
+    strokeWidth: 1,
+    roughness: 0,
+    opacity: 100,
+  });
+
+  const wrapped = wrapText(
+    label.originalText,
+    getFontString(label),
+    Math.max(label.width, 60),
+  );
+  const metrics = measureText(wrapped, getFontString(label), lineHeight);
+
+  const sized = newElementWith(label, {
+    text: wrapped,
+    width: metrics.width,
+    height: metrics.height,
+  }) as ExcalidrawTextElementWithContainer;
+
+  return newElementWith(sized, {
+    x: arrow.x + arrow.width / 2 - sized.width / 2,
+    y: arrow.y + arrow.height / 2 - sized.height / 2,
+  }) as ExcalidrawTextElement;
 };
 
 /**
@@ -360,6 +537,11 @@ export const getTemplateBounds = (
       minY = Math.min(minY, spec.y, spec.y + spec.dy);
       maxX = Math.max(maxX, spec.x, spec.x + spec.dx);
       maxY = Math.max(maxY, spec.y, spec.y + spec.dy);
+      continue;
+    }
+    if (spec.kind === "connector") {
+      // a connector's arrow is derived from the shapes it joins, and every
+      // arrow it draws runs between two of them, so it adds no bounds
       continue;
     }
     minX = Math.min(minX, spec.x);

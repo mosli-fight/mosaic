@@ -6,11 +6,24 @@ import { Excalidraw, MainMenu } from "../index";
 import { t } from "../i18n";
 import { TEMPLATE_CATEGORIES, buildTemplateElements } from "../templates";
 import { TEMPLATES, getTemplateById } from "../templates/catalogue";
+import { DIAGRAM_TEMPLATES } from "../templates/diagrams";
 
 import { API } from "./helpers/api";
 import { act, render, toggleMenu } from "./test-utils";
 
 const { h } = window;
+
+/** the templates the gallery ends up showing, once the diagrams have landed */
+const ALL_TEMPLATES = [...TEMPLATES, ...DIAGRAM_TEMPLATES];
+
+/**
+ * How long the gallery is given to show every card.
+ *
+ * The diagrams are a second chunk fetched after the originals, and the first
+ * open of a file pays for both. On a cold runner that is several seconds,
+ * which is close enough to the default five to be worth naming.
+ */
+const GALLERY_WAIT = 15_000;
 
 const openGallery = async () => {
   await render(<Excalidraw />);
@@ -24,6 +37,15 @@ const openGallery = async () => {
       null,
     );
   });
+
+  // the diagram examples are fetched after the gallery opens; wait for them
+  // so that a test sees the gallery a person would see a moment later
+  await waitFor(
+    () => {
+      expect(getCards()).toHaveLength(ALL_TEMPLATES.length);
+    },
+    { timeout: GALLERY_WAIT },
+  );
 };
 
 const getCards = () =>
@@ -38,7 +60,7 @@ describe("templates gallery", () => {
   describe("the catalogue", () => {
     it("has a template for every category", () => {
       for (const category of TEMPLATE_CATEGORIES) {
-        const templates = TEMPLATES.filter(
+        const templates = ALL_TEMPLATES.filter(
           (template) => template.category === category.id,
         );
         expect(templates.length).toBeGreaterThan(0);
@@ -47,7 +69,7 @@ describe("templates gallery", () => {
 
     it("has a shelf of templates in every category", () => {
       for (const category of TEMPLATE_CATEGORIES) {
-        const templates = TEMPLATES.filter(
+        const templates = ALL_TEMPLATES.filter(
           (template) => template.category === category.id,
         );
         expect(templates.length).toBeGreaterThanOrEqual(3);
@@ -105,7 +127,7 @@ describe("templates gallery", () => {
     });
 
     it("gives every template a name, a description and a category", () => {
-      for (const template of TEMPLATES) {
+      for (const template of ALL_TEMPLATES) {
         expect(template.nameKey).toBeTruthy();
         expect(template.descriptionKey).toBeTruthy();
         expect(template.elements.length).toBeGreaterThan(0);
@@ -115,20 +137,20 @@ describe("templates gallery", () => {
     it("gives every template a category the gallery knows", () => {
       const categories = TEMPLATE_CATEGORIES.map((category) => category.id);
 
-      for (const template of TEMPLATES) {
+      for (const template of ALL_TEMPLATES) {
         expect(categories).toContain(template.category);
       }
     });
 
     it("gives every template a name and a description in the language of the gallery", () => {
-      for (const template of TEMPLATES) {
+      for (const template of ALL_TEMPLATES) {
         expect(t(template.nameKey)).toBeTruthy();
         expect(t(template.descriptionKey)).toBeTruthy();
       }
     });
 
     it("gives every template elements that have a size", () => {
-      for (const template of TEMPLATES) {
+      for (const template of ALL_TEMPLATES) {
         for (const element of buildTemplateElements(template)) {
           if (element.type === "arrow") {
             // an arrow is measured by its points, not by its box
@@ -141,7 +163,7 @@ describe("templates gallery", () => {
     });
 
     it("gives every element of every template a kind and an id", () => {
-      for (const template of TEMPLATES) {
+      for (const template of ALL_TEMPLATES) {
         for (const spec of template.elements) {
           expect(spec.kind).toBeTruthy();
           expect(spec.id).toBeTruthy();
@@ -150,7 +172,7 @@ describe("templates gallery", () => {
     });
 
     it("builds every template into elements with unique ids", () => {
-      for (const template of TEMPLATES) {
+      for (const template of ALL_TEMPLATES) {
         const elements = buildTemplateElements(template);
         expect(elements.length).toBeGreaterThan(0);
 
@@ -160,7 +182,7 @@ describe("templates gallery", () => {
     });
 
     it("binds every label to the shape it labels", () => {
-      for (const template of TEMPLATES) {
+      for (const template of ALL_TEMPLATES) {
         const elements = buildTemplateElements(template);
         const elementsMap = new Map(elements.map((el) => [el.id, el]));
 
@@ -177,9 +199,13 @@ describe("templates gallery", () => {
 
           const container = elementsMap.get(element.containerId);
           expect(container).toBeDefined();
-          expect(container!.boundElements).toEqual([
-            expect.objectContaining({ type: "text", id: element.id }),
-          ]);
+          // a shape can own more than a label — a diagram's box also owns the
+          // arrows that meet it — but it must own the label that names it
+          expect(container!.boundElements).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({ type: "text", id: element.id }),
+            ]),
+          );
         }
 
         // and every shape that claims a label really has one
@@ -224,7 +250,7 @@ describe("templates gallery", () => {
     it("lists every template", async () => {
       await openGallery();
 
-      expect(getCards()).toHaveLength(TEMPLATES.length);
+      expect(getCards()).toHaveLength(ALL_TEMPLATES.length);
     });
 
     it("opens from the toolbar", async () => {
@@ -282,7 +308,7 @@ describe("templates gallery", () => {
 
       fireEvent.click(tab!);
 
-      const expected = TEMPLATES.filter(
+      const expected = ALL_TEMPLATES.filter(
         (template) => template.category === "ideation",
       );
       expect(getCards()).toHaveLength(expected.length);

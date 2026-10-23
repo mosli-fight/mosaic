@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { trackEvent } from "../../analytics";
 import { t } from "../../i18n";
@@ -27,7 +27,21 @@ import type {
  * of templates with it: the gallery asks for it when it is opened, which
  * keeps the catalogue — and the drawing of a preview — out of the main
  * bundle. A board that never opens the gallery never pays for a template.
+ *
+ * The diagram examples are a second, larger shelf, and they are fetched on
+ * their own: the gallery opens on the original templates straight away and
+ * the diagrams join them when their chunk arrives. A board that opens the
+ * gallery to grab a kanban board never downloads sixty diagrams.
  */
+
+/**
+ * The diagram examples, fetched when the gallery is opened.
+ *
+ * The catalogue is a chunk of its own, so it neither weighs down the main
+ * bundle nor the gallery's first paint.
+ */
+const loadDiagramTemplates = () =>
+  import("../../templates/diagrams").then((module) => module.DIAGRAM_TEMPLATES);
 
 const getCategoryLabelKey = (category: TemplateCategoryId) =>
   TEMPLATE_CATEGORIES.find((entry) => entry.id === category)?.labelKey ??
@@ -103,15 +117,50 @@ const TemplateGallery = ({
 }) => {
   const app = useApp();
 
+  // the diagram examples arrive after the originals: the gallery is usable
+  // the moment it opens, and the diagrams are added to it when they land
+  const [diagramTemplates, setDiagramTemplates] = useState<
+    readonly ExcalidrawTemplate[]
+  >([]);
+  const [diagramsLoaded, setDiagramsLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    loadDiagramTemplates()
+      .then((templates) => {
+        if (!cancelled) {
+          setDiagramTemplates(templates);
+          setDiagramsLoaded(true);
+        }
+      })
+      .catch(() => {
+        // a catalogue that cannot be fetched leaves the gallery with the
+        // templates it already has, rather than an empty shelf
+        if (!cancelled) {
+          setDiagramsLoaded(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const allTemplates = useMemo(
+    () => [...TEMPLATES, ...diagramTemplates],
+    [diagramTemplates],
+  );
+
   const templates = useMemo(
     () =>
       searchTemplates(
-        getTemplatesByCategory(TEMPLATES, category),
+        getTemplatesByCategory(allTemplates, category),
         query,
         (template) => t(template.nameKey),
         (template) => t(template.descriptionKey),
       ),
-    [query, category],
+    [allTemplates, query, category],
   );
 
   const useTemplate = (template: ExcalidrawTemplate) => {
@@ -121,6 +170,20 @@ const TemplateGallery = ({
   };
 
   if (!templates.length) {
+    // while the diagrams are still on their way a search may match one of
+    // them, so the gallery says it is fetching rather than that there is
+    // nothing to find
+    if (!diagramsLoaded) {
+      return (
+        <div
+          className="templates-dialog__loading"
+          data-testid="templates-loading"
+        >
+          {t("labels.templates.loading")}
+        </div>
+      );
+    }
+
     return (
       <div className="templates-dialog__empty" data-testid="templates-empty">
         {t("labels.templates.empty")}
