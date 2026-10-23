@@ -1309,6 +1309,8 @@ export type AppClassProperties = {
   setActiveTool: App["setActiveTool"];
   setOpenDialog: App["setOpenDialog"];
   insertEmbeddableElement: App["insertEmbeddableElement"];
+  insertCodeBlock: App["insertCodeBlock"];
+  startCodeBlockEditing: App["startCodeBlockEditing"];
   onMagicframeToolSelect: App["onMagicframeToolSelect"];
   getName: App["getName"];
   getElementAtPosition: App["getElementAtPosition"];
