@@ -128,22 +128,67 @@ const withBoardContext = (prompt: string, boardSummary: string): string =>
     : prompt;
 
 /**
+ * The user's own rules, as they are handed to the model.
+ *
+ * A preset is a block of instructions the user wrote for themselves — how
+ * they want labels written, which spelling to use — so it is put after the
+ * built-in instructions, where it can refine them without contradicting the
+ * output format the parser depends on. It is only ever their own text: no
+ * preset is bundled with a model, a key or an endpoint.
+ */
+export const withPresetRules = (
+  prompt: string,
+  presetRules: string | null | undefined,
+): string => {
+  const rules = presetRules?.trim();
+
+  return rules
+    ? `${prompt}\n\nAlso follow these rules from the person you are talking to:\n${rules}`
+    : prompt;
+};
+
+/**
+ * The system message: the built-in instructions, the user's preset rules,
+ * and the board.
+ */
+const buildSystemPrompt = ({
+  prompt,
+  boardSummary,
+  presetRules,
+}: {
+  prompt: string;
+  boardSummary: string;
+  presetRules?: string | null;
+}): string =>
+  withBoardContext(withPresetRules(prompt, presetRules), boardSummary);
+
+/**
  * The messages of a plain chat turn.
  *
  * @param history what was said before
  * @param userText what the person just asked
  * @param boardSummary the board, when the person wants the model to see it
+ * @param presetRules the rules of the applied preset, if any
  */
 export const buildChatMessages = ({
   history,
   userText,
   boardSummary,
+  presetRules,
 }: {
   history: AIChatMessage[];
   userText: string;
   boardSummary: string;
+  presetRules?: string | null;
 }): AIChatMessage[] => [
-  { role: "system", content: withBoardContext(ASSISTANT_PROMPT, boardSummary) },
+  {
+    role: "system",
+    content: buildSystemPrompt({
+      prompt: ASSISTANT_PROMPT,
+      boardSummary,
+      presetRules,
+    }),
+  },
   ...history,
   { role: "user", content: userText },
 ];
@@ -156,10 +201,19 @@ export const buildChatMessages = ({
  */
 export const buildSummaryMessages = ({
   boardSummary,
+  presetRules,
 }: {
   boardSummary: string;
+  presetRules?: string | null;
 }): AIChatMessage[] => [
-  { role: "system", content: withBoardContext(SUMMARY_PROMPT, boardSummary) },
+  {
+    role: "system",
+    content: buildSystemPrompt({
+      prompt: SUMMARY_PROMPT,
+      boardSummary,
+      presetRules,
+    }),
+  },
   {
     role: "user",
     content: "Summarize this board.",
@@ -171,14 +225,24 @@ export const buildSummaryMessages = ({
  *
  * @param prompt what the person wants drawn
  * @param boardSummary the board, when the person wants the model to see it
+ * @param presetRules the rules of the applied preset, if any
  */
 export const buildDiagramMessages = ({
   prompt,
   boardSummary,
+  presetRules,
 }: {
   prompt: string;
   boardSummary: string;
+  presetRules?: string | null;
 }): AIChatMessage[] => [
-  { role: "system", content: withBoardContext(DIAGRAM_PROMPT, boardSummary) },
+  {
+    role: "system",
+    content: buildSystemPrompt({
+      prompt: DIAGRAM_PROMPT,
+      boardSummary,
+      presetRules,
+    }),
+  },
   { role: "user", content: prompt },
 ];
