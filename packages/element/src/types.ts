@@ -8,6 +8,8 @@ import type {
   VERTICAL_ALIGN,
 } from "@excalidraw/common";
 
+import type { CodeBlockLanguage } from "@excalidraw/common";
+
 import type {
   MakeBrand,
   MarkNonNullable,
@@ -132,6 +134,23 @@ export type ExcalidrawStickyNoteElement = _ExcalidrawElementBase &
 export type ExcalidrawDiamondElement = _ExcalidrawElementBase & {
   type: "diamond";
 };
+
+/**
+ * A code block on the board: a card around a piece of code.
+ *
+ * The code is the element's own text — not a label bound to a container —
+ * because a code block is edited as one thing: the language, the code and
+ * the card's size all belong to the same element, and a block is saved,
+ * duplicated and deleted as one.
+ */
+export type ExcalidrawCodeBlockElement = _ExcalidrawElementBase &
+  Readonly<{
+    type: "codeblock";
+    /** the code, with `\n` between its lines */
+    code: string;
+    /** the language the code is written in, and coloured as */
+    language: CodeBlockLanguage;
+  }>;
 
 export type ExcalidrawEllipseElement = _ExcalidrawElementBase & {
   type: "ellipse";
@@ -267,6 +286,7 @@ export type ExcalidrawFlowchartNodeElement =
 export type ExcalidrawRectanguloidElement =
   | ExcalidrawRectangleElement
   | ExcalidrawStickyNoteElement
+  | ExcalidrawCodeBlockElement
   | ExcalidrawImageElement
   | ExcalidrawTextElement
   | ExcalidrawFreeDrawElement
@@ -283,6 +303,7 @@ export type ExcalidrawRectanguloidElement =
 export type ExcalidrawElement =
   | ExcalidrawGenericElement
   | ExcalidrawStickyNoteElement
+  | ExcalidrawCodeBlockElement
   | ExcalidrawTextElement
   | ExcalidrawLinearElement
   | ExcalidrawArrowElement
@@ -359,6 +380,7 @@ export type ExcalidrawTextElement = _ExcalidrawElementBase &
 export type ExcalidrawBindableElement =
   | ExcalidrawRectangleElement
   | ExcalidrawStickyNoteElement
+  | ExcalidrawCodeBlockElement
   | ExcalidrawDiamondElement
   | ExcalidrawEllipseElement
   | ExcalidrawTextElement

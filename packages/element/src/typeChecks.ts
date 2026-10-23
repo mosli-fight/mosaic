@@ -30,6 +30,7 @@ import type {
   ExcalidrawFlowchartNodeElement,
   ExcalidrawLinearElementSubType,
   ExcalidrawStickyNoteElement,
+  ExcalidrawCodeBlockElement,
 } from "./types";
 
 export const isInitializedImageElement = <T extends ExcalidrawElement>(
@@ -74,6 +75,12 @@ export const isStickyNoteElement = <T extends ExcalidrawElement>(
   element: T | null | undefined,
 ): element is T & ExcalidrawStickyNoteElement => {
   return element != null && element.type === "stickynote";
+};
+
+export const isCodeBlockElement = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawCodeBlockElement => {
+  return element != null && element.type === "codeblock";
 };
 
 export const isFrameElement = <T extends ExcalidrawElement>(
@@ -190,6 +197,7 @@ export const isBindableElement = <T extends ExcalidrawElement>(
     (!element.locked || includeLocked === true) &&
     (element.type === "rectangle" ||
       element.type === "stickynote" ||
+      element.type === "codeblock" ||
       element.type === "diamond" ||
       element.type === "ellipse" ||
       element.type === "image" ||
@@ -208,6 +216,7 @@ export const isRectanguloidElement = <T extends ExcalidrawElement>(
     element != null &&
     (element.type === "rectangle" ||
       element.type === "stickynote" ||
+      element.type === "codeblock" ||
       element.type === "diamond" ||
       element.type === "image" ||
       element.type === "iframe" ||
@@ -227,6 +236,7 @@ export const isRectangularElement = <T extends ExcalidrawElement>(
     element != null &&
     (element.type === "rectangle" ||
       element.type === "stickynote" ||
+      element.type === "codeblock" ||
       element.type === "image" ||
       element.type === "text" ||
       element.type === "iframe" ||
@@ -264,6 +274,7 @@ export const isExcalidrawElement = (
     case "diamond":
     case "rectangle":
     case "stickynote":
+    case "codeblock":
     case "iframe":
     case "embeddable":
     case "ellipse":

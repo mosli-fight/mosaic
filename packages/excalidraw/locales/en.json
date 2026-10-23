@@ -1115,6 +1115,7 @@
     "frame": "Frame",
     "magicframe": "Wireframe to code",
     "stickynote": "Sticky note",
+    "codeblock": "Code block",
     "embeddable": "Web Embed",
     "selection": "Selection",
     "iframe": "IFrame"

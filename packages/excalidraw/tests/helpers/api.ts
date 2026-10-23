@@ -14,6 +14,7 @@ import {
 
 import {
   newArrowElement,
+  newCodeBlockElement,
   newElement,
   newEmbeddableElement,
   newFrameElement,
@@ -45,6 +46,7 @@ import type {
   ExcalidrawElbowArrowElement,
   ExcalidrawArrowElement,
   ExcalidrawStickyNoteElement,
+  ExcalidrawCodeBlockElement,
   FixedSegment,
   NonDeleted,
   NonDeletedExcalidrawElement,
@@ -212,6 +214,11 @@ export class API {
       : never;
     containerId?: T extends "text"
       ? ExcalidrawTextElement["containerId"]
+      : never;
+    // code block props
+    code?: T extends "codeblock" ? ExcalidrawCodeBlockElement["code"] : never;
+    language?: T extends "codeblock"
+      ? ExcalidrawCodeBlockElement["language"]
       : never;
     points?: T extends "arrow" | "line" | "freedraw" ? readonly LocalPoint[] : never;
     polygon?: T extends "line" ? boolean : never;
@@ -404,6 +411,15 @@ export class API {
         break;
       case "magicframe":
         element = newMagicFrameElement({ ...base, width, height });
+        break;
+      case "codeblock":
+        element = newCodeBlockElement({
+          ...base,
+          width,
+          height,
+          code: (rest.code as string) ?? undefined,
+          language: rest.language as any,
+        });
         break;
       default:
         assertNever(
