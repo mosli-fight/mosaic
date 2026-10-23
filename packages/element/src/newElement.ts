@@ -51,6 +51,7 @@ import type {
   ExcalidrawFrameElement,
   ExcalidrawEmbeddableElement,
   ExcalidrawMagicFrameElement,
+  FrameDevice,
   ExcalidrawIframeElement,
   ElementsMap,
   ExcalidrawArrowElement,
@@ -268,6 +269,7 @@ export const newIframeElement = (
 export const newFrameElement = (
   opts: {
     name?: string;
+    device?: FrameDevice | null;
   } & ElementConstructorOpts,
 ): NonDeleted<ExcalidrawFrameElement> => {
   const frameElement = newElementWith(
@@ -275,6 +277,7 @@ export const newFrameElement = (
       ..._newElementBase<ExcalidrawFrameElement>("frame", opts),
       type: "frame",
       name: opts?.name || null,
+      device: opts?.device ?? null,
     },
     {},
   );

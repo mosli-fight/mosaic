@@ -88,5 +88,44 @@
       line-height: 1;
       color: var(--color-muted-darker);
     }
+
+    // a device frame's preview: the screen at the device's proportions, with
+    // a hint of the chrome the frame will wear
+    &__shape--device {
+      position: relative;
+      overflow: hidden;
+      border-radius: 3px;
+      background: var(--color-surface-low);
+    }
+
+    &__device-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      height: 22%;
+      padding: 0 8%;
+      background: var(--color-muted);
+    }
+
+    &__device-dot {
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      background: var(--island-bg-color);
+    }
+
+    &__device-notch {
+      position: absolute;
+      top: 0;
+      left: 30%;
+      width: 40%;
+      height: 5%;
+      border-radius: 0 0 3px 3px;
+      background: var(--color-muted);
+    }
   }
 }

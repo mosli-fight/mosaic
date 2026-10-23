@@ -759,7 +759,14 @@
         "letter": "Letter",
         "mobile": "Mobile",
         "tablet": "Tablet",
-        "desktop": "Desktop"
+        "desktop": "Desktop",
+        "device-phone": "Phone",
+        "device-tablet": "Tablet",
+        "device-desktop": "Desktop",
+        "device-browser": "Browser"
+      },
+      "devices": {
+        "title": "Devices"
       }
     },
     "present": {

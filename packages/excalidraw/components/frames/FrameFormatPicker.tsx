@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import clsx from "clsx";
 
 import {
+  DEVICE_FRAME_PRESETS,
   FRAME_FORMAT_PRESETS,
   getFrameFormatPreset,
   type FrameFormatId,
@@ -114,6 +115,60 @@ export const FrameFormatPicker = ({
                   ) : (
                     <span className="frame-format-picker__shape frame-format-picker__shape--custom" />
                   )}
+                </span>
+                <span className="frame-format-picker__label">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="frame-format-picker__title">
+          {t("labels.frame.devices.title")}
+        </div>
+        <div className="frame-format-picker__grid">
+          {DEVICE_FRAME_PRESETS.map((preset) => {
+            const isSelected = preset.id === currentFormat.id;
+            const label = t(`labels.frame.formats.${preset.id}`);
+
+            return (
+              <button
+                type="button"
+                key={preset.id}
+                className={clsx(
+                  "frame-format-picker__option",
+                  "frame-format-picker__option--device",
+                  {
+                    "frame-format-picker__option--selected": isSelected,
+                  },
+                )}
+                title={label}
+                aria-label={label}
+                aria-pressed={isSelected}
+                data-testid={`toolbar-frame-format-${preset.id}`}
+                onClick={() => selectFormat(preset.id)}
+              >
+                <span className="frame-format-picker__preview">
+                  <span
+                    className={clsx(
+                      "frame-format-picker__shape",
+                      "frame-format-picker__shape--device",
+                      `frame-format-picker__shape--device-${preset.chrome}`,
+                    )}
+                    style={{
+                      aspectRatio: `${preset.width} / ${preset.height}`,
+                    }}
+                  >
+                    {preset.chrome === "browser" && (
+                      <span className="frame-format-picker__device-bar">
+                        <span className="frame-format-picker__device-dot" />
+                        <span className="frame-format-picker__device-dot" />
+                        <span className="frame-format-picker__device-dot" />
+                      </span>
+                    )}
+                    {preset.chrome === "phone" && (
+                      <span className="frame-format-picker__device-notch" />
+                    )}
+                  </span>
                 </span>
                 <span className="frame-format-picker__label">{label}</span>
               </button>

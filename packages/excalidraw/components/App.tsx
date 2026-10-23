@@ -104,6 +104,7 @@ import {
   oneOf,
   getStrokeWidthByKey,
   getFrameFormatSize,
+  getDeviceFramePreset,
 } from "@excalidraw/common";
 import { BRAND_EMBEDDED_CONTENT_TITLE } from "@mosaic/brand";
 
@@ -9561,6 +9562,13 @@ class App extends React.Component<AppProps, AppState> {
         ? getFrameFormatSize(this.state.currentItemFrameFormat)
         : null;
 
+    // a device frame draws the chrome of its device; a paper format does not
+    const device =
+      type === TOOL_TYPE.frame
+        ? getDeviceFramePreset(this.state.currentItemFrameFormat)?.chrome ??
+          null
+        : null;
+
     const constructorOpts = {
       x: presetSize ? gridX - presetSize.width / 2 : gridX,
       y: presetSize ? gridY - presetSize.height / 2 : gridY,
@@ -9570,6 +9578,7 @@ class App extends React.Component<AppProps, AppState> {
       // a frame made from a paper format is that size from the start — the
       // drag then places it rather than sizes it
       ...(presetSize ?? {}),
+      device,
     } as const;
 
     const frame =

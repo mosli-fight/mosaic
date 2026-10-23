@@ -43,6 +43,7 @@ import {
   isValidPolygon,
   projectFixedPointOntoDiagonal,
   isNonDeletedElement,
+  normalizeFrameDevice,
 } from "@excalidraw/element";
 import { normalizeFixedPoint } from "@excalidraw/element";
 import {
@@ -753,11 +754,19 @@ export const restoreElement = (
         }),
       );
     case "magicframe":
+      return restoreElementWithProperties(element, {
+        name: element.name ?? null,
+        hidden: element.hidden === true,
+        notes: element.notes ?? "",
+      });
     case "frame":
       return restoreElementWithProperties(element, {
         name: element.name ?? null,
         hidden: element.hidden === true,
         notes: element.notes ?? "",
+        // a file may carry a device we no longer know — it degrades to a
+        // plain frame rather than to a frame with chrome nothing can draw
+        device: normalizeFrameDevice(element.device),
       });
 
     // Don't use default case so as to catch a missing an element type case.

@@ -16,6 +16,7 @@ import {
   STICKY_NOTE_FOOTER,
   STICKY_NOTE_SHADOW_OPACITY,
   STICKY_NOTE_TAG,
+  getFrameChromeLayout,
 } from "@excalidraw/common";
 import { normalizeLink, toValidURL } from "@excalidraw/common";
 import { hashString } from "@excalidraw/element";
@@ -28,7 +29,9 @@ import { LinearElementEditor } from "@excalidraw/element";
 import { getBoundTextElement, getContainerElement } from "@excalidraw/element";
 import { getLineHeightInPx } from "@excalidraw/element";
 import {
+  frameChromeToSvgNodes,
   isArrowElement,
+  isFrameElement,
   isIframeLikeElement,
   isInitializedImageElement,
   isTextElement,
@@ -820,6 +823,30 @@ const renderElementToSvg = (
         rect.setAttribute("stroke-width", FRAME_STYLE.strokeWidth.toString());
 
         addToRoot(rect, element);
+      }
+
+      // a device frame's chrome is part of the frame, so it is exported
+      // with it — a browser frame without its bar is just a rectangle
+      if (isFrameElement(element) && element.device) {
+        const chromeGroup = svgRoot.ownerDocument.createElementNS(SVG_NS, "g");
+        chromeGroup.setAttribute(
+          "transform",
+          `translate(${offsetX || 0} ${
+            offsetY || 0
+          }) rotate(${degree} ${cx} ${cy})`,
+        );
+
+        const nodes = frameChromeToSvgNodes(
+          svgRoot.ownerDocument,
+          getFrameChromeLayout(element.device, element.width, element.height),
+          renderConfig.theme,
+        );
+
+        for (const node of nodes) {
+          chromeGroup.appendChild(node);
+        }
+
+        addToRoot(chromeGroup, element);
       }
       break;
     }
