@@ -45,6 +45,26 @@ export type AIChatEntry = {
 /** what the panel is doing right now */
 export type AIPanelMode = "settings" | "chat";
 
+/**
+ * A named block of rules the user wants every answer to follow.
+ *
+ * The rules are the user's own words and are put into the system prompt of
+ * every request while the preset is applied. They are kept in this browser
+ * and are sent only to the provider the user configured.
+ */
+export type AIPreset = {
+  id: string;
+  name: string;
+  rules: string;
+};
+
+/** the saved presets, and which one — if any — is applied */
+export type AIPresetsState = {
+  presets: AIPreset[];
+  /** the applied preset's id, or `null` when none is applied */
+  activeId: string | null;
+};
+
 /** the kinds of element the model is allowed to ask for */
 export type AIDiagramElementKind =
   | "rectangle"

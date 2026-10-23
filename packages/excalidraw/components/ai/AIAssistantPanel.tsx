@@ -9,18 +9,21 @@
 
 import clsx from "clsx";
 import { nanoid } from "nanoid";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { t } from "../../i18n";
 import { useApp, useExcalidrawElements } from "../App";
 
 import { AIApiError, sendChatCompletion } from "./api";
+import { AIPresetsSection } from "./AIPresetsSection";
 import { AISettingsForm, draftFromSettings } from "./AISettingsForm";
 import { type AISettingsDraft, emptyAISettingsDraft } from "./AISettingsForm";
 import { closeAIPanel, useAIPanelOpen } from "./aiPanelStore";
+import { AIStarterRow } from "./AIStarterRow";
 import { insertAIElements } from "./diagramElements";
 import { parseDiagramElements } from "./diagramParser";
 import { aiIcon } from "./icons";
+import { getActivePresetRules, loadAIPresets, saveAIPresets } from "./presets";
 import {
   buildBoardSummary,
   buildChatMessages,
@@ -36,7 +39,12 @@ import {
 
 import "./AIAssistantPanel.scss";
 
-import type { AIChatEntry, AIChatMessage, AISettings } from "./types";
+import type {
+  AIChatEntry,
+  AIChatMessage,
+  AIPresetsState,
+  AISettings,
+} from "./types";
 
 /**
  * The assistant panel.
@@ -60,6 +68,54 @@ export const AIAssistantPanel = () => {
   const [input, setInput] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * The presets, and the rules of the applied one.
+   *
+   * The state is read once, from this browser, and written back on every
+   * change. The applied preset's rules are read at request time so that
+   * switching presets takes effect on the very next request.
+   */
+  const [presets, setPresets] = useState<AIPresetsState>(() => loadAIPresets());
+  const [presetsStatus, setPresetsStatus] = useState<string | null>(null);
+
+  /** the composer, so a starter can put the cursor in it */
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  /** keeps the presets in this browser, and says so when it cannot */
+  const updatePresets = useCallback((next: AIPresetsState) => {
+    setPresets(next);
+
+    if (saveAIPresets(next)) {
+      setPresetsStatus(null);
+    } else {
+      setPresetsStatus(t("labels.ai.presetsSaveFailed"));
+    }
+  }, []);
+
+  /** the rules of the applied preset, for the next request */
+  const getPresetRules = useCallback(
+    (): string => getActivePresetRules(presets),
+    [presets],
+  );
+
+  /** puts a starter or an example in the composer, ready to be edited */
+  const handleUseStarter = useCallback((prompt: string) => {
+    setInput(prompt);
+    setError(null);
+
+    // the textarea is the next thing the person wants to use, so it takes
+    // the focus and the cursor goes to the end of what was put there
+    requestAnimationFrame(() => {
+      const textarea = inputRef.current;
+      if (!textarea) {
+        return;
+      }
+      textarea.focus();
+      const end = textarea.value.length;
+      textarea.setSelectionRange(end, end);
+    });
+  }, []);
 
   /** adds a line to the conversation */
   const appendEntry = useCallback((entry: Omit<AIChatEntry, "id">) => {
@@ -119,12 +175,17 @@ export const AIAssistantPanel = () => {
       return;
     }
 
-    const answer = await ask(buildSummaryMessages({ boardSummary }));
+    const request = buildSummaryMessages({
+      boardSummary,
+      presetRules: getPresetRules(),
+    });
+
+    const answer = await ask(request);
 
     if (answer !== null) {
       appendEntry({ role: "assistant", content: answer });
     }
-  }, [appendEntry, ask, elements]);
+  }, [appendEntry, ask, elements, getPresetRules]);
 
   /** asks the model to draw something, and puts it on the board */
   const handleGenerateDiagram = useCallback(async () => {
@@ -140,6 +201,7 @@ export const AIAssistantPanel = () => {
     const request = buildDiagramMessages({
       prompt,
       boardSummary: getBoardSummary(),
+      presetRules: getPresetRules(),
     });
 
     appendEntry({ role: "user", content: prompt });
@@ -167,7 +229,7 @@ export const AIAssistantPanel = () => {
       content: t("labels.ai.addedElements", { count }),
       insertedElements: count,
     });
-  }, [app, appendEntry, ask, getBoardSummary, input]);
+  }, [app, appendEntry, ask, getBoardSummary, getPresetRules, input]);
 
   /** asks the model whatever the person typed */
   const handleSend = useCallback(async () => {
@@ -183,6 +245,7 @@ export const AIAssistantPanel = () => {
       history: getHistory(),
       userText: text,
       boardSummary: getBoardSummary(),
+      presetRules: getPresetRules(),
     });
 
     appendEntry({ role: "user", content: text });
@@ -192,7 +255,7 @@ export const AIAssistantPanel = () => {
     if (answer !== null) {
       appendEntry({ role: "assistant", content: answer });
     }
-  }, [appendEntry, ask, getBoardSummary, getHistory, input]);
+  }, [appendEntry, ask, getBoardSummary, getHistory, getPresetRules, input]);
 
   /** keeps what the user typed, so that it survives a failed save */
   const handleSave = useCallback(() => {
@@ -349,6 +412,14 @@ export const AIAssistantPanel = () => {
             </label>
           </div>
 
+          <AIStarterRow onUse={handleUseStarter} />
+
+          <AIPresetsSection
+            state={presets}
+            onChange={updatePresets}
+            status={presetsStatus}
+          />
+
           <div className="ai-panel__messages" data-testid="ai-messages">
             {!messages.length && !isBusy && (
               <p className="ai-panel__empty">{t("labels.ai.emptyChat")}</p>
@@ -383,6 +454,7 @@ export const AIAssistantPanel = () => {
 
           <div className="ai-panel__composer">
             <textarea
+              ref={inputRef}
               className="ai-panel__input"
               value={input}
               rows={3}
