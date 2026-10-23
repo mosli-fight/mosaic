@@ -73,6 +73,7 @@ import {
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
 import { drawFrameChromeOnCanvas } from "./frameChrome";
+import { drawCodeBlockOnCanvas } from "./codeBlock";
 import { getCornerRadius } from "./utils";
 
 import { ShapeCache } from "./shape";
@@ -439,6 +440,14 @@ const drawElementOnCanvas = (
   renderConfig: StaticCanvasRenderConfig,
 ) => {
   switch (element.type) {
+    case "codeblock": {
+      drawCodeBlockOnCanvas(context, element, {
+        width: element.width,
+        height: element.height,
+        theme: renderConfig.theme,
+      });
+      break;
+    }
     case "stickynote": {
       context.save();
       context.fillStyle = `rgba(0, 0, 0, ${STICKY_NOTE_SHADOW_OPACITY})`;
@@ -1172,6 +1181,7 @@ const drawElement = (
     }
     case "rectangle":
     case "stickynote":
+    case "codeblock":
     case "diamond":
     case "ellipse":
     case "line":
