@@ -189,6 +189,8 @@ describe("the code block model", () => {
     });
 
     it("keeps every character of the code, whatever it colours", () => {
+      // the `${a}` is code being tokenized, not a template of this test's
+      // eslint-disable-next-line no-template-curly-in-string
       const code = "function f(a) {\n  return `x ${a}`; // done\n}";
       const rebuilt = tokenizeCode(code, "javascript")
         .map((line) => line.map((token) => token.text).join(""))

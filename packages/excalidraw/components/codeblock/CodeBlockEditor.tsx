@@ -29,6 +29,9 @@ import {
   isCodeBlockElement,
 } from "@excalidraw/element";
 
+import type { CodeBlockLanguage } from "@excalidraw/common";
+import type { ExcalidrawCodeBlockElement } from "@excalidraw/element/types";
+
 import {
   useApp,
   useExcalidrawAppState,
@@ -40,9 +43,6 @@ import { copyIcon } from "../icons";
 import { getCodeBlockEditorGeometry } from "./codeBlockEditorGeometry";
 
 import "./CodeBlockEditor.scss";
-
-import type { CodeBlockLanguage } from "@excalidraw/common";
-import type { ExcalidrawCodeBlockElement } from "@excalidraw/element/types";
 
 /**
  * The editor over a block that is being edited.
