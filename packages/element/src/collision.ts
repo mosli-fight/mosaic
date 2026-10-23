@@ -89,6 +89,12 @@ export const shouldTestInside = (element: ExcalidrawElement) => {
     return false;
   }
 
+  // a code block is a card: it paints its own background whatever the
+  // element's `backgroundColor` says, so anywhere inside it is a hit
+  if (element.type === "codeblock") {
+    return true;
+  }
+
   const isDraggableFromInside =
     (hasBackground(element.type) && !isTransparent(element.backgroundColor)) ||
     hasBoundTextElement(element) ||
@@ -517,6 +523,7 @@ export const intersectElementWithLineSegment = (
   switch (element.type) {
     case "rectangle":
     case "stickynote":
+    case "codeblock":
     case "image":
     case "text":
     case "iframe":

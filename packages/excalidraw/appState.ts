@@ -116,6 +116,7 @@ export const getDefaultAppState = (): Omit<
     frameToHighlight: null,
     editingFrame: null,
     currentItemFrameFormat: DEFAULT_FRAME_FORMAT,
+    editingCodeBlock: null,
     presentMode: {
       active: false,
       currentFrameId: null,
@@ -293,6 +294,8 @@ const APP_STATE_STORAGE_CONF = (<
   // the frame format is a preference (like the current item's colors), not
   // document state — it is kept across sessions but never exported
   currentItemFrameFormat: { browser: true, export: false, server: false },
+  // which block is being edited is a view of the board, not part of it
+  editingCodeBlock: { browser: false, export: false, server: false },
   // present mode is a transient view: it is never persisted
   presentMode: { browser: false, export: false, server: false },
   elementsToHighlight: { browser: false, export: false, server: false },

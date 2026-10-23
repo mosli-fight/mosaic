@@ -7,15 +7,6 @@ import {
 } from "@excalidraw/excalidraw/data/encryption";
 import { restoreElements } from "@excalidraw/excalidraw/data/restore";
 import { getSceneVersion } from "@excalidraw/element";
-import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  runTransaction,
-  Bytes,
-} from "firebase/firestore";
-import { getStorage, ref, uploadBytes } from "firebase/storage";
 
 import type { RemoteExcalidrawElement } from "@excalidraw/excalidraw/data/reconcile";
 import type {
@@ -34,12 +25,34 @@ import { FILE_CACHE_MAX_AGE_SEC } from "../app_constants";
 
 import { getSyncableElements } from ".";
 
+import type { FirebaseStorage, UploadMetadata } from "firebase/storage";
+import type { Firestore, Bytes } from "firebase/firestore";
+import type { FirebaseApp } from "firebase/app";
+
 import type { SyncableExcalidrawElement } from ".";
 import type Portal from "../collab/Portal";
 import type { Socket } from "socket.io-client";
 
 // private
 // -----------------------------------------------------------------------------
+
+/**
+ * The Firebase SDK is fetched on first use, not imported.
+ *
+ * Firestore is the single heaviest dependency in the editor, and a board that
+ * is never shared or collaborated on never opens a connection to it. A static
+ * import would put the whole SDK in the entry chunk, where every visitor pays
+ * for it before the canvas paints. `./firebaseSdk` re-exports the handful of
+ * entry points used here; this promise is the memoised fetch of that module.
+ */
+let firebaseSdkPromise: Promise<typeof import("./firebaseSdk")> | null = null;
+
+const getFirebaseSdk = () => {
+  if (!firebaseSdkPromise) {
+    firebaseSdkPromise = import("./firebaseSdk");
+  }
+  return firebaseSdkPromise;
+};
 
 let FIREBASE_CONFIG: Record<string, any>;
 try {
@@ -53,35 +66,52 @@ try {
   FIREBASE_CONFIG = {};
 }
 
-let firebaseApp: ReturnType<typeof initializeApp> | null = null;
-let firestore: ReturnType<typeof getFirestore> | null = null;
-let firebaseStorage: ReturnType<typeof getStorage> | null = null;
+let firebaseApp: FirebaseApp | null = null;
+let firestore: Firestore | null = null;
+let firebaseStorage: FirebaseStorage | null = null;
 
-const _initializeFirebase = () => {
+const _initializeFirebase = async () => {
   if (!firebaseApp) {
+    const { initializeApp } = await getFirebaseSdk();
     firebaseApp = initializeApp(FIREBASE_CONFIG);
   }
   return firebaseApp;
 };
 
-const _getFirestore = () => {
+const _getFirestore = async () => {
   if (!firestore) {
-    firestore = getFirestore(_initializeFirebase());
+    const { getFirestore } = await getFirebaseSdk();
+    firestore = getFirestore(await _initializeFirebase());
   }
   return firestore;
 };
 
-const _getStorage = () => {
+const _getStorage = async () => {
   if (!firebaseStorage) {
-    firebaseStorage = getStorage(_initializeFirebase());
+    const { getStorage } = await getFirebaseSdk();
+    firebaseStorage = getStorage(await _initializeFirebase());
   }
   return firebaseStorage;
 };
 
 // -----------------------------------------------------------------------------
 
-export const loadFirebaseStorage = async () => {
-  return _getStorage();
+/**
+ * Uploads one object to Firebase Storage.
+ *
+ * Lives here rather than at the call site so that `firebase/storage` is only
+ * ever reached through `getFirebaseSdk` — a static `import { ref } from
+ * "firebase/storage"` anywhere in the app would drag the SDK back into the
+ * entry chunk and undo the split.
+ */
+export const uploadToFirebaseStorage = async (
+  path: string,
+  data: Blob | Uint8Array,
+  metadata?: UploadMetadata,
+) => {
+  const { ref, uploadBytes } = await getFirebaseSdk();
+  const storage = await _getStorage();
+  await uploadBytes(ref(storage, path), data, metadata);
 };
 
 type FirebaseStoredScene = {
@@ -149,7 +179,8 @@ export const saveFilesToFirebase = async ({
   prefix: string;
   files: { id: FileId; buffer: Uint8Array }[];
 }) => {
-  const storage = await loadFirebaseStorage();
+  const { ref, uploadBytes } = await getFirebaseSdk();
+  const storage = await _getStorage();
 
   const erroredFiles: FileId[] = [];
   const savedFiles: FileId[] = [];
@@ -175,6 +206,7 @@ const createFirebaseSceneDocument = async (
   elements: readonly SyncableExcalidrawElement[],
   roomKey: string,
 ) => {
+  const { Bytes } = await getFirebaseSdk();
   const sceneVersion = getSceneVersion(elements);
   const { ciphertext, iv } = await encryptElements(roomKey, elements);
   return {
@@ -200,7 +232,8 @@ export const saveToFirebase = async (
     return null;
   }
 
-  const firestore = _getFirestore();
+  const { doc, runTransaction } = await getFirebaseSdk();
+  const firestore = await _getFirestore();
   const docRef = doc(firestore, "scenes", roomId);
 
   const storedScene = await runTransaction(firestore, async (transaction) => {
@@ -251,7 +284,8 @@ export const loadFromFirebase = async (
   roomKey: string,
   socket: Socket | null,
 ): Promise<readonly SyncableExcalidrawElement[] | null> => {
-  const firestore = _getFirestore();
+  const { doc, getDoc } = await getFirebaseSdk();
+  const firestore = await _getFirestore();
   const docRef = doc(firestore, "scenes", roomId);
   const docSnap = await getDoc(docRef);
   if (!docSnap.exists()) {

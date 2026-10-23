@@ -39,6 +39,7 @@ import { getElementAbsoluteCoords } from "@excalidraw/element";
 import type {
   ElementsMap,
   ExcalidrawBindableElement,
+  ExcalidrawCodeBlockElement,
   ExcalidrawDiamondElement,
   ExcalidrawElement,
   ExcalidrawEllipseElement,
@@ -106,6 +107,7 @@ export type GeometricShape<Point extends GlobalPoint | LocalPoint> =
 type RectangularElement =
   | ExcalidrawRectangleElement
   | ExcalidrawStickyNoteElement
+  | ExcalidrawCodeBlockElement
   | ExcalidrawDiamondElement
   | ExcalidrawFrameLikeElement
   | ExcalidrawEmbeddableElement

@@ -34,6 +34,7 @@ import {
   type StrokeWidthKey,
   isTransparent,
   DEFAULT_ZOOM,
+  normalizeCodeBlockLanguage,
 } from "@excalidraw/common";
 import {
   calculateFixedPointForNonElbowArrowBinding,
@@ -43,6 +44,7 @@ import {
   isValidPolygon,
   projectFixedPointOntoDiagonal,
   isNonDeletedElement,
+  normalizeFrameDevice,
 } from "@excalidraw/element";
 import { normalizeFixedPoint } from "@excalidraw/element";
 import {
@@ -752,12 +754,27 @@ export const restoreElement = (
           tags: normalizeStickyNoteTags(element.tags),
         }),
       );
+    case "codeblock":
+      return restoreElementWithProperties(element, {
+        // a block saved before the language was a field, or written by a
+        // newer editor, keeps its code and falls back to plain text
+        code: typeof element.code === "string" ? element.code : "",
+        language: normalizeCodeBlockLanguage(element.language),
+      });
     case "magicframe":
+      return restoreElementWithProperties(element, {
+        name: element.name ?? null,
+        hidden: element.hidden === true,
+        notes: element.notes ?? "",
+      });
     case "frame":
       return restoreElementWithProperties(element, {
         name: element.name ?? null,
         hidden: element.hidden === true,
         notes: element.notes ?? "",
+        // a file may carry a device we no longer know — it degrades to a
+        // plain frame rather than to a frame with chrome nothing can draw
+        device: normalizeFrameDevice(element.device),
       });
 
     // Don't use default case so as to catch a missing an element type case.
@@ -1399,6 +1416,8 @@ export const restoreAppState = (
       nextAppState.currentItemStickynoteBackgroundColor,
     ),
     editingFrame: null,
+    // a restored board is never mid-edit
+    editingCodeBlock: null,
     // present mode is a view, not document state: a restored document is
     // never presented
     presentMode: {

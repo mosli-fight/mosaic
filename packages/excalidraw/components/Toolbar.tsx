@@ -10,6 +10,7 @@ import { useEditorInterface, useStylesPanelMode } from "./App";
 import { AIAssistantButton } from "./ai/AIAssistantButton";
 import { DiagramButton } from "./diagram/DiagramButton";
 import { DocumentButton } from "./document/DocumentButton";
+import { CodeBlockButton } from "./codeblock/CodeBlockButton";
 import { HintViewer } from "./HintViewer";
 import { DrawingToolsPopover } from "./DrawingToolsPopover";
 import { FrameFormatPicker } from "./frames/FrameFormatPicker";
@@ -269,6 +270,7 @@ export const Toolbar = ({
           setAppState={setAppState}
         />
         <CommentToolButton {...toolProps} />
+        <CodeBlockButton app={app} />
         <MediaButton app={app} />
         <TemplatesButton app={app} />
         <AIAssistantButton />

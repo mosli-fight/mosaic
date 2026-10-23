@@ -31,6 +31,7 @@ import {
   STICKY_NOTE_SHADOW_OPACITY,
   STICKY_NOTE_TAG,
   DEFAULT_ZOOM,
+  getFrameChromeLayout,
 } from "@excalidraw/common";
 
 import type {
@@ -66,10 +67,13 @@ import {
   isArrowElement,
   hasBoundTextElement,
   isMagicFrameElement,
+  isFrameElement,
   isFrameLikeElement,
   isImageElement,
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
+import { drawFrameChromeOnCanvas } from "./frameChrome";
+import { drawCodeBlockOnCanvas } from "./codeBlock";
 import { getCornerRadius } from "./utils";
 
 import { ShapeCache } from "./shape";
@@ -436,6 +440,14 @@ const drawElementOnCanvas = (
   renderConfig: StaticCanvasRenderConfig,
 ) => {
   switch (element.type) {
+    case "codeblock": {
+      drawCodeBlockOnCanvas(context, element, {
+        width: element.width,
+        height: element.height,
+        theme: renderConfig.theme,
+      });
+      break;
+    }
     case "stickynote": {
       context.save();
       context.fillStyle = `rgba(0, 0, 0, ${STICKY_NOTE_SHADOW_OPACITY})`;
@@ -1116,6 +1128,17 @@ const drawElement = (
           context.strokeRect(0, 0, element.width, element.height);
         }
 
+        // a device frame wears the chrome of its device — a browser's bar,
+        // a phone's notch — drawn in the frame's own coordinates, on top of
+        // the outline
+        if (isFrameElement(element) && element.device) {
+          drawFrameChromeOnCanvas(
+            context,
+            getFrameChromeLayout(element.device, element.width, element.height),
+            appState.theme,
+          );
+        }
+
         context.restore();
       }
       break;
@@ -1158,6 +1181,7 @@ const drawElement = (
     }
     case "rectangle":
     case "stickynote":
+    case "codeblock":
     case "diamond":
     case "ellipse":
     case "line":

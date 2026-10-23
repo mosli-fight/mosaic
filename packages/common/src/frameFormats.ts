@@ -7,15 +7,21 @@
  * them — the size a preset advertises must be the size the frame is born
  * with, and the swatch a picker shows must be the color the frame gets.
  *
- * NOTE: this module imports nothing, so that it can be imported from
- * `./colors` and `./constants` without a cycle.
+ * NOTE: this module imports only `./deviceFrames`, which imports nothing,
+ * so that it can be imported from `./colors` and `./constants` without a
+ * cycle.
  */
+
+import { DEVICE_FRAME_PRESETS } from "./deviceFrames";
+
+import type { FrameDeviceId } from "./deviceFrames";
 
 /**
  * The id of a frame format.
  *
  * `custom` is the free-form format: the frame is sized by dragging, and it
- * carries no aspect ratio. Every other id names a fixed paper size.
+ * carries no aspect ratio. Every other id names a fixed size — a paper
+ * format, or one of the device frames (see `./deviceFrames`).
  */
 export type FrameFormatId =
   | "custom"
@@ -26,7 +32,8 @@ export type FrameFormatId =
   | "letter"
   | "mobile"
   | "tablet"
-  | "desktop";
+  | "desktop"
+  | FrameDeviceId;
 
 export type FrameFormatPreset = {
   id: FrameFormatId;
@@ -67,12 +74,18 @@ export const DEFAULT_FRAME_FORMAT: FrameFormatId = "custom";
  * The preset for a format id. Falls back to `custom` for an id we do not
  * know (a file saved by a newer version, say), so a stale id degrades to
  * the free-form frame rather than to nothing.
+ *
+ * The device frames are formats too: their presets are kept in
+ * `./deviceFrames`, next to the chrome they draw, and are looked up here so
+ * that everything that sizes a frame from its format does not have to know
+ * which kind of format it was given.
  */
 export const getFrameFormatPreset = (
   id: FrameFormatId | string,
 ): FrameFormatPreset => {
   return (
     FRAME_FORMAT_PRESETS.find((preset) => preset.id === id) ??
+    DEVICE_FRAME_PRESETS.find((preset) => preset.id === id) ??
     FRAME_FORMAT_PRESETS[0]
   );
 };

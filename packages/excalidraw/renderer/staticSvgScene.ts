@@ -1,5 +1,6 @@
 import {
   BOUND_TEXT_PADDING,
+  FONT_FAMILY,
   FRAME_STYLE,
   MAX_DECIMALS_FOR_SVG_EXPORT,
   SVG_NS,
@@ -16,6 +17,9 @@ import {
   STICKY_NOTE_FOOTER,
   STICKY_NOTE_SHADOW_OPACITY,
   STICKY_NOTE_TAG,
+  CODE_BLOCK_FONT_SIZE,
+  CODE_BLOCK_RADIUS,
+  getFrameChromeLayout,
 } from "@excalidraw/common";
 import { normalizeLink, toValidURL } from "@excalidraw/common";
 import { hashString } from "@excalidraw/element";
@@ -28,10 +32,22 @@ import { LinearElementEditor } from "@excalidraw/element";
 import { getBoundTextElement, getContainerElement } from "@excalidraw/element";
 import { getLineHeightInPx } from "@excalidraw/element";
 import {
+  frameChromeToSvgNodes,
   isArrowElement,
+  isFrameElement,
   isIframeLikeElement,
   isInitializedImageElement,
   isTextElement,
+} from "@excalidraw/element";
+
+import {
+  CODE_BLOCK_FONT_FAMILY,
+  CODE_BLOCK_LABEL_FONT_SIZE,
+  getCodeBlockColors,
+  getCodeBlockLanguageLabel,
+  getCodeBlockSvgLayout,
+  getCodeBlockSvgLines,
+  getCodeBlockTokenColor,
 } from "@excalidraw/element";
 
 import { getContainingFrame } from "@excalidraw/element";
@@ -787,6 +803,131 @@ const renderElementToSvg = (
       }
       break;
     }
+    // a code block is a card, exported as the card and its coloured code
+    case "codeblock": {
+      const group = svgRoot.ownerDocument.createElementNS(SVG_NS, "g");
+      group.setAttribute(
+        "transform",
+        `translate(${offsetX || 0} ${
+          offsetY || 0
+        }) rotate(${degree} ${cx} ${cy})`,
+      );
+      if (opacity !== 1) {
+        group.setAttribute("opacity", `${opacity}`);
+      }
+
+      const layout = getCodeBlockSvgLayout(element);
+      const colors = getCodeBlockColors(renderConfig.theme);
+      const radius = Math.min(
+        CODE_BLOCK_RADIUS,
+        Math.min(element.width, element.height) / 4,
+      );
+
+      const card = svgRoot.ownerDocument.createElementNS(SVG_NS, "rect");
+      card.setAttribute("width", `${element.width}`);
+      card.setAttribute("height", `${element.height}`);
+      card.setAttribute("rx", `${radius}`);
+      card.setAttribute("ry", `${radius}`);
+      card.setAttribute("fill", colors.background);
+      card.setAttribute("stroke", colors.border);
+      card.setAttribute("stroke-width", "1");
+      group.appendChild(card);
+
+      // the header, clipped to the card's rounded corners
+      const clipPath = svgRoot.ownerDocument.createElementNS(
+        SVG_NS,
+        "clipPath",
+      );
+      clipPath.setAttribute("id", `code-block-clipPath-${element.id}`);
+      clipPath.setAttribute("clipPathUnits", "userSpaceOnUse");
+      const clipRect = svgRoot.ownerDocument.createElementNS(SVG_NS, "rect");
+      clipRect.setAttribute("width", `${element.width}`);
+      clipRect.setAttribute("height", `${element.height}`);
+      clipRect.setAttribute("rx", `${radius}`);
+      clipRect.setAttribute("ry", `${radius}`);
+      clipPath.appendChild(clipRect);
+      addToRoot(clipPath, element);
+
+      const header = svgRoot.ownerDocument.createElementNS(SVG_NS, "rect");
+      header.setAttribute("width", `${element.width}`);
+      header.setAttribute("height", `${layout.headerHeight}`);
+      header.setAttribute("fill", colors.header);
+      header.setAttribute("clip-path", `url(#${clipPath.id})`);
+      group.appendChild(header);
+
+      const rule = svgRoot.ownerDocument.createElementNS(SVG_NS, "line");
+      rule.setAttribute("x1", "0");
+      rule.setAttribute("y1", `${layout.headerHeight}`);
+      rule.setAttribute("x2", `${element.width}`);
+      rule.setAttribute("y2", `${layout.headerHeight}`);
+      rule.setAttribute("stroke", colors.border);
+      rule.setAttribute("stroke-width", "1");
+      group.appendChild(rule);
+
+      // the language label, where the canvas paints it
+      const label = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
+      label.setAttribute("x", `${layout.padding}`);
+      label.setAttribute("y", `${layout.headerHeight / 2}`);
+      label.setAttribute(
+        "font-family",
+        getFontFamilyString({ fontFamily: FONT_FAMILY.Nunito }).replace(
+          /"/g,
+          "'",
+        ),
+      );
+      label.setAttribute("font-size", `${CODE_BLOCK_LABEL_FONT_SIZE}px`);
+      label.setAttribute("dominant-baseline", "middle");
+      label.setAttribute("fill", colors.muted);
+      label.textContent = getCodeBlockLanguageLabel(element);
+      group.appendChild(label);
+
+      const codeGroup = svgRoot.ownerDocument.createElementNS(SVG_NS, "g");
+      codeGroup.setAttribute("clip-path", `url(#${clipPath.id})`);
+
+      for (const { tokens, baseline } of getCodeBlockSvgLines(element)) {
+        if (baseline > element.height - layout.padding / 2) {
+          continue;
+        }
+
+        const line = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
+        line.setAttribute("x", `${layout.padding}`);
+        line.setAttribute("y", `${baseline}`);
+        line.setAttribute(
+          "font-family",
+          CODE_BLOCK_FONT_FAMILY.replace(/"/g, "'"),
+        );
+        line.setAttribute("font-size", `${CODE_BLOCK_FONT_SIZE}px`);
+        line.setAttribute("dominant-baseline", "middle");
+        line.setAttribute("xml:space", "preserve");
+
+        let offset = 0;
+        for (const token of tokens) {
+          const span = svgRoot.ownerDocument.createElementNS(SVG_NS, "tspan");
+          span.setAttribute("x", `${layout.padding + offset}`);
+          span.setAttribute(
+            "fill",
+            getCodeBlockTokenColor(token.kind, renderConfig.theme),
+          );
+          span.textContent = token.text;
+          line.appendChild(span);
+          offset += token.text.length * layout.charWidth;
+        }
+
+        codeGroup.appendChild(line);
+      }
+
+      group.appendChild(codeGroup);
+
+      const clipG = maybeWrapNodesInFrameClipPath(
+        element,
+        root,
+        [group],
+        renderConfig.frameRendering,
+        elementsMap,
+      );
+      addToRoot(clipG || group, element);
+      break;
+    }
     // frames are not rendered and only acts as a container
     case "frame":
     case "magicframe": {
@@ -820,6 +961,30 @@ const renderElementToSvg = (
         rect.setAttribute("stroke-width", FRAME_STYLE.strokeWidth.toString());
 
         addToRoot(rect, element);
+      }
+
+      // a device frame's chrome is part of the frame, so it is exported
+      // with it — a browser frame without its bar is just a rectangle
+      if (isFrameElement(element) && element.device) {
+        const chromeGroup = svgRoot.ownerDocument.createElementNS(SVG_NS, "g");
+        chromeGroup.setAttribute(
+          "transform",
+          `translate(${offsetX || 0} ${
+            offsetY || 0
+          }) rotate(${degree} ${cx} ${cy})`,
+        );
+
+        const nodes = frameChromeToSvgNodes(
+          svgRoot.ownerDocument,
+          getFrameChromeLayout(element.device, element.width, element.height),
+          renderConfig.theme,
+        );
+
+        for (const node of nodes) {
+          chromeGroup.appendChild(node);
+        }
+
+        addToRoot(chromeGroup, element);
       }
       break;
     }

@@ -56,7 +56,6 @@ import { serializeAsJSON } from "../data/json";
 import { Fonts } from "../fonts";
 
 import { renderStaticScene } from "../renderer/staticScene";
-import { renderSceneToSvg } from "../renderer/staticSvgScene";
 
 import type { RenderableElementsMap } from "./types";
 
@@ -475,6 +474,12 @@ export const exportToSvg = async (
   const rsvg = rough.svg(svgRoot);
 
   const renderEmbeddables = opts?.renderEmbeddables ?? false;
+
+  // The SVG renderer is fetched here rather than imported at the top: it is
+  // a second, parallel painter of every element kind, and a board that is
+  // never exported as SVG should not carry it. `exportToSvg` is already
+  // async, so this costs a round trip only on the path that needs it.
+  const { renderSceneToSvg } = await import("../renderer/staticSvgScene");
 
   renderSceneToSvg(
     elementsForRender,

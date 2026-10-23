@@ -759,7 +759,14 @@
         "letter": "Letter",
         "mobile": "Mobile",
         "tablet": "Tablet",
-        "desktop": "Desktop"
+        "desktop": "Desktop",
+        "device-phone": "Phone",
+        "device-tablet": "Tablet",
+        "device-desktop": "Desktop",
+        "device-browser": "Browser"
+      },
+      "devices": {
+        "title": "Devices"
       }
     },
     "present": {
@@ -970,6 +977,7 @@
     "frame": "Frame tool",
     "magicframe": "Wireframe to code",
     "stickynote": "Sticky note",
+    "codeblock": "Code block",
     "comment": "Comment",
     "comments": "Comments",
     "embeddable": "Web Embed",
@@ -1108,6 +1116,7 @@
     "frame": "Frame",
     "magicframe": "Wireframe to code",
     "stickynote": "Sticky note",
+    "codeblock": "Code block",
     "embeddable": "Web Embed",
     "selection": "Selection",
     "iframe": "IFrame"

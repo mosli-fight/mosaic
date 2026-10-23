@@ -13,9 +13,15 @@ import {
   getFontString,
   getUpdatedTimestamp,
   getLineHeight,
+  DEFAULT_CODE_BLOCK_CODE,
+  DEFAULT_CODE_BLOCK_LANGUAGE,
+  getCodeBlockLayout,
+  normalizeCodeBlockLanguage,
 } from "@excalidraw/common";
 
 import type { Radians } from "@excalidraw/math";
+
+import type { CodeBlockLanguage } from "@excalidraw/common";
 
 import type { MarkOptional, Merge } from "@excalidraw/common/utility-types";
 
@@ -51,6 +57,8 @@ import type {
   ExcalidrawFrameElement,
   ExcalidrawEmbeddableElement,
   ExcalidrawMagicFrameElement,
+  FrameDevice,
+  ExcalidrawCodeBlockElement,
   ExcalidrawIframeElement,
   ElementsMap,
   ExcalidrawArrowElement,
@@ -268,6 +276,7 @@ export const newIframeElement = (
 export const newFrameElement = (
   opts: {
     name?: string;
+    device?: FrameDevice | null;
   } & ElementConstructorOpts,
 ): NonDeleted<ExcalidrawFrameElement> => {
   const frameElement = newElementWith(
@@ -275,6 +284,7 @@ export const newFrameElement = (
       ..._newElementBase<ExcalidrawFrameElement>("frame", opts),
       type: "frame",
       name: opts?.name || null,
+      device: opts?.device ?? null,
     },
     {},
   );
@@ -297,6 +307,42 @@ export const newMagicFrameElement = (
   );
 
   return frameElement;
+};
+
+/**
+ * A code block on the board.
+ *
+ * The block is sized around its code from the start — the layout is derived
+ * from the code, not given by the caller — so a block is born readable and
+ * stays readable as its content grows. The caller may still pass a width and
+ * a height (a resize, a restore), and they win over the layout.
+ */
+export const newCodeBlockElement = (
+  opts: {
+    code?: string;
+    language?: CodeBlockLanguage;
+  } & ElementConstructorOpts,
+): NonDeleted<ExcalidrawCodeBlockElement> => {
+  const code = opts.code ?? DEFAULT_CODE_BLOCK_CODE;
+  const layout = getCodeBlockLayout(code);
+
+  const element = newElementWith(
+    {
+      ..._newElementBase<ExcalidrawCodeBlockElement>("codeblock", {
+        ...opts,
+        width: opts.width ?? layout.width,
+        height: opts.height ?? layout.height,
+      }),
+      type: "codeblock",
+      code,
+      language: normalizeCodeBlockLanguage(
+        opts.language ?? DEFAULT_CODE_BLOCK_LANGUAGE,
+      ),
+    },
+    {},
+  );
+
+  return element;
 };
 
 /**
