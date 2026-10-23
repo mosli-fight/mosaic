@@ -1416,6 +1416,8 @@ export const restoreAppState = (
       nextAppState.currentItemStickynoteBackgroundColor,
     ),
     editingFrame: null,
+    // a restored board is never mid-edit
+    editingCodeBlock: null,
     // present mode is a view, not document state: a restored document is
     // never presented
     presentMode: {

@@ -123,6 +123,7 @@ import {
   newEmbeddableElement,
   newMagicFrameElement,
   newStickyNoteElement,
+  newCodeBlockElement,
   newIframeElement,
   newArrowElement,
   newElement,
@@ -152,6 +153,7 @@ import {
   isBindableElement,
   isTextElement,
   isStickyNoteElement,
+  isCodeBlockElement,
   getNormalizedDimensions,
   isElementCompletelyInViewport,
   isElementInViewport,
@@ -271,6 +273,7 @@ import type {
   SceneElementsMap,
   NonDeletedSceneElementsMap,
   ExcalidrawBindableElement,
+  ExcalidrawCodeBlockElement,
 } from "@excalidraw/element/types";
 
 import type { TransformHandleDirection } from "@excalidraw/element";
@@ -464,6 +467,11 @@ import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
 import { findShapeByKey, TOGGLE_TOOLS } from "./Tools";
 
 import UnlockPopup from "./UnlockPopup";
+
+import {
+  CodeBlockEditorOverlay,
+  CodeBlockToolbarOverlay,
+} from "./codeblock/CodeBlockEditor";
 
 import type { ExcalidrawLibraryIds } from "../data/types";
 
@@ -2763,6 +2771,16 @@ class App extends React.Component<AppProps, AppState> {
                             showShapeSwitchPanel && (
                               <ConvertElementTypePopup app={this} />
                             )}
+                          {/* a code block is painted on the canvas and
+                              edited in HTML over it: the editor while its
+                              code is being typed, the toolbar while it is
+                              selected */}
+                          {this.isDefaultUIEnabled() && (
+                            <>
+                              <CodeBlockToolbarOverlay />
+                              <CodeBlockEditorOverlay />
+                            </>
+                          )}
                         </ExcalidrawActionManagerContext.Provider>
                         {this.renderEmbeddables()}
                       </ExcalidrawElementsContext.Provider>
@@ -6423,6 +6441,13 @@ class App extends React.Component<AppProps, AppState> {
         return;
       }
 
+      // a code block is edited in its own editor rather than as text: its
+      // code is the element's, not a label bound to a container
+      if (isCodeBlockElement(hitElement)) {
+        this.startCodeBlockEditing(hitElement);
+        return;
+      }
+
       // shouldn't edit/create text when inside line editor (often false positive)
 
       if (!this.state.selectedLinearElement?.isEditing) {
@@ -9543,6 +9568,54 @@ class App extends React.Component<AppProps, AppState> {
         newElement: element,
       });
     }
+  };
+
+  /**
+   * Opens a code block's editor.
+   *
+   * The block is selected first, so that the editor and the toolbar are
+   * about the same block, and the editor is told which block it edits
+   * through the app state rather than through a prop the canvas would have
+   * to thread down.
+   */
+  public startCodeBlockEditing = (
+    element: NonDeleted<ExcalidrawCodeBlockElement>,
+  ) => {
+    this.setState({
+      selectedElementIds: { [element.id]: true },
+      editingCodeBlock: element.id,
+    });
+  };
+
+  /**
+   * Puts a fresh code block in the middle of the viewport.
+   *
+   * Like a sticker or an emoji, it lands where the user is looking and comes
+   * back selected and ready to type into — a code block that had to be
+   * placed and then opened would be two gestures for one intent.
+   */
+  public insertCodeBlock = () => {
+    const { width, height, offsetLeft, offsetTop } = this.state;
+    const center = viewportCoordsToSceneCoords(
+      { clientX: width / 2 + offsetLeft, clientY: height / 2 + offsetTop },
+      this.state,
+    );
+
+    const element = newCodeBlockElement({
+      x: center.x,
+      y: center.y,
+      strokeColor: this.state.currentItemStrokeColor,
+      backgroundColor: this.state.currentItemBackgroundColor,
+      opacity: this.state.currentItemOpacity,
+      locked: false,
+    });
+
+    this.insertNewElement(element);
+
+    this.setState({
+      selectedElementIds: { [element.id]: true },
+      editingCodeBlock: element.id,
+    });
   };
 
   private createFrameElementOnPointerDown = (

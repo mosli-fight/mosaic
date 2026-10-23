@@ -428,6 +428,15 @@ export interface AppState {
    */
   currentItemFrameFormat: FrameFormatId;
   /**
+   * The code block whose code is being edited, if any.
+   *
+   * A code block is edited in an HTML editor laid over the card (see
+   * `CodeBlockEditor`), which needs to know which block it is editing. The
+   * id rather than the element, so a mutation of the block does not stale
+   * the state.
+   */
+  editingCodeBlock: ExcalidrawElement["id"] | null;
+  /**
    * Present mode — the fullscreen walkthrough of the board's frames.
    *
    * The viewport is moved to the frame being presented, so the canvas shows
