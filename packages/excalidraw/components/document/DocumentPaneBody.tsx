@@ -96,6 +96,18 @@ export const DocumentPaneBody = () => {
   /** the notes as they are on disk, so an unchanged document is not rewritten */
   const savedNotes = useRef<string>(notes);
 
+  /**
+   * The notes as they are *now*.
+   *
+   * The flush below runs from an effect with no dependencies, so it closes
+   * over the first render's `notes` — the starter text. Reading the ref
+   * instead means the flush writes what was actually typed, not what the
+   * pane opened with.
+   */
+  const latestNotes = useRef<string>(notes);
+
+  latestNotes.current = notes;
+
   /** whether the last write failed, so the pane can say so */
   const [saveFailed, setSaveFailed] = useState(false);
 
@@ -129,10 +141,9 @@ export const DocumentPaneBody = () => {
   // the last few keystrokes to the debounce
   useEffect(() => {
     return () => {
-      persist(notes);
+      persist(latestNotes.current);
     };
-    // deliberately only on unmount: `persist` reads the ref, and `notes` is
-    // captured at the time of the effect
+    // deliberately only on unmount: `persist` is stable and reads the ref
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
