@@ -15,6 +15,18 @@ import { act, render } from "./test-utils";
 
 const { h } = window;
 
+/**
+ * How long a test that opens the gallery is given.
+ *
+ * The gallery is two chunks fetched on demand — the originals and then the
+ * diagram catalogue — and the first open of a file pays for both. That is
+ * several seconds on a cold runner, well past the default five.
+ */
+const GALLERY_TIMEOUT = 30_000;
+
+/** how long the gallery is given to show every card */
+const GALLERY_WAIT = 15_000;
+
 const openGallery = async () => {
   await render(<Excalidraw />);
 
@@ -22,11 +34,14 @@ const openGallery = async () => {
     API.setAppState({ openDialog: { name: "templates" } });
   });
 
-  await waitFor(() => {
-    expect(
-      document.querySelectorAll('[data-testid^="templates-card-"]'),
-    ).toHaveLength(TEMPLATES.length + DIAGRAM_TEMPLATES.length);
-  });
+  await waitFor(
+    () => {
+      expect(
+        document.querySelectorAll('[data-testid^="templates-card-"]'),
+      ).toHaveLength(TEMPLATES.length + DIAGRAM_TEMPLATES.length);
+    },
+    { timeout: GALLERY_WAIT },
+  );
 };
 
 /** the shapes a connector can be bound to */
@@ -183,110 +198,130 @@ describe("the diagram catalogue", () => {
     }
   });
 
-  it("gives every diagram a category the gallery knows", async () => {
-    await openGallery();
+  it(
+    "gives every diagram a category the gallery knows",
+    async () => {
+      await openGallery();
 
-    for (const template of DIAGRAM_TEMPLATES) {
-      const tab = document.querySelector(
-        `[data-testid="templates-tab-${template.category}"]`,
+      for (const template of DIAGRAM_TEMPLATES) {
+        const tab = document.querySelector(
+          `[data-testid="templates-tab-${template.category}"]`,
+        );
+        expect(tab).not.toBe(null);
+      }
+    },
+    GALLERY_TIMEOUT,
+  );
+
+  it(
+    "narrows the gallery down to the diagram categories",
+    async () => {
+      await openGallery();
+
+      for (const category of ["data", "software", "process", "systems"]) {
+        fireEvent.click(
+          document.querySelector<HTMLButtonElement>(
+            `[data-testid="templates-tab-${category}"]`,
+          )!,
+        );
+
+        const expected = DIAGRAM_TEMPLATES.filter(
+          (template) => template.category === category,
+        );
+        expect(expected.length).toBeGreaterThan(0);
+        expect(
+          document.querySelectorAll('[data-testid^="templates-card-"]'),
+        ).toHaveLength(expected.length);
+      }
+    },
+    GALLERY_TIMEOUT,
+  );
+
+  it(
+    "finds a diagram by its name",
+    async () => {
+      await openGallery();
+
+      fireEvent.change(
+        document.querySelector<HTMLInputElement>(
+          '[data-testid="templates-search"] input',
+        )!,
+        { target: { value: "star schema" } },
       );
-      expect(tab).not.toBe(null);
-    }
-  });
 
-  it("narrows the gallery down to the diagram categories", async () => {
-    await openGallery();
+      await waitFor(() => {
+        expect(
+          document.querySelector(
+            '[data-testid="templates-card-erd-star-schema"]',
+          ),
+        ).not.toBe(null);
+      });
+    },
+    GALLERY_TIMEOUT,
+  );
 
-    for (const category of ["data", "software", "process", "systems"]) {
+  it(
+    "puts a diagram on the board with its arrows attached",
+    async () => {
+      await openGallery();
+
       fireEvent.click(
         document.querySelector<HTMLButtonElement>(
-          `[data-testid="templates-tab-${category}"]`,
+          '[data-testid="templates-use-erd-blog"]',
         )!,
       );
 
-      const expected = DIAGRAM_TEMPLATES.filter(
-        (template) => template.category === category,
+      await waitFor(() => {
+        expect(h.elements.length).toBeGreaterThan(0);
+      });
+
+      const byId = new Map(h.elements.map((element) => [element.id, element]));
+      const arrows = h.elements.filter(
+        (element) => element.type === "arrow" && element.startBinding,
       );
-      expect(expected.length).toBeGreaterThan(0);
-      expect(
-        document.querySelectorAll('[data-testid^="templates-card-"]'),
-      ).toHaveLength(expected.length);
-    }
-  });
 
-  it("finds a diagram by its name", async () => {
-    await openGallery();
+      expect(arrows.length).toBeGreaterThan(0);
 
-    fireEvent.change(
-      document.querySelector<HTMLInputElement>(
-        '[data-testid="templates-search"] input',
-      )!,
-      { target: { value: "star schema" } },
-    );
+      for (const arrow of arrows) {
+        if (arrow.type !== "arrow") {
+          continue;
+        }
 
-    await waitFor(() => {
-      expect(
-        document.querySelector(
-          '[data-testid="templates-card-erd-star-schema"]',
-        ),
-      ).not.toBe(null);
-    });
-  });
+        expect(arrow.startBinding).not.toBeNull();
+        expect(arrow.endBinding).not.toBeNull();
 
-  it("puts a diagram on the board with its arrows attached", async () => {
-    await openGallery();
-
-    fireEvent.click(
-      document.querySelector<HTMLButtonElement>(
-        '[data-testid="templates-use-erd-blog"]',
-      )!,
-    );
-
-    await waitFor(() => {
-      expect(h.elements.length).toBeGreaterThan(0);
-    });
-
-    const byId = new Map(h.elements.map((element) => [element.id, element]));
-    const arrows = h.elements.filter(
-      (element) => element.type === "arrow" && element.startBinding,
-    );
-
-    expect(arrows.length).toBeGreaterThan(0);
-
-    for (const arrow of arrows) {
-      if (arrow.type !== "arrow") {
-        continue;
+        // the bindings name elements that are on the board, not the template's
+        // own ids
+        expect(byId.get(arrow.startBinding!.elementId)).toBeDefined();
+        expect(byId.get(arrow.endBinding!.elementId)).toBeDefined();
       }
+    },
+    GALLERY_TIMEOUT,
+  );
 
-      expect(arrow.startBinding).not.toBeNull();
-      expect(arrow.endBinding).not.toBeNull();
+  it(
+    "puts a sequence diagram on the board",
+    async () => {
+      await openGallery();
 
-      // the bindings name elements that are on the board, not the template's
-      // own ids
-      expect(byId.get(arrow.startBinding!.elementId)).toBeDefined();
-      expect(byId.get(arrow.endBinding!.elementId)).toBeDefined();
-    }
-  });
+      fireEvent.click(
+        document.querySelector<HTMLButtonElement>(
+          '[data-testid="templates-use-seq-login"]',
+        )!,
+      );
 
-  it("puts a sequence diagram on the board", async () => {
-    await openGallery();
+      await waitFor(() => {
+        expect(h.elements.length).toBeGreaterThan(0);
+      });
 
-    fireEvent.click(
-      document.querySelector<HTMLButtonElement>(
-        '[data-testid="templates-use-seq-login"]',
-      )!,
-    );
+      const participants = h.elements.filter(
+        (element) => element.type === "rectangle",
+      );
+      const messages = h.elements.filter((element) => element.type === "arrow");
 
-    await waitFor(() => {
-      expect(h.elements.length).toBeGreaterThan(0);
-    });
-
-    const participants = h.elements.filter(
-      (element) => element.type === "rectangle",
-    );
-    const messages = h.elements.filter((element) => element.type === "arrow");
-
-    expect(participants.length).toBe(3);
-    expect(messages.length).toBeGreaterThanOrEqual(5);
-  });
+      expect(participants.length).toBe(3);
+      expect(messages.length).toBeGreaterThanOrEqual(5);
+    },
+    GALLERY_TIMEOUT,
+  );
 });

@@ -16,6 +16,15 @@ const { h } = window;
 /** the templates the gallery ends up showing, once the diagrams have landed */
 const ALL_TEMPLATES = [...TEMPLATES, ...DIAGRAM_TEMPLATES];
 
+/**
+ * How long the gallery is given to show every card.
+ *
+ * The diagrams are a second chunk fetched after the originals, and the first
+ * open of a file pays for both. On a cold runner that is several seconds,
+ * which is close enough to the default five to be worth naming.
+ */
+const GALLERY_WAIT = 15_000;
+
 const openGallery = async () => {
   await render(<Excalidraw />);
 
@@ -31,9 +40,12 @@ const openGallery = async () => {
 
   // the diagram examples are fetched after the gallery opens; wait for them
   // so that a test sees the gallery a person would see a moment later
-  await waitFor(() => {
-    expect(getCards()).toHaveLength(ALL_TEMPLATES.length);
-  });
+  await waitFor(
+    () => {
+      expect(getCards()).toHaveLength(ALL_TEMPLATES.length);
+    },
+    { timeout: GALLERY_WAIT },
+  );
 };
 
 const getCards = () =>
