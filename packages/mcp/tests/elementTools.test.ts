@@ -1310,7 +1310,7 @@ describe("runDeleteElement", () => {
     };
     const { db, state } = fakeDb({ scene: sceneOf([note, label]) });
 
-    await runDeleteElement(
+    const result = await runDeleteElement(
       db,
       { kind: "user", userId: "user-123" },
       DEFAULT_OPTIONS,
@@ -1327,6 +1327,9 @@ describe("runDeleteElement", () => {
     expect(elements.find((element) => element.id === "note-1")).toMatchObject({
       isDeleted: true,
     });
+    // The reply says what else went, so a caller is not surprised to find two
+    // ids gone when it deleted one.
+    expect(result.message).toContain("label-1");
   });
 
   it("leaves a frame's children on the board, unframed", async () => {

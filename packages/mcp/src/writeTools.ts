@@ -868,19 +868,28 @@ export const runDeleteElement = async (
   options: ServerOptions,
   input: DeleteElementInput,
 ): Promise<ElementWriteResult> => {
+  let deleted: string[] = [];
+
   const result = await editScene(db, owner, options, {
     boardId: input.boardId,
     expectedSceneVersion: input.expectedSceneVersion,
     action: "delete an element",
     apply: (scene) => {
       const element = findElement(scene.elements, input.elementId);
-      return deleteElementAndContents(scene.elements, element);
+      deleted = deleteElementAndContents(scene.elements, element);
+      return deleted;
     },
   });
 
+  const also = deleted.slice(1);
+
   return {
     ...result,
-    message: `Deleted element ${input.elementId} on board ${result.board.id}; it is now at scene_version ${result.board.sceneVersion}.`,
+    message: `Deleted element ${input.elementId} on board ${
+      result.board.id
+    }; it is now at scene_version ${result.board.sceneVersion}.${
+      also.length ? ` Its label (${also.join(", ")}) went with it.` : ""
+    }`,
   };
 };
 
