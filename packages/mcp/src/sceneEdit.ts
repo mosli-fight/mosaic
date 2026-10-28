@@ -52,16 +52,15 @@ import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 import type { LocalPoint, Radians } from "@excalidraw/math";
 
-import { installTextMetrics } from "./textMetrics.js";
 import { ToolError } from "./tools.js";
 
-import type { AddElementSpec, ElementStyleInput } from "./schemas.js";
+// Imported for its side effect: `textMetrics.ts` installs the text-measurement
+// provider at module load. The editor's default provider needs `document`,
+// which this process does not have, so without it the first text element
+// throws. See that module's comment.
+import "./textMetrics.js";
 
-// Installed at module load rather than from `main`, so every path that builds
-// an element — a tool call, a test, a future caller — gets it. The editor's
-// default provider needs `document`, which this process does not have; without
-// this line the first text element throws. See `textMetrics.ts`.
-installTextMetrics();
+import type { AddElementSpec, ElementStyleInput } from "./schemas.js";
 
 /** A stored scene, parsed and ready to be changed. */
 export type EditableScene = {

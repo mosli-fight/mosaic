@@ -118,3 +118,17 @@ export const installTextMetrics = (): void => {
     },
   });
 };
+
+/**
+ * Installs the estimator once, at module load.
+ *
+ * Every module that builds an element imports this for the side effect, so it
+ * does not matter which of them a caller reaches first — `diagram.ts` alone is
+ * enough, and so is `sceneEdit.ts`. Installing it from one of them only would
+ * make the other crash with `document is not defined` the first time it
+ * measured a label, which is a confusing way to learn about an import order.
+ *
+ * Idempotent and cheap: `setCustomTextMetricsProvider` stores the object, and
+ * a second identical install replaces it with an equivalent one.
+ */
+installTextMetrics();

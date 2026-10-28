@@ -37,6 +37,11 @@ import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 import { ToolError } from "./tools.js";
 
+// Imported for its side effect: `textMetrics.ts` installs the text-measurement
+// provider at module load. The engine measures node labels, and the editor's
+// default provider needs `document`, which this process does not have.
+import "./textMetrics.js";
+
 /** A rendered diagram: what to put on the board, and where it landed. */
 export type RenderedDiagram = {
   /** The complete element list for the scene, hand-drawn work included. */
