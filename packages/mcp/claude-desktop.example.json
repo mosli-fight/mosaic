@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mosaic": {
+      "command": "node",
+      "args": ["/absolute/path/to/mosaic/packages/mcp/dist/index.js"],
+      "env": {
+        "DATABASE_URL": "postgres://user:password@host/database?sslmode=require",
+        "MOSAIC_USER_ID": "replace-with-your-users-id"
+      }
+    }
+  }
+}

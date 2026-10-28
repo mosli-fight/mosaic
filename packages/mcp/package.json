@@ -1,0 +1,34 @@
+{
+  "name": "@mosaic/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Mosaic MCP server — read-only access to Mosaic boards over stdio",
+  "license": "MIT",
+  "author": "dramatic4678565",
+  "main": "./dist/index.js",
+  "bin": {
+    "mosaic-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "claude-desktop.example.json"
+  ],
+  "scripts": {
+    "build": "node ./build.mjs",
+    "start": "node ./dist/index.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@neondatabase/serverless": "1.2.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "esbuild": "0.19.10",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  }
+}
