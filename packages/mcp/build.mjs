@@ -9,12 +9,24 @@
  * `packages: "external"` keeps third-party dependencies as real imports — the
  * MCP SDK and the Neon driver are installed next to the package, and bundling
  * them would make the executable tens of megabytes for no benefit.
+ *
+ * Paths are resolved from this file rather than from the working directory.
+ * esbuild treats a relative `entryPoints` as cwd-relative and, with
+ * `packages: "external"` set, a bare `src/index.ts` is then matched by that
+ * option and rejected with "the entry point cannot be marked as external" —
+ * an error that says nothing about the real cause. Resolving from `import.meta`
+ * makes `node packages/mcp/build.mjs` work from the repo root, which is how
+ * someone is likely to try it.
  */
 import { build } from "esbuild";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const packageDir = dirname(fileURLToPath(import.meta.url));
 
 await build({
-  entryPoints: ["src/index.ts"],
-  outfile: "dist/index.js",
+  entryPoints: [join(packageDir, "src/index.ts")],
+  outfile: join(packageDir, "dist/index.js"),
   bundle: true,
   platform: "node",
   format: "esm",
