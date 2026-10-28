@@ -15,7 +15,7 @@ import {
   toBoardMeta,
 } from "./db.js";
 import { normalizeSearchTerm, containsTerm } from "./schemas.js";
-import { summarizeScene } from "./scene.js";
+import { limitsFrom, summarizeScene } from "./scene.js";
 
 import type { OwnerIdentity, ServerOptions } from "./config.js";
 import type { BoardMeta, Database } from "./db.js";
@@ -105,11 +105,7 @@ export const runGetBoard = async (
   const summary = summarizeScene(row.scene, {
     sceneBytes: row.scene_bytes,
     includeElements,
-    limits: {
-      maxTextLength: options.maxTextLength,
-      maxElements: options.maxElements,
-      maxSceneBytes: options.maxSceneBytes,
-    },
+    limits: limitsFrom(options),
   });
 
   // `toBoardMeta` is applied to the row rather than reusing a partial: the row
@@ -216,11 +212,7 @@ export const runSearchBoards = async (
   for (const row of rows) {
     const summary = summarizeScene(row.scene, {
       sceneBytes: row.scene_bytes,
-      limits: {
-        maxTextLength: options.maxTextLength,
-        maxElements: options.maxElements,
-        maxSceneBytes: options.maxSceneBytes,
-      },
+      limits: limitsFrom(options),
     });
 
     if (summary.parseError !== null) {
