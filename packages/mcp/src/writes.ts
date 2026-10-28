@@ -83,21 +83,24 @@ export const insertBoard = async (
     folderId: string | null;
     scene?: string | null;
     sceneBytes?: number | null;
+    thumbnail?: string | null;
   },
 ): Promise<BoardRow> => {
   const columns = ownerColumns(owner);
   const scene = input.scene ?? null;
   const sceneBytes = input.sceneBytes ?? null;
+  const thumbnail = input.thumbnail ?? null;
 
   const rows = (await db.query(
-    `INSERT INTO boards (user_id, owner_uid, name, folder_id, scene, scene_bytes)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO boards (user_id, owner_uid, name, folder_id, thumbnail, scene, scene_bytes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING ${RETURNING_COLUMNS}`,
     [
       columns.userId,
       columns.ownerUid,
       input.name,
       input.folderId,
+      thumbnail,
       scene,
       sceneBytes,
     ],
@@ -270,13 +273,17 @@ export const updateScene = async (
 export const duplicateBoardRow = async (
   db: Database,
   owner: OwnerIdentity,
-  input: { source: BoardRow; name: string },
+  input: {
+    source: BoardRow & { thumbnail?: string | null };
+    name: string;
+  },
 ): Promise<BoardRow> =>
   insertBoard(db, owner, {
     name: input.name,
     folderId: null,
     scene: input.source.scene ?? null,
     sceneBytes: input.source.scene_bytes ?? null,
+    thumbnail: input.source.thumbnail ?? null,
   });
 
 /** A listing row, re-exported so callers of this module need only one import. */

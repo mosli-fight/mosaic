@@ -36,7 +36,9 @@ const recording = (answer: (call: Call) => unknown[] = () => []) => {
   return { db, calls };
 };
 
-const row = (overrides: Partial<BoardRow> = {}): BoardRow => ({
+const row = (
+  overrides: Partial<BoardRow & { thumbnail: string | null }> = {},
+): BoardRow & { thumbnail: string | null } => ({
   id: "11111111-1111-4111-8111-111111111111",
   name: "Architecture",
   folder_id: null,
@@ -49,6 +51,7 @@ const row = (overrides: Partial<BoardRow> = {}): BoardRow => ({
   last_opened_at: null,
   scene_bytes: 2048,
   scene: null,
+  thumbnail: null,
   ...overrides,
 });
 
@@ -324,6 +327,24 @@ describe("runDuplicateBoard", () => {
       insert.text.indexOf(")"),
     );
     expect(columns).not.toContain("favorite");
+  });
+
+  it("copies the thumbnail so the duplicate's card is not blank", async () => {
+    const thumbnail = "data:image/png;base64,AAAA";
+
+    const { db, calls } = recording((call) =>
+      call.text.startsWith("SELECT")
+        ? [row({ thumbnail })]
+        : [row({ id: "new-id" })],
+    );
+
+    await runDuplicateBoard(db, user, { boardId });
+
+    const insert = calls.find((call) =>
+      call.text.startsWith("INSERT INTO boards"),
+    );
+    expect(insert?.text).toContain("thumbnail");
+    expect(insert?.params).toContain(thumbnail);
   });
 
   it("reads the source under the caller's scope", async () => {

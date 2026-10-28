@@ -127,7 +127,7 @@ A rename does not touch the scene, so it cannot clobber an edit — which is why
 | `boardId` | uuid         | —                     | The board to copy. |
 | `name`    | string 1–200 | `"<original> (copy)"` | Name for the copy. |
 
-The copy carries the scene, size and metadata under a new id. It is unfiled and unfavourited, matching the dashboard's Duplicate: duplicating should not silently clone organisational decisions.
+The copy carries the scene, its byte count and the thumbnail under a new id. It is unfiled and unfavourited, matching the dashboard's Duplicate: duplicating should not silently clone organisational decisions.
 
 #### `add_element`
 

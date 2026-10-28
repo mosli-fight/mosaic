@@ -46,6 +46,7 @@ import {
 } from "./sceneEdit.js";
 import { ToolError } from "./tools.js";
 import {
+  duplicateBoardRow,
   folderOwned,
   insertBoard,
   loadBoardForWrite,
@@ -194,12 +195,9 @@ export const runDuplicateBoard = async (
 
   const name = input.name ?? copyName(source.name);
 
-  const row = await insertBoard(db, owner, {
-    name,
-    folderId: null,
-    scene: source.scene,
-    sceneBytes: source.scene_bytes,
-  });
+  // The thumbnail is copied along with the scene, as both storage adapters do:
+  // a duplicate with no preview would show a blank card until it was opened.
+  const row = await duplicateBoardRow(db, owner, { source, name });
 
   await logActivity(db, owner, row.id, "create");
 
