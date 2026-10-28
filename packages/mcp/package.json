@@ -7,7 +7,6 @@
   "license": "MIT",
   "author": "dramatic4678565",
   "main": "./dist/index.js",
-  "types": "./dist/types/index.d.ts",
   "bin": {
     "mosaic-mcp": "./dist/index.js"
   },
