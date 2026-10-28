@@ -571,6 +571,9 @@ describe("runUpdateElement", () => {
     );
 
     expect(storedElements(state)[0].name).toBe("New");
+    // The editor decides an element changed by its version, so a rename that
+    // left `version` alone would not repaint a board that is already open.
+    expect(storedElements(state)[0].version as number).toBeGreaterThan(1);
   });
 
   it("re-fits a sticky note around its new text", async () => {

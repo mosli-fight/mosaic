@@ -410,7 +410,15 @@ const applyUpdate = (
     // A frame's name is a frame field, not a field every element has; the
     // schema already refused `name` for anything else, so the cast is the
     // narrowing the branch above established.
-    elements[index] = { ...elements[index], name } as ExcalidrawElement;
+    //
+    // `newElementWith` rather than a spread: it is what bumps `version`,
+    // `versionNonce` and `updated`, and the editor decides whether an element
+    // changed by comparing those. A spread would write the new name and leave
+    // the element looking untouched, so a board open in a browser could keep
+    // showing the old one.
+    elements[index] = newElementWith(elements[index], {
+      name,
+    } as Parameters<typeof newElementWith>[1]);
   }
 
   if (text !== undefined) {
