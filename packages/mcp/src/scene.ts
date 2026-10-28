@@ -181,7 +181,10 @@ const nonEmptyString = (value: unknown): string | null =>
  * that budgets exactly `maxTextLength` characters per item is never surprised by
  * one extra.
  */
-const truncate = (text: string, limit: number): { text: string; truncated } => {
+const truncate = (
+  text: string,
+  limit: number,
+): { text: string; truncated: boolean } => {
   if (text.length <= limit) {
     return { text, truncated: false };
   }
