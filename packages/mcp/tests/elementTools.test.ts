@@ -1093,6 +1093,128 @@ describe("runMoveElement", () => {
       ),
     ).rejects.toThrow(/scene_version 7/);
   });
+
+  it("takes a sticky note's label with it", async () => {
+    const note = {
+      id: "note-1",
+      type: "stickynote",
+      x: 0,
+      y: 0,
+      width: 250,
+      height: 250,
+      baseHeight: 250,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+      boundElements: [{ type: "text", id: "label-1" }],
+      tags: [],
+    };
+    const label = {
+      id: "label-1",
+      type: "text",
+      x: 16,
+      y: 16,
+      width: 100,
+      height: 20,
+      text: "hi",
+      originalText: "hi",
+      fontSize: 28,
+      baseFontSize: 28,
+      lineHeight: 1.25,
+      fontFamily: 2,
+      containerId: "note-1",
+      textAlign: "center",
+      verticalAlign: "middle",
+      autoResize: true,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+    };
+    const { db, state } = fakeDb({ scene: sceneOf([note, label]) });
+
+    await runMoveElement(
+      db,
+      { kind: "user", userId: "user-123" },
+      DEFAULT_OPTIONS,
+      { boardId, elementId: "note-1", expectedSceneVersion: 3, x: 500, y: 400 },
+    );
+
+    const elements = storedElements(state);
+    expect(elements.find((element) => element.id === "note-1")).toMatchObject({
+      x: 500,
+      y: 400,
+    });
+    // The label is a separate element. Moving only the note would leave the
+    // text where the note used to be.
+    expect(elements.find((element) => element.id === "label-1")).toMatchObject({
+      x: 516,
+      y: 416,
+    });
+  });
+
+  it("takes a frame's children with it", async () => {
+    const frame = {
+      id: "frame-1",
+      type: "frame",
+      x: 0,
+      y: 0,
+      width: 500,
+      height: 500,
+      name: "Frame",
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+    };
+    const child = {
+      id: "rect-1",
+      type: "rectangle",
+      x: 40,
+      y: 60,
+      width: 10,
+      height: 10,
+      frameId: "frame-1",
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+    };
+    const outside = {
+      id: "rect-2",
+      type: "rectangle",
+      x: 900,
+      y: 60,
+      width: 10,
+      height: 10,
+      frameId: null,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+    };
+    const { db, state } = fakeDb({
+      scene: sceneOf([frame, child, outside]),
+    });
+
+    await runMoveElement(
+      db,
+      { kind: "user", userId: "user-123" },
+      DEFAULT_OPTIONS,
+      { boardId, elementId: "frame-1", expectedSceneVersion: 3, x: 100, y: 50 },
+    );
+
+    const elements = storedElements(state);
+    expect(elements.find((element) => element.id === "frame-1")).toMatchObject({
+      x: 100,
+      y: 50,
+    });
+    expect(elements.find((element) => element.id === "rect-1")).toMatchObject({
+      x: 140,
+      y: 110,
+    });
+    // An element outside the frame keeps its position.
+    expect(elements.find((element) => element.id === "rect-2")).toMatchObject({
+      x: 900,
+      y: 60,
+    });
+  });
 });
 
 describe("runDeleteElement", () => {

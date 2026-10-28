@@ -189,6 +189,8 @@ An arrow whose points are bound to a shape, or an elbow arrow whose path is gene
 
 Size, style and content are untouched. To resize, use `update_element`.
 
+Moving a container takes its contents with it: a sticky note's label and a frame's children move by the same amount, which is what dragging one in the editor does. Moving a label or a child on its own is also allowed, and moves only that element.
+
 #### `delete_element`
 
 | Input                                          | Type | Notes     |

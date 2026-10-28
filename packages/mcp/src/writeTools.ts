@@ -697,6 +697,66 @@ export const runUpdateElement = async (
   };
 };
 
+/**
+ * Moves one element, and whatever moves with it.
+ *
+ * A container and its contents are separate elements, so moving only the one
+ * the caller named would leave the rest behind: a sticky note's label is a
+ * second element with a `containerId`, and a frame's children are elements
+ * carrying its `frameId`. The editor never produces that state — dragging a
+ * note selects its label too, and dragging a frame drags its children — so
+ * this mirrors what a drag does rather than inventing a rule.
+ *
+ * The delta is applied to everything, so relative positions are preserved.
+ */
+const moveElementAndContents = (
+  elements: ExcalidrawElement[],
+  element: ExcalidrawElement,
+  x: number,
+  y: number,
+): string[] => {
+  const dx = x - element.x;
+  const dy = y - element.y;
+  const moved = new Set<string>([element.id]);
+
+  // A worklist rather than one pass, because contents nest: a sticky note
+  // inside a frame has a label of its own, and moving the frame has to take
+  // both. Each element is visited once, so a cycle in `containerId` could not
+  // loop forever even if one were somehow stored.
+  const queue = [element.id];
+  while (queue.length) {
+    const parentId = queue.shift()!;
+
+    for (const candidate of elements) {
+      if (moved.has(candidate.id) || candidate.isDeleted) {
+        continue;
+      }
+
+      const boundToParent =
+        "containerId" in candidate && candidate.containerId === parentId;
+      const insideParent =
+        "frameId" in candidate && candidate.frameId === parentId;
+
+      if (!boundToParent && !insideParent) {
+        continue;
+      }
+
+      moved.add(candidate.id);
+      queue.push(candidate.id);
+      const index = elements.indexOf(candidate);
+      elements[index] = newElementWith(candidate, {
+        x: candidate.x + dx,
+        y: candidate.y + dy,
+      });
+    }
+  }
+
+  const index = elements.indexOf(element);
+  elements[index] = newElementWith(element, { x, y });
+
+  return [...moved];
+};
+
 /** Moves one element to a new position. */
 export const runMoveElement = async (
   db: Database,
@@ -710,12 +770,7 @@ export const runMoveElement = async (
     action: "move an element",
     apply: (scene) => {
       const element = findElement(scene.elements, input.elementId);
-      const index = scene.elements.indexOf(element);
-      scene.elements[index] = newElementWith(element, {
-        x: input.x,
-        y: input.y,
-      });
-      return [element.id];
+      return moveElementAndContents(scene.elements, element, input.x, input.y);
     },
   });
 
