@@ -2,17 +2,30 @@
  * The stdio MCP server.
  *
  * This module is the adapter: it validates tool input, calls the plain
- * functions in `tools.ts`, and serialises the result. Anything worth testing
- * lives behind those functions, so this file stays small enough to read in one
- * sitting — which matters, because it is the only place that decides what a
- * model is allowed to ask for.
+ * functions in `tools.ts` / `writeTools.ts`, and serialises the result.
+ * Anything worth testing lives behind those functions, so this file stays
+ * small enough to read in one sitting — which matters, because it is the only
+ * place that decides what a model is allowed to ask for.
  *
- * ## Read-only, and enforced structurally
+ * ## Read and write are separated by module, not by a flag
  *
- * There is no write tool, and no code path here issues an `INSERT`, `UPDATE` or
- * `DELETE`. `db.ts` exposes only the three read queries. That is stronger than
- * a flag or a permission check: an absent code path cannot be reached by a
- * prompt that asks nicely.
+ * The read tools issue only `SELECT`s; every `INSERT`/`UPDATE` lives in
+ * `writes.ts`, which only `writeTools.ts` imports. That is a weaker guarantee
+ * than Phase 1's "there is no write path at all", and it is the strongest one
+ * available once writes exist: a read tool cannot reach a write by accident,
+ * and the whole write surface is one file to review.
+ *
+ * The safety properties that replace the old structural guarantee are:
+ *
+ * - **Owner scoping on every statement.** The scope fragment comes from
+ *   `boardScope`, the same function the HTTP API uses.
+ * - **A version guard on every scene write.** The caller passes the
+ *   `scene_version` it edited; a stale value fails the call rather than
+ *   overwriting newer work.
+ * - **A size cap before the write.** A scene above `maxSceneBytes` is refused,
+ *   so the server cannot write a board it would then refuse to read.
+ * - **Honest annotations.** Write tools are `readOnlyHint: false`; the ones
+ *   that can destroy existing content are `destructiveHint: true`.
  */
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -22,9 +35,17 @@ import { loadConfig } from "./config.js";
 import { createDatabase } from "./db.js";
 import { describeOwner } from "./owner.js";
 import {
+  addElementToolInput,
+  createBoardInput,
+  deleteElementInput,
+  duplicateBoardInput,
   getBoardInput,
+  insertDiagramInput,
   listBoardsInput,
+  moveElementInput,
+  renameBoardInput,
   searchBoardsInput,
+  updateElementInput,
 } from "./schemas.js";
 import {
   runGetBoard,
@@ -32,6 +53,16 @@ import {
   runSearchBoards,
   ToolError,
 } from "./tools.js";
+import {
+  runAddElement,
+  runCreateBoard,
+  runDeleteElement,
+  runDuplicateBoard,
+  runInsertDiagram,
+  runMoveElement,
+  runRenameBoard,
+  runUpdateElement,
+} from "./writeTools.js";
 
 import type { Config } from "./config.js";
 import type { Database } from "./db.js";
@@ -172,7 +203,245 @@ export const createServer = (config: Config, db: Database): McpServer => {
       ),
   );
 
+  // Registered here rather than in `main` so a test that drives `createServer`
+  // sees the same tool set a client does. `registerWriteTools` is defined below
+  // and is initialised by the time this function is called.
+  registerWriteTools(server, config, db);
+
   return server;
+};
+
+/**
+ * Registers the write tools.
+ *
+ * Split from {@link createServer} so the read and write surfaces are two
+ * readable blocks rather than one long list, and so a reviewer can see the
+ * whole write surface at once. Every one of these is `readOnlyHint: false`;
+ * the annotations say what each can destroy, because a client's confirmation UI
+ * is driven by them.
+ */
+export const registerWriteTools = (
+  server: McpServer,
+  config: Config,
+  db: Database,
+) => {
+  server.registerTool(
+    "create_board",
+    {
+      title: "Create board",
+      description:
+        "Create a new, empty Mosaic board for the configured owner. Returns " +
+        "the new board's id, which the element tools need.",
+      inputSchema: createBoardInput,
+      annotations: {
+        // A create adds a row and touches nothing that already exists, so it is
+        // not destructive — but it is emphatically not read-only, and saying so
+        // is what makes a client ask before running it.
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runCreateBoard(db, config.owner, createBoardInput.parse(args)),
+      ),
+  );
+
+  server.registerTool(
+    "rename_board",
+    {
+      title: "Rename board",
+      description:
+        "Change a board's name. Does not touch the scene, so it cannot " +
+        "clobber an edit; pass expectedSceneVersion to have it refuse if the " +
+        "board has moved on anyway.",
+      inputSchema: renameBoardInput,
+      annotations: {
+        readOnlyHint: false,
+        // A rename replaces one field of one row. The old name is gone, which
+        // is a small loss, but no content is destroyed — the hint is reserved
+        // for tools that can remove elements or replace a scene.
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runRenameBoard(db, config.owner, renameBoardInput.parse(args)),
+      ),
+  );
+
+  server.registerTool(
+    "duplicate_board",
+    {
+      title: "Duplicate board",
+      description:
+        "Copy a board — scene, size and metadata — under a new id. The copy " +
+        "is unfiled and unfavourited, like the dashboard's Duplicate.",
+      inputSchema: duplicateBoardInput,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runDuplicateBoard(db, config.owner, duplicateBoardInput.parse(args)),
+      ),
+  );
+
+  server.registerTool(
+    "add_element",
+    {
+      title: "Add element",
+      description:
+        "Add one element to a board: a rectangle, ellipse, arrow, text, " +
+        "sticky note or frame. The scene_version you pass must still be the " +
+        "board's — a stale value is refused rather than overwriting newer " +
+        "work. Returns the new element's id.",
+      inputSchema: addElementToolInput,
+      annotations: {
+        // Adds to the board and changes nothing already on it, so it is not
+        // destructive — but it does write, and the scene_version can move.
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runAddElement(
+          db,
+          config.owner,
+          config.options,
+          addElementToolInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "update_element",
+    {
+      title: "Update element",
+      description:
+        "Change one element's geometry, style, text or frame name. " +
+        "Replaces the fields you name and leaves the rest alone. A sticky " +
+        "note is re-fitted to its new text, so it grows rather than " +
+        "overflowing.",
+      inputSchema: updateElementInput,
+      annotations: {
+        readOnlyHint: false,
+        // Replacing an element's text or size destroys what was there.
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runUpdateElement(
+          db,
+          config.owner,
+          config.options,
+          updateElementInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "move_element",
+    {
+      title: "Move element",
+      description:
+        "Move one element to a new x/y. Its size, style and content are " +
+        "untouched; to resize, use update_element.",
+      inputSchema: moveElementInput,
+      annotations: {
+        readOnlyHint: false,
+        // Moving loses the old position, which a caller can restore — but it
+        // is still a change to existing content, so it is not claimed as
+        // non-destructive.
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runMoveElement(
+          db,
+          config.owner,
+          config.options,
+          moveElementInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "delete_element",
+    {
+      title: "Delete element",
+      description:
+        "Delete one element from a board. The element is marked deleted, " +
+        "as the app's own delete does, so it can still be restored with " +
+        "undo in the editor.",
+      inputSchema: deleteElementInput,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        // Deleting an already-deleted element is refused, so a repeat call
+        // fails rather than succeeding twice.
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runDeleteElement(
+          db,
+          config.owner,
+          config.options,
+          deleteElementInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "insert_diagram",
+    {
+      title: "Insert diagram",
+      description:
+        "Draw a diagram from code — flowchart, architecture, ERD or sequence " +
+        "— and insert it into a board. The code is the same language the " +
+        "diagram pane uses, one statement per line. Elements you drew by " +
+        "hand are left untouched; a diagram inserted earlier is replaced, " +
+        "because a board holds one.",
+      inputSchema: insertDiagramInput,
+      annotations: {
+        readOnlyHint: false,
+        // Replaces any diagram already on the board, so it can destroy
+        // content even though hand-drawn elements survive.
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runInsertDiagram(
+          db,
+          config.owner,
+          config.options,
+          insertDiagramInput.parse(args),
+        ),
+      ),
+  );
 };
 
 /**
@@ -201,8 +470,8 @@ export const main = async (): Promise<void> => {
   await server.connect(transport);
 
   process.stderr.write(
-    `[mosaic-mcp] ready — reading boards for ${describeOwner(config.owner)} ` +
-      `(read-only)\n`,
+    `[mosaic-mcp] ready — reading and writing boards for ` +
+      `${describeOwner(config.owner)}\n`,
   );
 };
 

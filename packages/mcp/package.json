@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Mosaic MCP server — read-only access to Mosaic boards over stdio",
+  "description": "Mosaic MCP server — read and write Mosaic boards over stdio",
   "license": "MIT",
   "author": "dramatic4678565",
   "main": "./dist/index.js",

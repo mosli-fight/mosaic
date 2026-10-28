@@ -62,6 +62,24 @@ export const boardScope = (
   ownerScope(actorFor(owner), "b", startAt);
 
 /**
+ * The same fragment for a `folders` query.
+ *
+ * A separate function rather than a `column` argument on {@link boardScope},
+ * because the alias is not a detail: `ownerScope` writes `b.user_id`, and a
+ * folder query aliased `f` would fail at runtime with "missing FROM-clause
+ * entry for table b". Naming the two scopes separately makes the alias a
+ * property of the table being queried, which is what it actually is.
+ *
+ * The rule is identical in both cases — it comes from the same `ownerScope`
+ * call — so a change to the scoping predicate still reaches both surfaces.
+ */
+export const folderScope = (
+  owner: OwnerIdentity,
+  startAt = 1,
+): { sql: string; params: unknown[]; placeholder: string } =>
+  ownerScope(actorFor(owner), "f", startAt);
+
+/**
  * A human-readable description of whose data is being read.
  *
  * Used in the `list_boards` reply so the model (and the person reading the

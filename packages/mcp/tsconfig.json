@@ -6,6 +6,20 @@
     "declaration": false,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    // The element constructors and the diagram engine are imported from source
+    // (see `vitest.config.mts` and `build.mjs`), so this package's typecheck
+    // walks into `packages/element` and `packages/excalidraw`. Those sources
+    // rely on ambient declarations the root `tsconfig.json` picks up by
+    // including all of `packages/`, and a package-level config does not.
+    // Without these three files the imports fail on `import.meta.env`, on the
+    // `Window` debug flags, on `.woff2` asset imports and on the `csstype`
+    // custom properties — none of which are real errors in the imported code.
+    "../excalidraw/global.d.ts",
+    "../excalidraw/css.d.ts",
+    "../excalidraw/vite-env.d.ts"
+  ],
   "exclude": ["dist", "node_modules"]
 }
