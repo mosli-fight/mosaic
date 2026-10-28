@@ -96,8 +96,10 @@ const positiveInt = (
   if (raw === undefined || raw.trim() === "") {
     return fallback;
   }
+  // Decimal digits only: `Number("0x10")` is 16 and `Number("1e3")` is 1000,
+  // neither of which is what someone writing a byte count means.
   const value = Number(raw);
-  if (!Number.isInteger(value) || value <= 0) {
+  if (!/^\d+$/.test(raw.trim()) || !Number.isSafeInteger(value) || value <= 0) {
     throw new ConfigError(`${name} must be a positive integer, got "${raw}"`);
   }
   return value;
@@ -179,9 +181,7 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
 
   return {
     databaseUrl,
-    owner: userId
-      ? { kind: "user", userId }
-      : { kind: "guest", ownerUid },
+    owner: userId ? { kind: "user", userId } : { kind: "guest", ownerUid },
     options,
   };
 };

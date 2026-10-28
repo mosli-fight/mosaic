@@ -205,7 +205,11 @@ export const runSearchBoards = async (
   let boardsSkipped = 0;
 
   for (const row of rows) {
-    if (input.includeTrashed !== true && row.trashed_at !== null && row.trashed_at !== undefined) {
+    if (
+      input.includeTrashed !== true &&
+      row.trashed_at !== null &&
+      row.trashed_at !== undefined
+    ) {
       continue;
     }
 

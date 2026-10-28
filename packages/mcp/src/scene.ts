@@ -202,14 +202,17 @@ const truncate = (
  * is deliberately unbounded — it is the thing that knows what "all the text"
  * means, and the caps are a separate concern.
  */
-const textOf = (element: AnyElement): { kind: SceneTextItem["kind"]; text: string }[] => {
+const textOf = (
+  element: AnyElement,
+): { kind: SceneTextItem["kind"]; text: string }[] => {
   const found: { kind: SceneTextItem["kind"]; text: string }[] = [];
   const type = typeof element.type === "string" ? element.type : "unknown";
 
   if (type === "text") {
     // `text` is the wrapped form the editor draws; `originalText` is the
     // unwrapped source. They hold the same words, so one is enough.
-    const text = nonEmptyString(element.text) ?? nonEmptyString(element.originalText);
+    const text =
+      nonEmptyString(element.text) ?? nonEmptyString(element.originalText);
     if (text) {
       found.push({ kind: "text", text });
     }
@@ -267,7 +270,11 @@ const textOf = (element: AnyElement): { kind: SceneTextItem["kind"]; text: strin
  * definition that stays true when all three are in play at once.
  */
 const capText = (
-  candidates: { element: AnyElement; kind: SceneTextItem["kind"]; text: string }[],
+  candidates: {
+    element: AnyElement;
+    kind: SceneTextItem["kind"];
+    text: string;
+  }[],
   limits: SummaryLimits,
 ): SceneSummary["text"] => {
   const items: SceneTextItem[] = [];
@@ -297,9 +304,12 @@ const capText = (
 
     items.push({
       kind: candidate.kind,
-      elementId: typeof candidate.element.id === "string" ? candidate.element.id : "",
+      elementId:
+        typeof candidate.element.id === "string" ? candidate.element.id : "",
       elementType:
-        typeof candidate.element.type === "string" ? candidate.element.type : "unknown",
+        typeof candidate.element.type === "string"
+          ? candidate.element.type
+          : "unknown",
       text: withinBudget.text,
       truncated: withinBudget.truncated || perItem.truncated,
     });
@@ -522,7 +532,8 @@ export const summarizeScene = (
   } = {},
 ): SceneSummary => {
   const limits: SummaryLimits = { ...DEFAULT_LIMITS, ...options.limits };
-  const sceneBytes = options.sceneBytes ?? (raw === null ? 0 : Buffer.byteLength(raw, "utf8"));
+  const sceneBytes =
+    options.sceneBytes ?? (raw === null ? 0 : Buffer.byteLength(raw, "utf8"));
 
   const { scene, parseError } = parseScene(raw, limits);
 

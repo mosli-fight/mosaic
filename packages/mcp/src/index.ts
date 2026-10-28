@@ -26,7 +26,12 @@ import {
   listBoardsInput,
   searchBoardsInput,
 } from "./schemas.js";
-import { runGetBoard, runListBoards, runSearchBoards, ToolError } from "./tools.js";
+import {
+  runGetBoard,
+  runListBoards,
+  runSearchBoards,
+  ToolError,
+} from "./tools.js";
 
 import type { Config } from "./config.js";
 import type { Database } from "./db.js";
@@ -69,7 +74,7 @@ const guard = async (body: () => Promise<unknown>): Promise<CallToolResult> => {
     }
     process.stderr.write(
       `[mosaic-mcp] tool failed: ${
-        error instanceof Error ? (error.stack ?? error.message) : String(error)
+        error instanceof Error ? error.stack ?? error.message : String(error)
       }\n`,
     );
     return fail(
@@ -158,7 +163,12 @@ export const createServer = (config: Config, db: Database): McpServer => {
     },
     async (args) =>
       guard(() =>
-        runSearchBoards(db, config.owner, config.options, searchBoardsInput.parse(args)),
+        runSearchBoards(
+          db,
+          config.owner,
+          config.options,
+          searchBoardsInput.parse(args),
+        ),
       ),
   );
 
@@ -198,7 +208,10 @@ export const main = async (): Promise<void> => {
 
 // Only start when executed directly, so importing this module from a test does
 // not open stdin and hang the test run.
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === new URL(`file://${process.argv[1]}`).href
+) {
   main().catch((error: unknown) => {
     process.stderr.write(`[mosaic-mcp] fatal: ${(error as Error).message}\n`);
     process.exitCode = 1;

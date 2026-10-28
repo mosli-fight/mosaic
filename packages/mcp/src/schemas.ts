@@ -89,7 +89,9 @@ export type ListBoardsInput = z.infer<typeof listBoardsInput>;
 
 export const getBoardInput = z
   .object({
-    boardId: boardIdSchema.describe("The board's id, as returned by list_boards."),
+    boardId: boardIdSchema.describe(
+      "The board's id, as returned by list_boards.",
+    ),
     includeElements: z
       .boolean()
       .optional()
@@ -108,7 +110,10 @@ export const searchBoardsInput = z
       .string()
       .trim()
       .min(1, "search query cannot be empty")
-      .max(MAX_SEARCH_TERM, `search query cannot exceed ${MAX_SEARCH_TERM} characters`)
+      .max(
+        MAX_SEARCH_TERM,
+        `search query cannot exceed ${MAX_SEARCH_TERM} characters`,
+      )
       .describe(
         "Text to look for. Matches board names and the text inside board " +
           "scenes (labels, notes, code blocks, frame names, links).",
@@ -119,7 +124,9 @@ export const searchBoardsInput = z
       .min(1)
       .max(MAX_SEARCH_LIMIT)
       .optional()
-      .describe(`Maximum matches to return (1-${MAX_SEARCH_LIMIT}, default 20).`),
+      .describe(
+        `Maximum matches to return (1-${MAX_SEARCH_LIMIT}, default 20).`,
+      ),
     includeTrashed: z
       .boolean()
       .optional()
