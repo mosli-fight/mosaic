@@ -172,11 +172,14 @@ export const excerptAround = (
  *    editor's serialised JSON — `ILIKE` on it would match JSON keys, escaped
  *    newlines and element ids as readily as the words a person typed.
  *
- * Pass 2 is bounded by `limit` on the *number of boards loaded*, not on the
- * number of matches: loading a hundred scenes to find three matches is the
- * common case, and stopping at the first `limit` boards would silently miss
- * matches further down the list. The scene-size cap in the summariser is what
- * keeps a pathological board from stalling the whole search.
+ * Pass 2 loads every live board's scene, and that is a real cost worth stating:
+ * there is no SQL predicate that can stand in for it, so a search touches all of
+ * one owner's boards. It is bounded by the owner's board count and by
+ * `maxSceneBytes` per scene, not by `limit` — and `limit` deliberately does not
+ * bound it, because stopping after `limit` boards would silently miss matches
+ * further down the list. For a personal board collection that is a few dozen
+ * scenes; for an owner with thousands of large boards it would be slow, and the
+ * fix would be a text index maintained on write, which is a Phase 2 concern.
  */
 export const runSearchBoards = async (
   db: Database,
