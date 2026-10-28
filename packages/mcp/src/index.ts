@@ -470,8 +470,8 @@ export const main = async (): Promise<void> => {
   await server.connect(transport);
 
   process.stderr.write(
-    `[mosaic-mcp] ready — reading boards for ${describeOwner(config.owner)} ` +
-      `(read-only)\n`,
+    `[mosaic-mcp] ready — reading and writing boards for ` +
+      `${describeOwner(config.owner)}\n`,
   );
 };
 
