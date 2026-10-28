@@ -39,5 +39,5 @@
     }
   },
   "include": ["packages", "excalidraw-app", "mosaic-dashboard/src"],
-  "exclude": ["examples", "dist", "types", "tests", "**/e2e"]
+  "exclude": ["examples", "dist", "types", "tests", "**/e2e", "packages/mcp/vitest.config.mts"]
 }
