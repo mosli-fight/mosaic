@@ -763,6 +763,292 @@ describe("runUpdateElement", () => {
       ),
     ).rejects.toThrow(/has been deleted/);
   });
+
+  describe("resizing", () => {
+    const arrow = {
+      id: "arrow-1",
+      type: "arrow",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 40,
+      points: [
+        [0, 0],
+        [100, 40],
+      ],
+      elbowed: false,
+      startBinding: null,
+      endBinding: null,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+    };
+
+    it("moves an arrow's points with its box", async () => {
+      const { db, state } = fakeDb({ scene: sceneOf([arrow]) });
+
+      await runUpdateElement(
+        db,
+        { kind: "user", userId: "user-123" },
+        DEFAULT_OPTIONS,
+        {
+          boardId,
+          elementId: "arrow-1",
+          expectedSceneVersion: 3,
+          changes: { width: 500, height: 300 },
+        },
+      );
+
+      const stored = storedElements(state)[0];
+      expect(stored).toMatchObject({ width: 500, height: 300 });
+      // The editor recomputes an arrow's box from its points when it restores
+      // the scene, so a box written without the points would be undone the
+      // moment the board is opened.
+      expect(stored.points).toEqual([
+        [0, 0],
+        [500, 300],
+      ]);
+    });
+
+    it("keeps an arrow's start point where it was drawn", async () => {
+      // A stored scene may hold points that do not start at the origin; the
+      // editor normalises them on load. Scaling them as they are would move
+      // the start point, which is the end that is not supposed to move.
+      const offset = {
+        ...arrow,
+        x: 40,
+        y: 60,
+        points: [
+          [5, 5],
+          [105, 45],
+        ],
+      };
+      const { db, state } = fakeDb({ scene: sceneOf([offset]) });
+
+      await runUpdateElement(
+        db,
+        { kind: "user", userId: "user-123" },
+        DEFAULT_OPTIONS,
+        {
+          boardId,
+          elementId: "arrow-1",
+          expectedSceneVersion: 3,
+          changes: { width: 500, height: 300 },
+        },
+      );
+
+      const stored = storedElements(state);
+      expect(stored[0]).toMatchObject({
+        x: 45,
+        y: 65,
+        width: 500,
+        height: 300,
+      });
+      expect(stored[0].points).toEqual([
+        [0, 0],
+        [500, 300],
+      ]);
+    });
+
+    it("refuses to resize a bound arrow", async () => {
+      const bound = {
+        ...arrow,
+        endBinding: { elementId: "rect-1", focus: 0, gap: 1 },
+      };
+      const { db, calls } = fakeDb({ scene: sceneOf([bound]) });
+
+      await expect(
+        runUpdateElement(
+          db,
+          { kind: "user", userId: "user-123" },
+          DEFAULT_OPTIONS,
+          {
+            boardId,
+            elementId: "arrow-1",
+            expectedSceneVersion: 3,
+            changes: { width: 500 },
+          },
+        ),
+      ).rejects.toThrow(/bound to a shape/);
+
+      expect(calls.some((call) => call.text.startsWith("UPDATE"))).toBe(false);
+    });
+
+    it("refuses to resize an elbow arrow", async () => {
+      const elbow = { ...arrow, elbowed: true };
+      const { db } = fakeDb({ scene: sceneOf([elbow]) });
+
+      await expect(
+        runUpdateElement(
+          db,
+          { kind: "user", userId: "user-123" },
+          DEFAULT_OPTIONS,
+          {
+            boardId,
+            elementId: "arrow-1",
+            expectedSceneVersion: 3,
+            changes: { height: 300 },
+          },
+        ),
+      ).rejects.toThrow(/elbow arrow/);
+    });
+
+    it("refuses to resize a text element, whose box is its text", async () => {
+      const text = {
+        id: "text-1",
+        type: "text",
+        x: 0,
+        y: 0,
+        width: 50,
+        height: 20,
+        text: "hi",
+        originalText: "hi",
+        fontSize: 20,
+        lineHeight: 1.25,
+        fontFamily: 2,
+        textAlign: "left",
+        verticalAlign: "top",
+        autoResize: true,
+        version: 1,
+        versionNonce: 1,
+        isDeleted: false,
+      };
+      const { db } = fakeDb({ scene: sceneOf([text]) });
+
+      await expect(
+        runUpdateElement(
+          db,
+          { kind: "user", userId: "user-123" },
+          DEFAULT_OPTIONS,
+          {
+            boardId,
+            elementId: "text-1",
+            expectedSceneVersion: 3,
+            changes: { width: 500 },
+          },
+        ),
+      ).rejects.toThrow(/size comes from its text/);
+    });
+
+    it("resizes a rectangle by writing its box", async () => {
+      const { db, state } = fakeDb({ scene: sceneOf([existing]) });
+
+      await runUpdateElement(
+        db,
+        { kind: "user", userId: "user-123" },
+        DEFAULT_OPTIONS,
+        {
+          boardId,
+          elementId: "rect-1",
+          expectedSceneVersion: 3,
+          changes: { width: 120, height: 80 },
+        },
+      );
+
+      expect(storedElements(state)[0]).toMatchObject({
+        width: 120,
+        height: 80,
+      });
+    });
+
+    it("re-wraps a sticky note's label when the note gets wider", async () => {
+      const note = {
+        id: "note-1",
+        type: "stickynote",
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 200,
+        baseHeight: 200,
+        version: 1,
+        versionNonce: 1,
+        isDeleted: false,
+        boundElements: [{ type: "text", id: "label-1" }],
+        tags: [],
+      };
+      const label = {
+        id: "label-1",
+        type: "text",
+        x: 16,
+        y: 16,
+        width: 160,
+        height: 50,
+        text: "a body long enough to wrap\nacross two lines",
+        originalText: "a body long enough to wrap across two lines",
+        fontSize: 28,
+        baseFontSize: 28,
+        lineHeight: 1.25,
+        fontFamily: 2,
+        containerId: "note-1",
+        textAlign: "center",
+        verticalAlign: "middle",
+        autoResize: true,
+        version: 1,
+        versionNonce: 1,
+        isDeleted: false,
+      };
+      const { db, state } = fakeDb({ scene: sceneOf([note, label]) });
+
+      await runUpdateElement(
+        db,
+        { kind: "user", userId: "user-123" },
+        DEFAULT_OPTIONS,
+        {
+          boardId,
+          elementId: "note-1",
+          expectedSceneVersion: 3,
+          changes: { width: 400 },
+        },
+      );
+
+      const elements = storedElements(state);
+      const storedLabel = elements.find((element) => element.id === "label-1")!;
+      expect(elements.find((element) => element.id === "note-1")!.width).toBe(
+        400,
+      );
+      // The label is re-wrapped to the wider card, so it is wider than before
+      // and still inside it.
+      expect(storedLabel.width as number).toBeGreaterThan(160);
+      expect(storedLabel.width as number).toBeLessThan(400);
+    });
+
+    it("records a sticky note's new height as its base height", async () => {
+      const note = {
+        id: "note-1",
+        type: "stickynote",
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 200,
+        baseHeight: 200,
+        version: 1,
+        versionNonce: 1,
+        isDeleted: false,
+        boundElements: [],
+        tags: [],
+      };
+      const { db, state } = fakeDb({ scene: sceneOf([note]) });
+
+      await runUpdateElement(
+        db,
+        { kind: "user", userId: "user-123" },
+        DEFAULT_OPTIONS,
+        {
+          boardId,
+          elementId: "note-1",
+          expectedSceneVersion: 3,
+          changes: { height: 350 },
+        },
+      );
+
+      // `getStickyNoteLayout` derives the height from `baseHeight`, so a height
+      // written without it would be undone the next time the note is laid out.
+      expect(storedElements(state)[0]).toMatchObject({
+        height: 350,
+        baseHeight: 350,
+      });
+    });
+  });
 });
 
 describe("runMoveElement", () => {

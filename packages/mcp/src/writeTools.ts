@@ -22,15 +22,20 @@
 
 import {
   getStickyNoteLayout,
+  isLinearElement,
   newElementWith,
   refreshTextDimensions,
+  rescalePointsInElement,
 } from "@excalidraw/element";
+
+import { pointFrom } from "@excalidraw/math";
 
 import type {
   ExcalidrawElement,
   ExcalidrawStickyNoteElement,
   ExcalidrawTextContainer,
   ExcalidrawTextElement,
+  NonDeletedExcalidrawElement,
 } from "@excalidraw/element/types";
 
 import type { Radians } from "@excalidraw/math";
@@ -402,7 +407,11 @@ const applyUpdate = (
   }
 
   const index = elements.indexOf(element);
-  elements[index] = applyElementChanges(element, changes);
+  elements[index] = applyGeometry(
+    elements,
+    applyElementChanges(element, changes),
+    changes,
+  );
 
   if (name !== undefined) {
     // A frame's name is a frame field, not a field every element has; the
@@ -440,6 +449,166 @@ const applyElementChanges = (
     ...defined,
     ...(angle !== undefined ? { angle: angle as Radians } : {}),
   } as Parameters<typeof newElementWith>[1]);
+};
+
+/**
+ * Resizes a linear element by moving its points.
+ *
+ * On an arrow or a line, `width` and `height` are not independent fields: they
+ * are the size of the box the points span, and the editor recomputes them from
+ * the points every time the element is restored. Writing a new width without
+ * rescaling the points would therefore report a resize that is gone the next
+ * time the board is opened — the element would come back at its old size.
+ * `rescalePointsInElement` is the editor's own scaling, so the points and the
+ * box end up agreeing.
+ *
+ * The points are normalised first, because the scaling is relative to the
+ * origin: an element whose first point is not `[0, 0]` — which the editor
+ * normalises away on load, but a stored scene may still hold — would otherwise
+ * have its start point dragged away from where it was drawn. Normalising moves
+ * that offset into `x`/`y`, where it belongs.
+ *
+ * Two cases are refused rather than approximated. An elbow arrow's path is
+ * generated from its bindings, and a bound arrow's endpoints belong to the
+ * shapes it points at; moving either one's points would leave the binding
+ * referring to a place the arrow no longer touches.
+ */
+const resizeLinearElement = (
+  element: ExcalidrawElement & {
+    points: readonly (readonly [number, number])[];
+    elbowed?: boolean;
+    startBinding?: unknown;
+    endBinding?: unknown;
+  },
+  width: number,
+  height: number,
+): ExcalidrawElement => {
+  if (element.elbowed) {
+    throw new ToolError(
+      `Element ${element.id} is an elbow arrow, whose path is generated from ` +
+        "its bindings rather than from a box. Nothing was written. Move the " +
+        "shapes it connects instead.",
+    );
+  }
+
+  if (element.startBinding || element.endBinding) {
+    throw new ToolError(
+      `Element ${element.id} is an arrow bound to a shape, so its endpoints ` +
+        "belong to that shape. Nothing was written. Resize the shape, or " +
+        "delete the arrow and add an unbound one.",
+    );
+  }
+
+  const [offsetX, offsetY] = element.points[0] ?? [0, 0];
+  const normalised = {
+    ...element,
+    x: element.x + offsetX,
+    y: element.y + offsetY,
+    points: element.points.map(([x, y]) => pointFrom(x - offsetX, y - offsetY)),
+  } as NonDeletedExcalidrawElement;
+
+  return newElementWith(normalised, {
+    width,
+    height,
+    ...rescalePointsInElement(normalised, width, height, true),
+  } as Parameters<typeof newElementWith>[1]);
+};
+
+/**
+ * Applies a sticky note's new box and re-fits the label inside it.
+ *
+ * A note's height is derived, not stored: `getStickyNoteLayout` computes it
+ * from `baseHeight` and how the label wraps, so a height written without
+ * `baseHeight` is undone the first time the note is laid out — which happens
+ * as soon as its text is edited. Setting both and re-fitting the label is what
+ * dragging the note's handle produces, and it is what keeps the body inside
+ * the card after the card gets wider.
+ *
+ * A width-only change leaves `baseHeight` alone, matching the editor's side
+ * handles: widening a note should not also make it taller.
+ */
+const resizeStickyNote = (
+  elements: ExcalidrawElement[],
+  note: ExcalidrawStickyNoteElement,
+  requested: { width?: number; height?: number },
+): ExcalidrawStickyNoteElement => {
+  const resized = newElementWith(note, {
+    ...(requested.width !== undefined ? { width: requested.width } : {}),
+    ...(requested.height !== undefined
+      ? { height: requested.height, baseHeight: requested.height }
+      : {}),
+  } as Parameters<typeof newElementWith>[1]) as ExcalidrawStickyNoteElement;
+
+  const label = elements.find(
+    (candidate) =>
+      candidate.type === "text" &&
+      "containerId" in candidate &&
+      candidate.containerId === note.id,
+  ) as ExcalidrawTextElement | undefined;
+
+  if (!label) {
+    return resized;
+  }
+
+  const layout = getStickyNoteLayout(resized, label);
+
+  if (layout.text) {
+    elements[elements.indexOf(label)] = newElementWith(label, layout.text);
+  }
+
+  return newElementWith(
+    resized,
+    layout.container,
+  ) as ExcalidrawStickyNoteElement;
+};
+
+/**
+ * The geometry fields, applied to the kinds whose box is not a plain field.
+ *
+ * Everything else — a rectangle, an ellipse, a frame — stores `width` and
+ * `height` as ordinary fields, so {@link applyElementChanges} has already
+ * written them and there is nothing to do here.
+ */
+const applyGeometry = (
+  elements: ExcalidrawElement[],
+  element: ExcalidrawElement,
+  requested: { width?: number; height?: number },
+): ExcalidrawElement => {
+  const { width, height } = requested;
+
+  if (width === undefined && height === undefined) {
+    return element;
+  }
+
+  if (element.type === "text") {
+    // A text element's box is its measured text, and the app does not
+    // re-measure stored text when it opens a board. Writing a width here would
+    // therefore leave a box that disagrees with the glyphs inside it, and the
+    // editor has no way to notice.
+    throw new ToolError(
+      `Element ${element.id} is a text element, whose size comes from its ` +
+        "text. Nothing was written. Change `text` instead; the box is " +
+        "re-measured to fit it.",
+    );
+  }
+
+  if (isLinearElement(element)) {
+    return resizeLinearElement(
+      element,
+      width ?? element.width,
+      height ?? element.height,
+    );
+  }
+
+  if (element.type === "stickynote") {
+    return resizeStickyNote(
+      elements,
+      element as ExcalidrawStickyNoteElement,
+      requested,
+    );
+  }
+
+  return element;
 };
 
 /**

@@ -169,6 +169,17 @@ Changes one element's geometry, style, text or frame name.
 
 Only the fields you name are replaced. `text` is refused on an element that has none, and `name` on anything that is not a frame — the message says which. Text is re-measured, and a sticky note's label is re-fitted around its new body.
 
+`width` and `height` mean different things per element kind, because they do in the editor too:
+
+| Kind | What a resize does |
+| --- | --- |
+| rectangle, ellipse, frame | Writes the box. |
+| arrow, line | Rescales the points, so the drawn line and the box stay in agreement. |
+| stickynote | Sets the box and re-fits the label inside it; a height also becomes the note's `baseHeight`. |
+| text | **Refused.** A text element's box is its measured text; change `text` instead. |
+
+An arrow whose points are bound to a shape, or an elbow arrow whose path is generated from its bindings, is refused rather than half-resized: its endpoints are not its own to move.
+
 #### `move_element`
 
 | Input                                          | Type   | Notes             |
