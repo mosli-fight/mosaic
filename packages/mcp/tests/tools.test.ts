@@ -583,6 +583,50 @@ describe("runSearchBoards", () => {
     expect(result.query).toBe("RoadMap");
   });
 
+  it("finds a word past the per-item text cap", async () => {
+    // The caps bound what is *returned*; they must not bound what is searched.
+    // A word at character 600 of a long note is still on the board, and a
+    // search that missed it would be the one failure a search cannot have.
+    const long = `${"filler ".repeat(100)}needle`;
+    const { db } = searchDb(
+      [],
+      [
+        {
+          ...row({ id: "long" }),
+          scene: scene([{ id: "t", type: "text", text: long }]),
+        },
+      ],
+    );
+
+    const result = await runSearchBoards(
+      db,
+      user,
+      { ...DEFAULT_OPTIONS, maxTextLength: 50 },
+      { query: "needle" },
+    );
+
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].excerpts[0]).toContain("needle");
+  });
+
+  it("finds a word past the per-count text cap", async () => {
+    const elements = Array.from({ length: 300 }, (_, i) => ({
+      id: `t${i}`,
+      type: "text",
+      text: i === 250 ? "needle" : `label ${i}`,
+    }));
+    const { db } = searchDb(
+      [],
+      [{ ...row({ id: "many" }), scene: scene(elements) }],
+    );
+
+    const result = await runSearchBoards(db, user, DEFAULT_OPTIONS, {
+      query: "needle",
+    });
+
+    expect(result.matches).toHaveLength(1);
+  });
+
   it("does not treat search input as a pattern", async () => {
     const { db } = searchDb(
       [],

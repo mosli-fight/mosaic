@@ -209,10 +209,26 @@ export const runSearchBoards = async (
   let boardsSearched = 0;
   let boardsSkipped = 0;
 
+  // Matching runs over the *whole* text, not the capped summary.
+  //
+  // The caps exist to bound what is returned to a model; applying them to the
+  // search itself would make a word at character 600 of a long note a false
+  // negative, which is the one failure a search must not have. The cost is
+  // bounded by `maxSceneBytes`, and the scene is already parsed and in memory
+  // by this point, so this holds no more than the query already loaded.
+  //
+  // Only the excerpts are capped, and `excerptAround` is what does that.
+  const searchLimits = {
+    ...limitsFrom(options),
+    maxTextLength: Number.POSITIVE_INFINITY,
+    maxTextItems: Number.POSITIVE_INFINITY,
+    maxTextChars: Number.POSITIVE_INFINITY,
+  };
+
   for (const row of rows) {
     const summary = summarizeScene(row.scene, {
       sceneBytes: row.scene_bytes,
-      limits: limitsFrom(options),
+      limits: searchLimits,
     });
 
     if (summary.parseError !== null) {
