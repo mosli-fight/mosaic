@@ -35,12 +35,16 @@ import { loadConfig } from "./config.js";
 import { createDatabase } from "./db.js";
 import { describeOwner } from "./owner.js";
 import {
+  addElementToolInput,
   createBoardInput,
+  deleteElementInput,
   duplicateBoardInput,
   getBoardInput,
   listBoardsInput,
+  moveElementInput,
   renameBoardInput,
   searchBoardsInput,
+  updateElementInput,
 } from "./schemas.js";
 import {
   runGetBoard,
@@ -49,9 +53,13 @@ import {
   ToolError,
 } from "./tools.js";
 import {
+  runAddElement,
   runCreateBoard,
+  runDeleteElement,
   runDuplicateBoard,
+  runMoveElement,
   runRenameBoard,
+  runUpdateElement,
 } from "./writeTools.js";
 
 import type { Config } from "./config.js";
@@ -282,6 +290,123 @@ export const registerWriteTools = (
     async (args) =>
       guard(() =>
         runDuplicateBoard(db, config.owner, duplicateBoardInput.parse(args)),
+      ),
+  );
+
+  server.registerTool(
+    "add_element",
+    {
+      title: "Add element",
+      description:
+        "Add one element to a board: a rectangle, ellipse, arrow, text, " +
+        "sticky note or frame. The scene_version you pass must still be the " +
+        "board's — a stale value is refused rather than overwriting newer " +
+        "work. Returns the new element's id.",
+      inputSchema: addElementToolInput,
+      annotations: {
+        // Adds to the board and changes nothing already on it, so it is not
+        // destructive — but it does write, and the scene_version can move.
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runAddElement(
+          db,
+          config.owner,
+          config.options,
+          addElementToolInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "update_element",
+    {
+      title: "Update element",
+      description:
+        "Change one element's geometry, style, text or frame name. " +
+        "Replaces the fields you name and leaves the rest alone. A sticky " +
+        "note is re-fitted to its new text, so it grows rather than " +
+        "overflowing.",
+      inputSchema: updateElementInput,
+      annotations: {
+        readOnlyHint: false,
+        // Replacing an element's text or size destroys what was there.
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runUpdateElement(
+          db,
+          config.owner,
+          config.options,
+          updateElementInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "move_element",
+    {
+      title: "Move element",
+      description:
+        "Move one element to a new x/y. Its size, style and content are " +
+        "untouched; to resize, use update_element.",
+      inputSchema: moveElementInput,
+      annotations: {
+        readOnlyHint: false,
+        // Moving loses the old position, which a caller can restore — but it
+        // is still a change to existing content, so it is not claimed as
+        // non-destructive.
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runMoveElement(
+          db,
+          config.owner,
+          config.options,
+          moveElementInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "delete_element",
+    {
+      title: "Delete element",
+      description:
+        "Delete one element from a board. The element is marked deleted, " +
+        "as the app's own delete does, so it can still be restored with " +
+        "undo in the editor.",
+      inputSchema: deleteElementInput,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        // Deleting an already-deleted element is refused, so a repeat call
+        // fails rather than succeeding twice.
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runDeleteElement(
+          db,
+          config.owner,
+          config.options,
+          deleteElementInput.parse(args),
+        ),
       ),
   );
 };

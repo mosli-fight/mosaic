@@ -221,6 +221,391 @@ export const duplicateBoardInput = z
 
 export type DuplicateBoardInput = z.infer<typeof duplicateBoardInput>;
 
+// ---------------------------------------------------------------------------
+// Element tools
+// ---------------------------------------------------------------------------
+
+/**
+ * A coordinate or size in scene units.
+ *
+ * `.finite()` is the important half. `z.number()` accepts `Infinity`, and a
+ * single infinite coordinate poisons every derived value: the element's bounds
+ * become infinite, the board's bounding box becomes infinite, and the editor's
+ * viewport maths produces `NaN` from there. JSON cannot even carry `Infinity`,
+ * so a caller that sends it has a bug worth reporting rather than a value worth
+ * storing.
+ *
+ * The magnitude cap is the editor's own: `newElement` logs a warning past
+ * ±1,000,000 because elements that far out are a sign of a unit mistake (a
+ * caller passing pixels where scene units were meant, or a stray exponent).
+ * Rejecting is better than warning, because a warning reaches nobody here.
+ */
+export const coordinateSchema = z
+  .number()
+  .finite("must be a finite number")
+  .min(-1_000_000, "must be at least -1,000,000")
+  .max(1_000_000, "must be at most 1,000,000");
+
+/**
+ * A size in scene units.
+ *
+ * Zero is allowed because the editor allows it — a zero-width rectangle is a
+ * legal, if invisible, element, and refusing it would make the schema stricter
+ * than the format. Negative is not: a negative width is not a size, and the
+ * editor's bounds maths treats the sign inconsistently.
+ */
+export const sizeSchema = z
+  .number()
+  .finite("must be a finite number")
+  .min(0, "must not be negative")
+  .max(1_000_000, "must be at most 1,000,000");
+
+/** A CSS colour, as the editor stores it: `#rgb`, `#rrggbb` or `transparent`. */
+export const colorSchema = z
+  .string()
+  .regex(
+    /^(#[0-9a-f]{3}|#[0-9a-f]{6}|transparent)$/i,
+    'must be a hex colour (#rgb or #rrggbb) or "transparent"',
+  );
+
+/** The style fields every element kind accepts. */
+const elementStyleShape = {
+  strokeColor: colorSchema
+    .optional()
+    .describe('Stroke colour, e.g. "#1e1e1e". Defaults to near-black.'),
+  backgroundColor: colorSchema
+    .optional()
+    .describe(
+      'Fill colour, e.g. "#a5d8ff". Defaults to "transparent". Only visible ' +
+        "when fillStyle is not transparent.",
+    ),
+  fillStyle: z
+    .enum(["hachure", "cross-hatch", "solid", "zigzag"])
+    .optional()
+    .describe('How the fill is painted. Defaults to "solid".'),
+  strokeWidth: z
+    .number()
+    .finite()
+    .min(0)
+    .max(32)
+    .optional()
+    .describe("Stroke width in pixels. Defaults to 2."),
+  strokeStyle: z
+    .enum(["solid", "dashed", "dotted"])
+    .optional()
+    .describe('Stroke pattern. Defaults to "solid".'),
+  roughness: z
+    .number()
+    .finite()
+    .min(0)
+    .max(4)
+    .optional()
+    .describe(
+      "Hand-drawn wobble: 0 is architect (straight), 1 artist (default), " +
+        "2 cartoonist (loose).",
+    ),
+  opacity: z
+    .number()
+    .finite()
+    .min(0)
+    .max(100)
+    .optional()
+    .describe("Opacity percentage, 0-100. Defaults to 100."),
+  angle: z
+    .number()
+    .finite()
+    .optional()
+    .describe("Rotation in radians. Defaults to 0 (upright)."),
+  locked: z
+    .boolean()
+    .optional()
+    .describe("Lock the element against edits in the app. Defaults to false."),
+  link: z
+    .string()
+    .url("must be a URL")
+    .max(2000)
+    .optional()
+    .describe("A URL the element links to when clicked."),
+};
+
+/** Style fields, as a standalone object for the tools that only restyle. */
+export const elementStyleInput = z.object(elementStyleShape).strict();
+
+export type ElementStyleInput = z.infer<typeof elementStyleInput>;
+
+/**
+ * The kinds of element `add_element` can create.
+ *
+ * Deliberately a closed list. The editor has more element types — images,
+ * embeds, code blocks, freehand — and each needs data this server cannot
+ * supply (a file, a URL to fetch, a rasterised stroke path). Offering them
+ * would mean accepting a call that cannot succeed.
+ */
+export const ADDABLE_ELEMENT_TYPES = [
+  "rectangle",
+  "ellipse",
+  "arrow",
+  "text",
+  "stickynote",
+  "frame",
+] as const;
+
+export type AddableElementType = typeof ADDABLE_ELEMENT_TYPES[number];
+
+/** A point on an arrow, relative to the arrow's own origin. */
+export const arrowPointSchema = z
+  .tuple([coordinateSchema, coordinateSchema])
+  .describe("A point relative to the arrow's x/y, as [x, y].");
+
+/**
+ * The arrowheads the editor can draw.
+ *
+ * The list is the non-legacy half of `Arrowhead` in `packages/element`: the
+ * legacy names (`dot`, `crowfoot_*`) still render but are no longer offered by
+ * the UI, so a tool that accepted them would be inviting new content in an old
+ * format. The cardinality heads are ERD notation and are reachable through the
+ * diagram engine rather than by hand.
+ */
+export const ARROWHEADS = [
+  "arrow",
+  "bar",
+  "circle",
+  "circle_outline",
+  "triangle",
+  "triangle_outline",
+  "diamond",
+  "diamond_outline",
+] as const;
+
+export const arrowheadSchema = z.enum(ARROWHEADS);
+
+/**
+ * One element to add.
+ *
+ * A discriminated union on `type`, and every branch `.strict()`. That pairing
+ * is what makes the schema teach the format: a caller that sends `text` to the
+ * rectangle branch is told `text` is not a rectangle field, rather than having
+ * it dropped and wondering why the shape is blank.
+ */
+export const addElementInput = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("rectangle"),
+      x: coordinateSchema,
+      y: coordinateSchema,
+      width: sizeSchema,
+      height: sizeSchema,
+      ...elementStyleShape,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("ellipse"),
+      x: coordinateSchema,
+      y: coordinateSchema,
+      width: sizeSchema,
+      height: sizeSchema,
+      ...elementStyleShape,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("arrow"),
+      x: coordinateSchema.describe("The arrow's start x."),
+      y: coordinateSchema.describe("The arrow's start y."),
+      width: sizeSchema.describe(
+        "Used only when points is omitted: the arrow runs to (x+width, y+height).",
+      ),
+      height: sizeSchema.describe(
+        "Used only when points is omitted: the arrow runs to (x+width, y+height).",
+      ),
+      points: z
+        .array(arrowPointSchema)
+        .min(2, "an arrow needs at least a start and an end point")
+        .max(100)
+        .optional()
+        .describe(
+          "The arrow's path, relative to its x/y. Defaults to a straight " +
+            "line from (0,0) to (width,height).",
+        ),
+      startArrowhead: arrowheadSchema
+        .nullable()
+        .optional()
+        .describe("Head at the start. Defaults to none."),
+      endArrowhead: arrowheadSchema
+        .nullable()
+        .optional()
+        .describe('Head at the end. Defaults to "arrow".'),
+      ...elementStyleShape,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("text"),
+      x: coordinateSchema,
+      y: coordinateSchema,
+      text: z
+        .string()
+        .min(1, "text cannot be empty")
+        .max(10_000, "text cannot exceed 10,000 characters"),
+      fontSize: z
+        .number()
+        .finite()
+        .min(4)
+        .max(512)
+        .optional()
+        .describe("Font size in pixels. Defaults to 20."),
+      fontFamily: z
+        .number()
+        .int()
+        .min(1)
+        .max(10)
+        .optional()
+        .describe(
+          "Font family id: 1 hand-drawn, 2 Helvetica, 3 code, 5 Excalifont " +
+            "(default), 6 Nunito, 7 Lilita One, 8 Comic Shanns.",
+        ),
+      textAlign: z
+        .enum(["left", "center", "right"])
+        .optional()
+        .describe('Horizontal alignment. Defaults to "left".'),
+      verticalAlign: z
+        .enum(["top", "middle", "bottom"])
+        .optional()
+        .describe('Vertical alignment. Defaults to "top".'),
+      ...elementStyleShape,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("stickynote"),
+      x: coordinateSchema,
+      y: coordinateSchema,
+      width: sizeSchema.optional().describe("Note width. Defaults to 250."),
+      height: sizeSchema
+        .optional()
+        .describe("Note height. Defaults to the width, or 250."),
+      text: z
+        .string()
+        .max(10_000, "text cannot exceed 10,000 characters")
+        .optional()
+        .describe(
+          "The note's body. The note grows to fit it, so a long body makes a " +
+            "tall note rather than overflowing.",
+        ),
+      author: z
+        .string()
+        .max(200)
+        .optional()
+        .describe("Shown in the note's footer."),
+      tags: z
+        .array(z.string().max(100))
+        .max(20)
+        .optional()
+        .describe("Tags shown as pills under the body."),
+      ...elementStyleShape,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("frame"),
+      x: coordinateSchema,
+      y: coordinateSchema,
+      width: sizeSchema,
+      height: sizeSchema,
+      name: z.string().max(MAX_BOARD_NAME).optional(),
+      ...elementStyleShape,
+    })
+    .strict(),
+]);
+
+export type AddElementInput = z.infer<typeof addElementInput>;
+
+/**
+ * The spec one branch of {@link addElementInput} describes.
+ *
+ * The write code switches on `type`, and each branch only reads its own
+ * fields, so this alias names the union the switch narrows.
+ */
+export type AddElementSpec = AddElementInput;
+
+/**
+ * The identity of one element on a board.
+ *
+ * Every element tool takes this pair: the board, and the element. The element
+ * id alone would be ambiguous across boards, and the board is what the owner
+ * scope is applied to.
+ */
+const elementTargetShape = {
+  boardId: boardIdSchema.describe("The board holding the element."),
+  elementId: z
+    .string()
+    .trim()
+    .min(1, "elementId cannot be empty")
+    .max(200)
+    .describe("The element's id, as returned by get_board."),
+  expectedSceneVersion: sceneVersionSchema,
+};
+
+export const addElementToolInput = z
+  .object({
+    boardId: boardIdSchema.describe(
+      "The board to add the element to. Create one with create_board first.",
+    ),
+    expectedSceneVersion: sceneVersionSchema,
+    element: addElementInput.describe(
+      "The element to add. Its `type` decides which fields are accepted.",
+    ),
+  })
+  .strict();
+
+export type AddElementToolInput = z.infer<typeof addElementToolInput>;
+
+export const updateElementInput = z
+  .object({
+    ...elementTargetShape,
+    changes: z
+      .object({
+        x: coordinateSchema.optional(),
+        y: coordinateSchema.optional(),
+        width: sizeSchema.optional(),
+        height: sizeSchema.optional(),
+        text: z
+          .string()
+          .min(1, "text cannot be empty")
+          .max(10_000)
+          .optional()
+          .describe(
+            "New text. Only for text elements and sticky notes; a sticky " +
+              "note's label is re-fitted to its body.",
+          ),
+        name: z
+          .string()
+          .max(MAX_BOARD_NAME)
+          .optional()
+          .describe("New name. Only for frames."),
+        ...elementStyleShape,
+      })
+      .strict(),
+  })
+  .strict();
+
+export type UpdateElementInput = z.infer<typeof updateElementInput>;
+
+export const moveElementInput = z
+  .object({
+    ...elementTargetShape,
+    x: coordinateSchema.describe("The element's new x."),
+    y: coordinateSchema.describe("The element's new y."),
+  })
+  .strict();
+
+export type MoveElementInput = z.infer<typeof moveElementInput>;
+
+export const deleteElementInput = z.object({ ...elementTargetShape }).strict();
+
+export type DeleteElementInput = z.infer<typeof deleteElementInput>;
+
 /**
  * Normalises a search term for comparison.
  *
