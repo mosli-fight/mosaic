@@ -38,6 +38,7 @@ import {
 } from "@excalidraw/common";
 import {
   getStickyNoteLayout,
+  isInvisiblySmallElement,
   newArrowElement,
   newElement,
   newElementWith,
@@ -334,8 +335,27 @@ const ensureFreshIds = (
 export const buildElements = (
   input: AddElementSpec,
   existingIds: ReadonlySet<string>,
-): ExcalidrawElement[] =>
-  ensureFreshIds(buildElementsUnchecked(input), existingIds);
+): ExcalidrawElement[] => {
+  const elements = ensureFreshIds(buildElementsUnchecked(input), existingIds);
+
+  // A zero-sized element is deleted the moment the board is opened: the app
+  // restores a stored scene with `deleteInvisibleElements: true`, which marks
+  // anything `isInvisiblySmallElement` reports as deleted. Writing one would
+  // mean reporting success for an element that is not there the next time
+  // anyone looks, so it is refused here instead.
+  const invisible = elements.find((element) =>
+    isInvisiblySmallElement(element),
+  );
+  if (invisible) {
+    throw new ToolError(
+      `The ${input.type} would have no size, so the editor would discard it ` +
+        "when the board is opened. Nothing was written. Give it a width and " +
+        "height, or points that are not all in the same place.",
+    );
+  }
+
+  return elements;
+};
 
 /** The constructors, before id collisions are considered. */
 const buildElementsUnchecked = (input: AddElementSpec): ExcalidrawElement[] => {

@@ -459,6 +459,60 @@ describe("runAddElement", () => {
 
     expect(calls.some((call) => call.text.startsWith("UPDATE"))).toBe(false);
   });
+
+  it("refuses a zero-sized element the editor would discard", async () => {
+    const { db, calls } = fakeDb({ scene: null });
+
+    // The app restores a stored scene with `deleteInvisibleElements: true`,
+    // so a 0×0 element is marked deleted the moment the board is opened.
+    // Reporting success for one would be a lie the person sees next reload.
+    await expect(
+      runAddElement(
+        db,
+        { kind: "user", userId: "user-123" },
+        DEFAULT_OPTIONS,
+        addInput({ type: "rectangle", x: 0, y: 0, width: 0, height: 0 }),
+      ),
+    ).rejects.toThrow(/no size/);
+
+    expect(calls.some((call) => call.text.startsWith("UPDATE"))).toBe(false);
+  });
+
+  it("allows a zero-width element that still has height", async () => {
+    const { db, state } = fakeDb({ scene: null });
+
+    await runAddElement(
+      db,
+      { kind: "user", userId: "user-123" },
+      DEFAULT_OPTIONS,
+      addInput({ type: "rectangle", x: 0, y: 0, width: 0, height: 100 }),
+    );
+
+    expect(storedElements(state)).toHaveLength(1);
+  });
+
+  it("refuses an arrow whose points are all in one place", async () => {
+    const { db } = fakeDb({ scene: null });
+
+    await expect(
+      runAddElement(
+        db,
+        { kind: "user", userId: "user-123" },
+        DEFAULT_OPTIONS,
+        addInput({
+          type: "arrow",
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          points: [
+            [0, 0],
+            [0, 0],
+          ],
+        }),
+      ),
+    ).rejects.toThrow(/no size/);
+  });
 });
 
 describe("runUpdateElement", () => {
