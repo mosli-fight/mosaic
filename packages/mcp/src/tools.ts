@@ -191,28 +191,29 @@ export const runSearchBoards = async (
   const limit = input.limit ?? 20;
   const needle = normalizeSearchTerm(input.query);
 
-  const nameMatches = await searchBoardNames(db, owner, input.query, limit);
+  const includeTrashed = input.includeTrashed === true;
+
+  // Both passes take the same flag. Filtering trashed rows here instead would
+  // let a trashed board match on its text but not on its name, which is the
+  // same search giving two answers about the same board.
+  const nameMatches = await searchBoardNames(
+    db,
+    owner,
+    input.query,
+    limit,
+    includeTrashed,
+  );
   const byId = new Map<string, SearchMatch>();
 
   for (const board of nameMatches) {
-    if (input.includeTrashed === true || !board.trashed) {
-      byId.set(board.id, { board, matchedOn: ["name"], excerpts: [] });
-    }
+    byId.set(board.id, { board, matchedOn: ["name"], excerpts: [] });
   }
 
-  const rows = await listBoardsWithScenes(db, owner);
+  const rows = await listBoardsWithScenes(db, owner, includeTrashed);
   let boardsSearched = 0;
   let boardsSkipped = 0;
 
   for (const row of rows) {
-    if (
-      input.includeTrashed !== true &&
-      row.trashed_at !== null &&
-      row.trashed_at !== undefined
-    ) {
-      continue;
-    }
-
     const summary = summarizeScene(row.scene, {
       sceneBytes: row.scene_bytes,
       limits: {

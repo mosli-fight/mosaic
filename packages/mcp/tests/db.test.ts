@@ -253,6 +253,15 @@ describe("listBoardsWithScenes", () => {
     expect(calls[0].text).toContain("b.scene");
     expect(calls[0].params).toEqual(["user-123"]);
   });
+
+  it("includes the trash when asked", async () => {
+    const { db, calls } = recordingDb(() => []);
+
+    await listBoardsWithScenes(db, user, true);
+
+    expect(calls[0].text).not.toContain("b.trashed_at IS NULL");
+    expect(calls[0].text).toContain("b.user_id = $1");
+  });
 });
 
 describe("searchBoardNames", () => {
@@ -264,6 +273,26 @@ describe("searchBoardNames", () => {
     expect(calls[0].text).toContain("b.name ILIKE $1");
     expect(calls[0].text).toContain("b.user_id = $2");
     expect(calls[0].text).toContain("LIMIT $3");
+    expect(calls[0].params).toEqual(["%roadmap%", "user-123", 10]);
+  });
+
+  it("excludes the trash by default", async () => {
+    const { db, calls } = recordingDb(() => []);
+
+    await searchBoardNames(db, user, "roadmap", 10);
+
+    expect(calls[0].text).toContain("b.trashed_at IS NULL");
+  });
+
+  it("includes the trash when asked", async () => {
+    const { db, calls } = recordingDb(() => []);
+
+    await searchBoardNames(db, user, "roadmap", 10, true);
+
+    expect(calls[0].text).not.toContain("b.trashed_at IS NULL");
+    // The owner scope must survive the flag: including the trash is not
+    // permission to read someone else's deleted boards.
+    expect(calls[0].text).toContain("b.user_id = $2");
     expect(calls[0].params).toEqual(["%roadmap%", "user-123", 10]);
   });
 

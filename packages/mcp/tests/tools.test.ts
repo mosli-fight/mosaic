@@ -290,11 +290,28 @@ describe("runGetBoard", () => {
 });
 
 describe("runSearchBoards", () => {
-  /** A db whose name search and scene listing are answered separately. */
+  /**
+   * A db whose name search and scene listing are answered separately.
+   *
+   * The trash filter is applied here by reading the SQL, exactly as Postgres
+   * would. That is what makes the `includeTrashed` tests meaningful: if a pass
+   * forgets the flag, the fake returns the trashed row and the test fails.
+   */
   const searchDb = (nameMatches: BoardListRow[], sceneRows: BoardRow[]) =>
-    respond((call) =>
-      call.text.includes("b.name ILIKE") ? nameMatches : sceneRows,
-    );
+    respond((call) => {
+      const liveOnly = call.text.includes("b.trashed_at IS NULL");
+      const source: (BoardListRow | BoardRow)[] = call.text.includes(
+        "b.name ILIKE",
+      )
+        ? nameMatches
+        : sceneRows;
+      return source.filter(
+        (candidate) =>
+          !liveOnly ||
+          candidate.trashed_at === null ||
+          candidate.trashed_at === undefined,
+      );
+    });
 
   it("finds a board by name", async () => {
     const { db } = searchDb([row({ id: "named" })], []);
@@ -478,6 +495,44 @@ describe("runSearchBoards", () => {
 
     expect(excluded.matches).toHaveLength(0);
     expect(included.matches).toHaveLength(1);
+  });
+
+  it("applies includeTrashed to name matches as well as content", async () => {
+    // The regression this pins: the name pass used to hard-code
+    // `trashed_at IS NULL` while the content pass honoured the flag, so a
+    // trashed board was findable by its text but not by its name.
+    const trashed = row({
+      id: "trashed",
+      name: "needle plan",
+      trashed_at: new Date(),
+    });
+    const { db } = searchDb([trashed], []);
+
+    const excluded = await runSearchBoards(db, user, DEFAULT_OPTIONS, {
+      query: "needle",
+    });
+    const included = await runSearchBoards(db, user, DEFAULT_OPTIONS, {
+      query: "needle",
+      includeTrashed: true,
+    });
+
+    expect(excluded.matches).toHaveLength(0);
+    expect(included.matches).toHaveLength(1);
+    expect(included.matches[0].matchedOn).toEqual(["name"]);
+  });
+
+  it("passes includeTrashed to both queries", async () => {
+    const { db, calls } = searchDb([], []);
+
+    await runSearchBoards(db, user, DEFAULT_OPTIONS, {
+      query: "x",
+      includeTrashed: true,
+    });
+
+    expect(calls).toHaveLength(2);
+    for (const call of calls) {
+      expect(call.text).not.toContain("b.trashed_at IS NULL");
+    }
   });
 
   it("truncates to the limit and says so", async () => {

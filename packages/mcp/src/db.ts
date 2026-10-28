@@ -263,7 +263,7 @@ export const getBoard = async (
 };
 
 /**
- * Every live board of one owner, with its scene.
+ * Every board of one owner, with its scene.
  *
  * Only `search_boards` uses this, and only because searching scene *content*
  * cannot be pushed into SQL: `scene` is a `TEXT` column holding the editor's
@@ -271,19 +271,21 @@ export const getBoard = async (
  * readily as the words a person typed. Parsing is the only way to search what
  * the board actually says.
  *
- * `trashed_at IS NULL` is not an optimisation: a search that surfaced trashed
- * boards would be confusing, and the trash is reachable by listing with
- * `includeTrashed`.
+ * The trash is excluded by default because a search that surfaced trashed boards
+ * would be confusing; `includeTrashed` is the one flag that brings them back,
+ * and it must reach *both* passes of the search or the two disagree.
  */
 export const listBoardsWithScenes = async (
   db: Database,
   owner: OwnerIdentity,
+  includeTrashed = false,
 ): Promise<BoardRow[]> => {
   const scope = boardScope(owner);
   return (await db.query(
     `SELECT ${FULL_COLUMNS} FROM boards b
      LEFT JOIN folders f ON f.id = b.folder_id
-     WHERE ${scope.sql} AND b.trashed_at IS NULL
+     WHERE ${scope.sql}
+       ${includeTrashed ? "" : "AND b.trashed_at IS NULL"}
      ORDER BY COALESCE(b.last_opened_at, b.updated_at) DESC, b.id`,
     scope.params,
   )) as BoardRow[];
@@ -295,18 +297,26 @@ export const listBoardsWithScenes = async (
  * Used by `search_boards` so a name match is found without loading every scene.
  * `ILIKE` with a leading wildcard cannot use the name index, which is fine here:
  * the owner scope already narrows the scan to one person's boards.
+ *
+ * `includeTrashed` is a parameter rather than a hard-coded `trashed_at IS NULL`
+ * because the content pass honours the same flag. When only this query excluded
+ * the trash, a trashed board would be findable by its text but not by its name —
+ * the same search, over the same board, giving different answers depending on
+ * where the word happened to appear.
  */
 export const searchBoardNames = async (
   db: Database,
   owner: OwnerIdentity,
   term: string,
   limit: number,
+  includeTrashed = false,
 ): Promise<BoardMeta[]> => {
   const scope = boardScope(owner, 2);
   const rows = (await db.query(
     `SELECT ${LIST_COLUMNS} FROM boards b
      LEFT JOIN folders f ON f.id = b.folder_id
-     WHERE b.name ILIKE $1 AND ${scope.sql} AND b.trashed_at IS NULL
+     WHERE b.name ILIKE $1 AND ${scope.sql}
+       ${includeTrashed ? "" : "AND b.trashed_at IS NULL"}
      ORDER BY COALESCE(b.last_opened_at, b.updated_at) DESC, b.id
      LIMIT $3`,
     [`%${escapeLike(term)}%`, ...scope.params, limit],
