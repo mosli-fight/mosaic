@@ -136,6 +136,91 @@ export const searchBoardsInput = z
 
 export type SearchBoardsInput = z.infer<typeof searchBoardsInput>;
 
+// ---------------------------------------------------------------------------
+// Write tools
+// ---------------------------------------------------------------------------
+
+/** Longest board name accepted, in characters. */
+export const MAX_BOARD_NAME = 200;
+
+/**
+ * A board name.
+ *
+ * Trimmed and non-empty, because `renameBoard` in the app refuses a blank name
+ * and the HTTP API answers 400 for one — a server that accepted `"   "` would
+ * store a board the dashboard renders as an empty card.
+ *
+ * The upper bound is not arbitrary: a name is rendered in a card, a tab and a
+ * breadcrumb, and a model that pastes a paragraph into it has misunderstood the
+ * field. Rejecting it teaches the shape of the input, which is the same reason
+ * the read schemas cap their limits.
+ */
+export const boardNameSchema = z
+  .string()
+  .trim()
+  .min(1, "board name cannot be empty")
+  .max(MAX_BOARD_NAME, `board name cannot exceed ${MAX_BOARD_NAME} characters`);
+
+/**
+ * The scene version a write expects to find.
+ *
+ * This is the optimistic-concurrency token the editor already uses
+ * (`scene_version` in the schema, `baseVersion` in `saveBoardScene`). A write
+ * that passes a stale value must fail rather than overwrite: the person who
+ * edited the board in the app has newer work, and silently replacing it is the
+ * one outcome a tool must never produce.
+ *
+ * Non-negative because the column starts at 0 and only ever increments.
+ */
+export const sceneVersionSchema = z
+  .number()
+  .int()
+  .min(0)
+  .describe(
+    "The scene_version the edit was based on, as returned by get_board or " +
+      "list_boards. The write is refused if the board has moved on since, " +
+      "rather than overwriting newer work.",
+  );
+
+export const createBoardInput = z
+  .object({
+    name: boardNameSchema
+      .optional()
+      .describe('Board name. Defaults to "Untitled board".'),
+    folderId: z
+      .string()
+      .uuid()
+      .optional()
+      .describe(
+        "Folder to file the board in. Must be one of your own folders; an " +
+          "unknown or someone else's folder is refused.",
+      ),
+  })
+  .strict();
+
+export type CreateBoardInput = z.infer<typeof createBoardInput>;
+
+export const renameBoardInput = z
+  .object({
+    boardId: boardIdSchema.describe("The board to rename."),
+    name: boardNameSchema.describe("The new name."),
+    expectedSceneVersion: sceneVersionSchema.optional(),
+  })
+  .strict();
+
+export type RenameBoardInput = z.infer<typeof renameBoardInput>;
+
+export const duplicateBoardInput = z
+  .object({
+    boardId: boardIdSchema.describe("The board to copy."),
+    name: boardNameSchema
+      .optional()
+      .describe('Name for the copy. Defaults to "<original> (copy)".'),
+  })
+  .strict();
+
+export type DuplicateBoardInput = z.infer<typeof duplicateBoardInput>;
+
 /**
  * Normalises a search term for comparison.
  *
