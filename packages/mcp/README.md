@@ -1,6 +1,6 @@
 # `@mosaic/mcp`
 
-A [Model Context Protocol](https://modelcontextprotocol.io) server for Mosaic boards. It lets a model list your boards, read a compact summary of what is on one, search across them, and — since Phase 2 — create boards and change what is on them — over stdio, from Claude Desktop or any other MCP client.
+A [Model Context Protocol](https://modelcontextprotocol.io) server for Mosaic boards, over stdio, from Claude Desktop or any other MCP client. A model can list your boards, read a compact summary of what is on one, search across them, and — since Phase 2 — create boards and change what is on them.
 
 ## Quick start
 
@@ -285,7 +285,7 @@ The second clause is what makes a guest claim final: a captured guest cookie sto
 
 Nothing hand-writes an element object. `add_element` calls `newElement`, `newTextElement`, `newStickyNoteElement`, `newArrowElement` and `newFrameElement` — the same constructors the editor's tools call — so a server-made element has the same fields, defaults and invariants as one drawn by hand.
 
-That code needs to measure text, and the editor's default measurement provider uses a `<canvas>`, which a Node process does not have. `src/textMetrics.ts` installs an estimate instead. It is deliberately generous, because the app does **not** re-measure stored text on load: the width written here is the width the editor draws, so a slight over-estimate leaves slack while an under-estimate would spill out of its container.
+That code needs to measure text, and the editor's default measurement provider uses a `<canvas>`, which a Node process does not have. `src/textMetrics.ts` installs an estimate at module load, and every module that builds an element imports it for the side effect, so it does not matter which of them a caller reaches first. The estimate is deliberately generous, because the app does **not** re-measure stored text on load: the width written here is the width the editor draws, so a slight over-estimate leaves slack while an under-estimate would spill out of its container.
 
 ## Example prompts
 
