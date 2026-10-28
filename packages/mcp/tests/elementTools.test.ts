@@ -1271,4 +1271,218 @@ describe("runDeleteElement", () => {
       isDeleted: false,
     });
   });
+
+  it("deletes a sticky note's label with it", async () => {
+    const note = {
+      id: "note-1",
+      type: "stickynote",
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 200,
+      baseHeight: 200,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+      boundElements: [{ type: "text", id: "label-1" }],
+      tags: [],
+    };
+    const label = {
+      id: "label-1",
+      type: "text",
+      x: 16,
+      y: 16,
+      width: 100,
+      height: 20,
+      text: "hi",
+      originalText: "hi",
+      fontSize: 28,
+      baseFontSize: 28,
+      lineHeight: 1.25,
+      fontFamily: 2,
+      containerId: "note-1",
+      textAlign: "center",
+      verticalAlign: "middle",
+      autoResize: true,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+    };
+    const { db, state } = fakeDb({ scene: sceneOf([note, label]) });
+
+    await runDeleteElement(
+      db,
+      { kind: "user", userId: "user-123" },
+      DEFAULT_OPTIONS,
+      { boardId, elementId: "note-1", expectedSceneVersion: 3 },
+    );
+
+    const elements = storedElements(state);
+    // The label lives in the scene as its own element. Left alive, it would
+    // render on its own, because the renderer only skips a text whose
+    // container is still present.
+    expect(elements.find((element) => element.id === "label-1")).toMatchObject({
+      isDeleted: true,
+    });
+    expect(elements.find((element) => element.id === "note-1")).toMatchObject({
+      isDeleted: true,
+    });
+  });
+
+  it("leaves a frame's children on the board, unframed", async () => {
+    const frame = {
+      id: "frame-1",
+      type: "frame",
+      x: 0,
+      y: 0,
+      width: 500,
+      height: 500,
+      name: "Frame",
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+    };
+    const child = {
+      id: "rect-1",
+      type: "rectangle",
+      x: 40,
+      y: 60,
+      width: 10,
+      height: 10,
+      frameId: "frame-1",
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+    };
+    const outside = {
+      id: "rect-2",
+      type: "rectangle",
+      x: 900,
+      y: 60,
+      width: 10,
+      height: 10,
+      frameId: null,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+    };
+    const { db, state } = fakeDb({
+      scene: sceneOf([frame, child, outside]),
+    });
+
+    await runDeleteElement(
+      db,
+      { kind: "user", userId: "user-123" },
+      DEFAULT_OPTIONS,
+      { boardId, elementId: "frame-1", expectedSceneVersion: 3 },
+    );
+
+    const elements = storedElements(state);
+    // The app treats a frame as a grouping, not a container: deleting it
+    // releases its children rather than destroying them.
+    expect(elements.find((element) => element.id === "rect-1")).toMatchObject({
+      isDeleted: false,
+      frameId: null,
+    });
+    expect(elements.find((element) => element.id === "rect-2")).toMatchObject({
+      isDeleted: false,
+      frameId: null,
+    });
+  });
+
+  it("releases an elbow arrow bound to the deleted element", async () => {
+    const shape = {
+      id: "rect-1",
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+      boundElements: [{ type: "arrow", id: "arrow-1" }],
+    };
+    const elbow = {
+      id: "arrow-1",
+      type: "arrow",
+      x: 100,
+      y: 50,
+      width: 100,
+      height: 0,
+      points: [
+        [0, 0],
+        [100, 0],
+      ],
+      elbowed: true,
+      startBinding: { elementId: "rect-1", focus: 0, gap: 0 },
+      endBinding: null,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+    };
+    const { db, state } = fakeDb({ scene: sceneOf([shape, elbow]) });
+
+    await runDeleteElement(
+      db,
+      { kind: "user", userId: "user-123" },
+      DEFAULT_OPTIONS,
+      { boardId, elementId: "rect-1", expectedSceneVersion: 3 },
+    );
+
+    const elements = storedElements(state);
+    // An elbow arrow's path is generated from its bindings. Left pointing at a
+    // deleted shape, it would be routed against nothing on the next load.
+    expect(elements.find((element) => element.id === "arrow-1")).toMatchObject({
+      isDeleted: false,
+      startBinding: null,
+    });
+  });
+
+  it("leaves a straight arrow's binding alone, as the app does", async () => {
+    const shape = {
+      id: "rect-1",
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+      boundElements: [{ type: "arrow", id: "arrow-1" }],
+    };
+    const binding = { elementId: "rect-1", focus: 0, gap: 0 };
+    const arrow = {
+      id: "arrow-1",
+      type: "arrow",
+      x: 100,
+      y: 50,
+      width: 100,
+      height: 0,
+      points: [
+        [0, 0],
+        [100, 0],
+      ],
+      elbowed: false,
+      startBinding: binding,
+      endBinding: null,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+    };
+    const { db, state } = fakeDb({ scene: sceneOf([shape, arrow]) });
+
+    await runDeleteElement(
+      db,
+      { kind: "user", userId: "user-123" },
+      DEFAULT_OPTIONS,
+      { boardId, elementId: "rect-1", expectedSceneVersion: 3 },
+    );
+
+    const elements = storedElements(state);
+    expect(elements.find((element) => element.id === "arrow-1")).toMatchObject({
+      startBinding: binding,
+    });
+  });
 });

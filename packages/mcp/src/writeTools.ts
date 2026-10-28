@@ -22,6 +22,7 @@
 
 import {
   getStickyNoteLayout,
+  isElbowArrow,
   isLinearElement,
   newElementWith,
   refreshTextDimensions,
@@ -781,13 +782,86 @@ export const runMoveElement = async (
 };
 
 /**
- * Removes one element.
+ * Removes one element, and what cannot outlive it.
  *
  * Deletion is a mark, not a splice: the editor keeps deleted elements in the
  * scene for undo, and `get_board` counts them separately. Splicing the element
  * out would make the deletion invisible to undo and would change the meaning of
  * every stored index after it.
+ *
+ * A container's bound label goes with it, because a label is not an element in
+ * its own right: the renderer skips a text whose `containerId` is still in the
+ * map, and the map is built from non-deleted elements. Deleting only the note
+ * would leave a live label whose container is gone — which the renderer does
+ * *not* skip, so the text would be drawn loose on the canvas. The app's own
+ * delete cascades for the same reason (`actionDeleteSelected`).
+ *
+ * A frame's children are *not* deleted: the app clears their `frameId` and
+ * leaves them on the canvas, because a frame is a grouping rather than a
+ * container. The same is done here.
+ *
+ * An elbow arrow bound to the deleted element loses that binding, because its
+ * path is generated from the shapes it connects: the app clears the binding
+ * when the shape goes (`actionDeleteSelected`), and an elbow arrow left
+ * pointing at a deleted shape would be re-routed against nothing on the next
+ * load.
  */
+const deleteElementAndContents = (
+  elements: ExcalidrawElement[],
+  element: ExcalidrawElement,
+): string[] => {
+  const deleted = new Set<string>([element.id]);
+
+  for (const candidate of elements) {
+    if (candidate.isDeleted) {
+      continue;
+    }
+
+    const boundToElement =
+      "containerId" in candidate && candidate.containerId === element.id;
+    const insideFrame =
+      "frameId" in candidate && candidate.frameId === element.id;
+
+    // One replacement per candidate, so the label cascade and the binding
+    // cleanup cannot overwrite each other's edit.
+    const changes: Record<string, unknown> = {};
+
+    if (boundToElement) {
+      deleted.add(candidate.id);
+      changes.isDeleted = true;
+    } else if (insideFrame) {
+      // The child stays; it just stops belonging to a frame that is gone.
+      changes.frameId = null;
+    }
+
+    // The app walks `boundElements` to find these; reading the bindings
+    // directly is the same set for a scene the editor wrote, and also catches
+    // one whose `boundElements` is stale.
+    if (isElbowArrow(candidate)) {
+      if (candidate.startBinding?.elementId === element.id) {
+        changes.startBinding = null;
+      }
+      if (candidate.endBinding?.elementId === element.id) {
+        changes.endBinding = null;
+      }
+    }
+
+    if (Object.keys(changes).length) {
+      elements[elements.indexOf(candidate)] = newElementWith(
+        candidate,
+        changes as Parameters<typeof newElementWith>[1],
+      );
+    }
+  }
+
+  elements[elements.indexOf(element)] = newElementWith(element, {
+    isDeleted: true,
+  });
+
+  return [...deleted];
+};
+
+/** Removes one element. */
 export const runDeleteElement = async (
   db: Database,
   owner: OwnerIdentity,
@@ -800,9 +874,7 @@ export const runDeleteElement = async (
     action: "delete an element",
     apply: (scene) => {
       const element = findElement(scene.elements, input.elementId);
-      const index = scene.elements.indexOf(element);
-      scene.elements[index] = newElementWith(element, { isDeleted: true });
-      return [element.id];
+      return deleteElementAndContents(scene.elements, element);
     },
   });
 

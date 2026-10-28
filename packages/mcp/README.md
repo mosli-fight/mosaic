@@ -199,6 +199,12 @@ Moving a container takes its contents with it: a sticky note's label and a frame
 
 The element is **marked** deleted, exactly as the app's own delete does — it stays in the scene so undo still works and stored indices keep their meaning. `get_board` counts deleted elements separately.
 
+Deleting follows the app's own rules for what cannot outlive an element:
+
+- a **container's bound label** is deleted with it — a label is not an element in its own right, and left behind it would render loose on the canvas;
+- a **frame's children** are _not_ deleted: their `frameId` is cleared and they stay on the board, because a frame is a grouping rather than a container;
+- an **elbow arrow bound** to the deleted element loses that binding, because its path is generated from the shapes it connects.
+
 #### `insert_diagram`
 
 Draws a diagram from code and inserts it into a board.
