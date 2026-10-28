@@ -21,13 +21,21 @@
  */
 
 import {
+  computeBoundTextPosition,
+  computeContainerDimensionForBoundText,
+  getBoundTextMaxHeight,
+  getBoundTextMaxWidth,
   getStickyNoteLayout,
   isElbowArrow,
   isLinearElement,
+  measureText,
   newElementWith,
   refreshTextDimensions,
   rescalePointsInElement,
+  wrapText,
 } from "@excalidraw/element";
+
+import { getFontString } from "@excalidraw/common";
 
 import { pointFrom } from "@excalidraw/math";
 
@@ -564,6 +572,87 @@ const resizeStickyNote = (
 };
 
 /**
+ * Re-fits a shape's bound label after the shape's box changed.
+ *
+ * A rectangle, ellipse or diamond can carry a text element through
+ * `containerId` — `insert_diagram` gives every node one — and that label is
+ * wrapped to the shape's *inner* width. Resizing the shape without re-wrapping
+ * would leave the label at its old width, hanging outside a shape that just got
+ * narrower (or floating in the middle of one that got wider). The editor
+ * re-fits on every handle drag, so this is the same work `handleBindTextResize`
+ * does, using the same three calls the diagram writer uses to build the label in
+ * the first place.
+ *
+ * The shape grows taller if the re-wrapped label no longer fits, which is what
+ * dragging a side handle in the editor does. A box that was asked for and then
+ * silently ignored would be worse than one that grew to hold its own text.
+ *
+ * @returns the container, with its height possibly grown
+ */
+const refitBoundLabel = (
+  elements: ExcalidrawElement[],
+  container: ExcalidrawElement,
+): ExcalidrawElement => {
+  const label = elements.find(
+    (candidate) =>
+      candidate.type === "text" &&
+      "containerId" in candidate &&
+      candidate.containerId === container.id &&
+      !candidate.isDeleted,
+  ) as ExcalidrawTextElement | undefined;
+
+  if (!label) {
+    return container;
+  }
+
+  const font = getFontString(label);
+  const wrapped = wrapText(
+    label.originalText,
+    font,
+    getBoundTextMaxWidth(container, label),
+  );
+  const metrics = measureText(wrapped, font, label.lineHeight);
+
+  const neededHeight = metrics.height;
+  const fits =
+    neededHeight <=
+    getBoundTextMaxHeight(
+      container,
+      label as Parameters<typeof getBoundTextMaxHeight>[1],
+    );
+
+  const sized = fits
+    ? container
+    : newElementWith(container, {
+        height: computeContainerDimensionForBoundText(
+          neededHeight,
+          container.type as "rectangle" | "ellipse" | "diamond",
+        ),
+      } as Parameters<typeof newElementWith>[1]);
+
+  const resizedLabel = newElementWith(label, {
+    text: wrapped,
+    width: metrics.width,
+    height: metrics.height,
+  }) as ExcalidrawTextElement;
+
+  const elementsMap = new Map(
+    elements.map((element) => [element.id, element]),
+  ) as Map<string, ExcalidrawElement>;
+  elementsMap.set(sized.id, sized);
+
+  const { x, y } = computeBoundTextPosition(
+    sized,
+    resizedLabel as Parameters<typeof computeBoundTextPosition>[1],
+    elementsMap,
+  );
+
+  elements[elements.indexOf(label)] = newElementWith(resizedLabel, { x, y });
+
+  return sized;
+};
+
+/**
  * The geometry fields, applied to the kinds whose box is not a plain field.
  *
  * Everything else — a rectangle, an ellipse, a frame — stores `width` and
@@ -609,7 +698,7 @@ const applyGeometry = (
     );
   }
 
-  return element;
+  return refitBoundLabel(elements, element);
 };
 
 /**

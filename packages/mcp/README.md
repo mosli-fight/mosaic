@@ -173,10 +173,12 @@ Only the fields you name are replaced. `text` is refused on an element that has 
 
 | Kind | What a resize does |
 | --- | --- |
-| rectangle, ellipse, frame | Writes the box. |
+| rectangle, ellipse, frame | Writes the box. A shape carrying a bound label also re-wraps it, and grows taller if the label no longer fits. |
 | arrow, line | Rescales the points, so the drawn line and the box stay in agreement. |
 | stickynote | Sets the box and re-fits the label inside it; a height also becomes the note's `baseHeight`. |
 | text | **Refused.** A text element's box is its measured text; change `text` instead. |
+
+A bound label is the case `insert_diagram` makes common: every node it draws is a shape with a text element bound through `containerId`, wrapped to the shape's inner width. Narrowing the shape without re-wrapping would leave the label hanging outside it, so the label is re-fitted the same way the editor's handle drag does it — and the shape grows to hold the label rather than clipping it.
 
 An arrow whose points are bound to a shape, or an elbow arrow whose path is generated from its bindings, is refused rather than half-resized: its endpoints are not its own to move.
 

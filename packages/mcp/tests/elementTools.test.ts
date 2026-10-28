@@ -1048,6 +1048,73 @@ describe("runUpdateElement", () => {
         baseHeight: 350,
       });
     });
+
+    it("re-wraps a shape's bound label when the shape narrows", async () => {
+      // `insert_diagram` binds a label to every node, so this is the common
+      // case rather than an exotic one. A label left at its old width would
+      // hang outside a shape that just got narrower.
+      const shape = {
+        id: "rect-1",
+        type: "rectangle",
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+        angle: 0,
+        version: 1,
+        versionNonce: 1,
+        isDeleted: false,
+        boundElements: [{ type: "text", id: "label-1" }],
+      };
+      const label = {
+        id: "label-1",
+        type: "text",
+        x: 5,
+        y: 40,
+        width: 190,
+        height: 25,
+        text: "a fairly long label that wraps when narrow",
+        originalText: "a fairly long label that wraps when narrow",
+        fontSize: 20,
+        lineHeight: 1.25,
+        fontFamily: 2,
+        containerId: "rect-1",
+        textAlign: "center",
+        verticalAlign: "middle",
+        autoResize: true,
+        angle: 0,
+        version: 1,
+        versionNonce: 1,
+        isDeleted: false,
+      };
+      const { db, state } = fakeDb({ scene: sceneOf([shape, label]) });
+
+      await runUpdateElement(
+        db,
+        { kind: "user", userId: "user-123" },
+        DEFAULT_OPTIONS,
+        {
+          boardId,
+          elementId: "rect-1",
+          expectedSceneVersion: 3,
+          changes: { width: 60 },
+        },
+      );
+
+      const elements = storedElements(state);
+      const storedLabel = elements.find((element) => element.id === "label-1")!;
+      const storedShape = elements.find((element) => element.id === "rect-1")!;
+
+      expect(storedShape.width).toBe(60);
+      expect(storedLabel.width as number).toBeLessThan(60);
+      // The re-wrapped label is taller than one line, so the shape grows to
+      // hold it rather than clipping it — what dragging a side handle does.
+      expect(storedLabel.height as number).toBeGreaterThan(25);
+      expect(storedShape.height as number).toBeGreaterThan(100);
+      // And the label sits inside the shape, not at its old position.
+      expect(storedLabel.x as number).toBeGreaterThanOrEqual(0);
+      expect(storedLabel.y as number).toBeGreaterThanOrEqual(0);
+    });
   });
 });
 
