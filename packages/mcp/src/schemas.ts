@@ -606,6 +606,61 @@ export const deleteElementInput = z.object({ ...elementTargetShape }).strict();
 
 export type DeleteElementInput = z.infer<typeof deleteElementInput>;
 
+/** Longest diagram source accepted, in characters. */
+export const MAX_DIAGRAM_CODE = 20_000;
+
+/**
+ * The diagram types the pane can draw.
+ *
+ * The same four the editor offers. The list is closed because the type decides
+ * how the code is read — a colon means something different in a flowchart and
+ * an ERD — so an unknown value has no defined parse at all.
+ */
+export const DIAGRAM_TYPES = [
+  "flowchart",
+  "architecture",
+  "erd",
+  "sequence",
+] as const;
+
+export const diagramTypeSchema = z
+  .enum(DIAGRAM_TYPES)
+  .describe(
+    "Which diagram language the code is written in: flowchart, architecture, " +
+      "erd or sequence.",
+  );
+
+export const insertDiagramInput = z
+  .object({
+    boardId: boardIdSchema.describe("The board to insert the diagram into."),
+    expectedSceneVersion: sceneVersionSchema,
+    type: diagramTypeSchema,
+    code: z
+      .string()
+      .min(1, "diagram code cannot be empty")
+      .max(
+        MAX_DIAGRAM_CODE,
+        `diagram code cannot exceed ${MAX_DIAGRAM_CODE} characters`,
+      )
+      .describe(
+        "The diagram in the pane's own language, one statement per line. " +
+          'For example "api: API server" for a node and "api -> db: reads" ' +
+          "for an arrow.",
+      ),
+    x: coordinateSchema
+      .optional()
+      .describe(
+        "Left edge of the diagram. Defaults to the right of whatever is " +
+          "already on the board, so the diagram does not cover existing work.",
+      ),
+    y: coordinateSchema
+      .optional()
+      .describe("Top edge of the diagram. Defaults to the same as x's row."),
+  })
+  .strict();
+
+export type InsertDiagramInput = z.infer<typeof insertDiagramInput>;
+
 /**
  * Normalises a search term for comparison.
  *

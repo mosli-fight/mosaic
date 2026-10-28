@@ -40,6 +40,7 @@ import {
   deleteElementInput,
   duplicateBoardInput,
   getBoardInput,
+  insertDiagramInput,
   listBoardsInput,
   moveElementInput,
   renameBoardInput,
@@ -57,6 +58,7 @@ import {
   runCreateBoard,
   runDeleteElement,
   runDuplicateBoard,
+  runInsertDiagram,
   runMoveElement,
   runRenameBoard,
   runUpdateElement,
@@ -406,6 +408,37 @@ export const registerWriteTools = (
           config.owner,
           config.options,
           deleteElementInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "insert_diagram",
+    {
+      title: "Insert diagram",
+      description:
+        "Draw a diagram from code — flowchart, architecture, ERD or sequence " +
+        "— and insert it into a board. The code is the same language the " +
+        "diagram pane uses, one statement per line. Elements you drew by " +
+        "hand are left untouched; a diagram inserted earlier is replaced, " +
+        "because a board holds one.",
+      inputSchema: insertDiagramInput,
+      annotations: {
+        readOnlyHint: false,
+        // Replaces any diagram already on the board, so it can destroy
+        // content even though hand-drawn elements survive.
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runInsertDiagram(
+          db,
+          config.owner,
+          config.options,
+          insertDiagramInput.parse(args),
         ),
       ),
   );

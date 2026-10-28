@@ -36,7 +36,9 @@ import type {
 import type { Radians } from "@excalidraw/math";
 
 import { toBoardMeta } from "./db.js";
+import { defaultDiagramOrigin, renderDiagram } from "./diagram.js";
 import {
+  addFiles,
   buildElements,
   findElement,
   readScene,
@@ -59,10 +61,12 @@ import type {
   CreateBoardInput,
   DeleteElementInput,
   DuplicateBoardInput,
+  InsertDiagramInput,
   MoveElementInput,
   RenameBoardInput,
   UpdateElementInput,
 } from "./schemas.js";
+import type { EditableScene } from "./sceneEdit.js";
 
 /** What `create_board` and `duplicate_board` return. */
 export type BoardWriteResult = {
@@ -278,8 +282,14 @@ const editScene = async (
     boardId: string;
     expectedSceneVersion: number;
     action: string;
-    /** Changes the parsed scene in place and returns the ids it touched. */
-    apply: (elements: ExcalidrawElement[]) => string[];
+    /**
+     * Changes the parsed scene in place and returns the ids it touched.
+     *
+     * The whole scene is handed over rather than just its elements because a
+     * diagram insert also adds image files for its icons; every other tool
+     * only touches `scene.elements`.
+     */
+    apply: (scene: EditableScene) => string[];
   },
 ): Promise<ElementWriteResult> => {
   const board = await loadBoardForWrite(db, owner, input.boardId);
@@ -301,7 +311,7 @@ const editScene = async (
   }
 
   const scene = readScene(board.scene);
-  const elementIds = input.apply(scene.elements);
+  const elementIds = input.apply(scene);
   const serialised = writeScene(scene);
   const sceneBytes = assertSceneFits(serialised, options, input.action);
 
@@ -342,10 +352,10 @@ export const runAddElement = async (
     boardId: input.boardId,
     expectedSceneVersion: input.expectedSceneVersion,
     action: `add a ${input.element.type}`,
-    apply: (elements) => {
-      const existingIds = new Set(elements.map((element) => element.id));
+    apply: (scene) => {
+      const existingIds = new Set(scene.elements.map((element) => element.id));
       added = buildElements(input.element, existingIds);
-      elements.push(...added);
+      scene.elements.push(...added);
       return added.map((element) => element.id);
     },
   });
@@ -503,7 +513,7 @@ export const runUpdateElement = async (
     boardId: input.boardId,
     expectedSceneVersion: input.expectedSceneVersion,
     action: "update an element",
-    apply: (elements) => applyUpdate(elements, input),
+    apply: (scene) => applyUpdate(scene.elements, input),
   });
 
   return {
@@ -523,10 +533,13 @@ export const runMoveElement = async (
     boardId: input.boardId,
     expectedSceneVersion: input.expectedSceneVersion,
     action: "move an element",
-    apply: (elements) => {
-      const element = findElement(elements, input.elementId);
-      const index = elements.indexOf(element);
-      elements[index] = newElementWith(element, { x: input.x, y: input.y });
+    apply: (scene) => {
+      const element = findElement(scene.elements, input.elementId);
+      const index = scene.elements.indexOf(element);
+      scene.elements[index] = newElementWith(element, {
+        x: input.x,
+        y: input.y,
+      });
       return [element.id];
     },
   });
@@ -555,10 +568,10 @@ export const runDeleteElement = async (
     boardId: input.boardId,
     expectedSceneVersion: input.expectedSceneVersion,
     action: "delete an element",
-    apply: (elements) => {
-      const element = findElement(elements, input.elementId);
-      const index = elements.indexOf(element);
-      elements[index] = newElementWith(element, { isDeleted: true });
+    apply: (scene) => {
+      const element = findElement(scene.elements, input.elementId);
+      const index = scene.elements.indexOf(element);
+      scene.elements[index] = newElementWith(element, { isDeleted: true });
       return [element.id];
     },
   });
@@ -566,5 +579,70 @@ export const runDeleteElement = async (
   return {
     ...result,
     message: `Deleted element ${input.elementId} on board ${result.board.id}; it is now at scene_version ${result.board.sceneVersion}.`,
+  };
+};
+
+/**
+ * Renders diagram code and puts it on a board.
+ *
+ * The engine's rule is that a diagram owns the elements it made and nothing
+ * else, so hand-drawn work on the board is passed through untouched — that is
+ * `reconcileDiagram`'s job, not this function's. What this function adds is
+ * the scene-level part: merging the icons' image files, and saying in the
+ * result how many elements the diagram contributed and what box it occupies.
+ *
+ * Inserting a second diagram replaces the first. The tags that identify a
+ * node are its slug, so two diagrams on one board would collide; the pane has
+ * the same rule, and the tool is annotated `destructiveHint: true` for it.
+ */
+export const runInsertDiagram = async (
+  db: Database,
+  owner: OwnerIdentity,
+  options: ServerOptions,
+  input: InsertDiagramInput,
+): Promise<ElementWriteResult> => {
+  let rendered: ReturnType<typeof renderDiagram> | null = null;
+
+  const result = await editScene(db, owner, options, {
+    boardId: input.boardId,
+    expectedSceneVersion: input.expectedSceneVersion,
+    action: `insert a ${input.type} diagram`,
+    apply: (scene: EditableScene) => {
+      // A caller may pin one axis and leave the other to the default, which
+      // is what makes "put it under everything else" expressible.
+      const fallback = defaultDiagramOrigin(scene.elements);
+      const origin =
+        input.x === undefined && input.y === undefined
+          ? undefined
+          : {
+              x: input.x ?? fallback.x,
+              y: input.y ?? fallback.y,
+            };
+
+      rendered = renderDiagram(scene.elements, input.code, input.type, origin);
+      scene.elements = rendered.elements;
+      addFiles(scene, rendered.files);
+      return rendered.elementIds;
+    },
+  });
+
+  // `editScene` only returns after `apply` has run, so this is set.
+  const diagram = rendered as ReturnType<typeof renderDiagram> | null;
+  const count = diagram?.elementIds.length ?? 0;
+  const box = diagram?.bounds;
+
+  return {
+    ...result,
+    message: `${
+      `Inserted a ${input.type} diagram (${count} elements) on board ` +
+      `${result.board.id}; it is now at scene_version ` +
+      `${result.board.sceneVersion}.`
+    }${
+      box
+        ? ` It occupies (${box.x}, ${box.y}) to (${box.x + box.width}, ${
+            box.y + box.height
+          }).`
+        : ""
+    }`,
   };
 };

@@ -154,6 +154,28 @@ export const writeScene = (scene: EditableScene): string => {
   });
 };
 
+/**
+ * Merges files into a scene's `files` map.
+ *
+ * A diagram's icons are images, and an image element is nothing without the
+ * file its `fileId` names. The merge is additive: a file this call does not
+ * mention stays exactly as stored, because a board's other images belong to
+ * elements this tool never touched.
+ */
+export const addFiles = (
+  scene: EditableScene,
+  files: Record<string, unknown>,
+): void => {
+  if (!Object.keys(files).length) {
+    return;
+  }
+
+  scene.document.files = {
+    ...(isRecord(scene.document.files) ? scene.document.files : {}),
+    ...files,
+  };
+};
+
 /** The element with this id, or a refusal naming the id. */
 export const findElement = (
   elements: readonly ExcalidrawElement[],
