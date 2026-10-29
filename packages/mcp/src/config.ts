@@ -31,6 +31,7 @@ export const ENV = {
   maxTextLength: "MOSAIC_MCP_MAX_TEXT_LENGTH",
   maxElements: "MOSAIC_MCP_MAX_ELEMENTS",
   maxSceneBytes: "MOSAIC_MCP_MAX_SCENE_BYTES",
+  maxExportBytes: "MOSAIC_MCP_MAX_EXPORT_BYTES",
 } as const;
 
 /**
@@ -64,6 +65,16 @@ export type ServerOptions = {
    * pathological board from turning a tool call into a multi-second stall.
    */
   maxSceneBytes: number;
+  /**
+   * Largest export `export_board` will produce, in bytes of SVG.
+   *
+   * An export is the one reply that is *meant* to be large — it is a picture
+   * of the board, not a summary of it — so it gets its own cap rather than
+   * borrowing the scene cap. The default is 16 MB, which holds a board of
+   * several thousand elements; past that the caller is told to export a
+   * smaller board rather than being handed a reply their client will choke on.
+   */
+  maxExportBytes: number;
 };
 
 export type Config = {
@@ -110,6 +121,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
   maxTextLength: 500,
   maxElements: 50,
   maxSceneBytes: 8 * 1024 * 1024,
+  maxExportBytes: 16 * 1024 * 1024,
 };
 
 /**
@@ -165,6 +177,11 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
         env[ENV.maxSceneBytes],
         DEFAULT_OPTIONS.maxSceneBytes,
         ENV.maxSceneBytes,
+      ),
+      maxExportBytes: positiveInt(
+        env[ENV.maxExportBytes],
+        DEFAULT_OPTIONS.maxExportBytes,
+        ENV.maxExportBytes,
       ),
     };
   } catch (error) {

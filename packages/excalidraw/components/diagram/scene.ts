@@ -121,7 +121,10 @@ const DEFAULT_BACKGROUND = COLOR_PALETTE.transparent;
  * A name that is not here is ignored rather than guessed at: an unknown
  * attribute must not break the line, and a wrong color is worse than none.
  */
-const NAMED_COLORS: Record<string, { background: string; stroke: string }> = {
+export const NAMED_COLORS: Record<
+  string,
+  { background: string; stroke: string }
+> = {
   blue: { background: COLOR_PALETTE.blue[1], stroke: COLOR_PALETTE.blue[4] },
   green: { background: COLOR_PALETTE.green[1], stroke: COLOR_PALETTE.green[4] },
   red: { background: COLOR_PALETTE.red[1], stroke: COLOR_PALETTE.red[4] },
@@ -156,7 +159,7 @@ const NAMED_COLORS: Record<string, { background: string; stroke: string }> = {
  * a second visual language on the board. A glyph is honest about what it
  * is, renders everywhere, and stays out of the way of the label.
  */
-const ICON_GLYPHS: Record<string, string> = {
+export const ICON_GLYPHS: Record<string, string> = {
   server: "🖥",
   database: "🗄",
   db: "🗄",
@@ -345,6 +348,32 @@ export const nodeLabelText = (
   return [label, "", ...fields].join("\n");
 };
 
+/**
+ * The shape a node is drawn as when its line does not say.
+ *
+ * Exported because the reverse direction — reading a scene back into code —
+ * has to know which shapes are *implied* by a label, so it can leave them out
+ * of the code it writes. Deriving that rule twice is how the two directions
+ * drift apart: a flowchart whose "Start" node is an ellipse would come back as
+ * `[shape: ellipse]`, and re-applying it would stop matching what the pane
+ * draws for the same words.
+ */
+export const defaultShapeFor = (
+  label: string,
+  type: DiagramType,
+): "rectangle" | "ellipse" | "diamond" => {
+  if (type === "flowchart") {
+    if (/^(start|begin|end|finish|stop)$/i.test(label.trim())) {
+      return "ellipse";
+    }
+    if (label.trim().endsWith("?")) {
+      return "diamond";
+    }
+  }
+
+  return "rectangle";
+};
+
 /** the shape a node is drawn as */
 const resolveShape = (
   node: DiagramModel["nodes"][number],
@@ -354,16 +383,7 @@ const resolveShape = (
     return node.shape;
   }
 
-  if (type === "flowchart") {
-    if (/^(start|begin|end|finish|stop)$/i.test(node.label.trim())) {
-      return "ellipse";
-    }
-    if (node.label.trim().endsWith("?")) {
-      return "diamond";
-    }
-  }
-
-  return "rectangle";
+  return defaultShapeFor(node.label, type);
 };
 
 /** a stable element id for a tag, so a re-parse can find its element */

@@ -661,6 +661,151 @@ export const insertDiagramInput = z
 
 export type InsertDiagramInput = z.infer<typeof insertDiagramInput>;
 
+// ---------------------------------------------------------------------------
+// Phase 3: export, reverse DSL, apply DSL, templates
+// ---------------------------------------------------------------------------
+
+/**
+ * The formats `export_board` can produce.
+ *
+ * Only `svg` is rendered by the server. `png` is accepted by the schema so a
+ * caller that asks for it gets a *documented* answer rather than a schema
+ * error — the tool explains that rasterising needs a canvas this process does
+ * not have, and points at the SVG. See the tool's description and the README.
+ */
+export const EXPORT_FORMATS = ["svg", "png"] as const;
+
+export type ExportFormat = typeof EXPORT_FORMATS[number];
+
+export const exportFormatSchema = z
+  .enum(EXPORT_FORMATS)
+  .describe(
+    'Output format. "svg" is produced by the server; "png" needs a canvas ' +
+      "and is refused with an explanation.",
+  );
+
+/**
+ * The padding around the exported content, in scene units.
+ *
+ * The editor's own export uses 10. The upper bound is generous but finite: a
+ * huge padding is how an export becomes a mostly-empty file.
+ */
+export const exportPaddingSchema = z
+  .number()
+  .int()
+  .min(0)
+  .max(200)
+  .optional()
+  .describe("Padding around the board's content, in scene units (default 10).");
+
+export const exportBoardInput = z
+  .object({
+    boardId: boardIdSchema.describe("The board to export."),
+    format: exportFormatSchema.optional().describe('Defaults to "svg".'),
+    padding: exportPaddingSchema,
+    background: z
+      .boolean()
+      .optional()
+      .describe(
+        "Paint the board's background colour (default true). With false the " +
+          "SVG has a transparent background.",
+      ),
+  })
+  .strict();
+
+export type ExportBoardInput = z.infer<typeof exportBoardInput>;
+
+/**
+ * A diagram source, as `scene_to_dsl` returns it.
+ *
+ * The same cap as `insert_diagram` accepts, so a scene that came out of a
+ * board can always be fed back in: a tool that produced text its sibling
+ * would refuse would be a round trip that cannot complete.
+ */
+export const diagramCodeSchema = z
+  .string()
+  .min(1, "diagram code cannot be empty")
+  .max(
+    MAX_DIAGRAM_CODE,
+    `diagram code cannot exceed ${MAX_DIAGRAM_CODE} characters`,
+  );
+
+export const sceneToDslInput = z
+  .object({
+    boardId: boardIdSchema.describe("The board to read the diagram from."),
+  })
+  .strict();
+
+export type SceneToDslInput = z.infer<typeof sceneToDslInput>;
+
+/**
+ * Applies diagram code to a board.
+ *
+ * The same fields as `insert_diagram`, because it is the same operation with
+ * a different promise about what happens to elements the code no longer
+ * describes: `insert_diagram` replaces the board's diagram wholesale, while
+ * `apply_dsl` reconciles it — elements whose node still exists are updated in
+ * place, so their ids survive and anything bound to them stays bound.
+ */
+export const applyDslInput = z
+  .object({
+    boardId: boardIdSchema.describe("The board to apply the diagram to."),
+    expectedSceneVersion: sceneVersionSchema,
+    type: diagramTypeSchema,
+    code: diagramCodeSchema.describe(
+      "The diagram in the pane's own language, one statement per line. " +
+        "Accepts everything scene_to_dsl returns.",
+    ),
+    x: coordinateSchema
+      .optional()
+      .describe(
+        "Left edge of the diagram. Defaults to where the board's current " +
+          "diagram already sits, so re-applying does not move it.",
+      ),
+    y: coordinateSchema
+      .optional()
+      .describe("Top edge of the diagram. Defaults to the current diagram's."),
+  })
+  .strict();
+
+export type ApplyDslInput = z.infer<typeof applyDslInput>;
+
+/**
+ * How a template is named.
+ *
+ * A template has an id (`kanban-board`) and a human name ("Kanban Board"). A
+ * model that has seen the gallery will use the name; one that has read this
+ * tool's description will use the id. Both are accepted, and the lookup is
+ * case- and accent-insensitive on the name so "kanban board" works.
+ */
+export const templateRefSchema = z
+  .string()
+  .trim()
+  .min(1, "template id or name cannot be empty")
+  .max(200)
+  .describe(
+    'A template id (e.g. "kanban-board") or its name (e.g. "Kanban Board").',
+  );
+
+export const insertTemplateInput = z
+  .object({
+    boardId: boardIdSchema.describe("The board to insert the template into."),
+    expectedSceneVersion: sceneVersionSchema,
+    template: templateRefSchema,
+    x: coordinateSchema
+      .optional()
+      .describe(
+        "Left edge of the template. Defaults to the right of whatever is " +
+          "already on the board, so it does not cover existing work.",
+      ),
+    y: coordinateSchema
+      .optional()
+      .describe("Top edge of the template. Defaults to the same row as x."),
+  })
+  .strict();
+
+export type InsertTemplateInput = z.infer<typeof insertTemplateInput>;
+
 /**
  * Normalises a search term for comparison.
  *

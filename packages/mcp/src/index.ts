@@ -39,6 +39,7 @@ import {
   createBoardInput,
   deleteElementInput,
   duplicateBoardInput,
+  exportBoardInput,
   getBoardInput,
   insertDiagramInput,
   listBoardsInput,
@@ -47,6 +48,7 @@ import {
   searchBoardsInput,
   updateElementInput,
 } from "./schemas.js";
+import { runExportBoard } from "./exportBoard.js";
 import {
   runGetBoard,
   runListBoards,
@@ -206,9 +208,53 @@ export const createServer = (config: Config, db: Database): McpServer => {
   // Registered here rather than in `main` so a test that drives `createServer`
   // sees the same tool set a client does. `registerWriteTools` is defined below
   // and is initialised by the time this function is called.
+  registerExportTools(server, config, db);
   registerWriteTools(server, config, db);
 
   return server;
+};
+
+/**
+ * Registers `export_board`.
+ *
+ * Kept apart from both the read and the write block because it is neither: it
+ * writes nothing, but it is not a cheap read either — it parses the whole
+ * scene and renders it. The annotation says `readOnlyHint: true`, which is the
+ * honest answer to "can this change my board?".
+ */
+export const registerExportTools = (
+  server: McpServer,
+  config: Config,
+  db: Database,
+) => {
+  server.registerTool(
+    "export_board",
+    {
+      title: "Export board",
+      description:
+        "Render a board to an image. Returns SVG text you can write to a " +
+        ".svg file. PNG is not available from this server — rasterising " +
+        "needs a canvas a stdio process does not have — so ask for SVG and " +
+        "convert it if you need a bitmap.",
+      inputSchema: exportBoardInput,
+      annotations: {
+        // Renders a picture of the board; changes nothing.
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runExportBoard(
+          db,
+          config.owner,
+          config.options,
+          exportBoardInput.parse(args),
+        ),
+      ),
+  );
 };
 
 /**
