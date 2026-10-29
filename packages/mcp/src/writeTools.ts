@@ -50,7 +50,12 @@ import type {
 import type { Radians } from "@excalidraw/math";
 
 import { toBoardMeta } from "./db.js";
-import { defaultDiagramOrigin, renderDiagram } from "./diagram.js";
+import {
+  currentDiagramCorner,
+  defaultDiagramOrigin,
+  renderDiagram,
+  renderDiagramAt,
+} from "./diagram.js";
 import {
   addFiles,
   buildElements,
@@ -73,6 +78,7 @@ import type { OwnerIdentity, ServerOptions } from "./config.js";
 import type { BoardMeta, Database } from "./db.js";
 import type {
   AddElementToolInput,
+  ApplyDslInput,
   CreateBoardInput,
   DeleteElementInput,
   DuplicateBoardInput,
@@ -1044,5 +1050,85 @@ export const runInsertDiagram = async (
           }).`
         : ""
     }`,
+  };
+};
+
+/**
+ * Applies diagram code to a board, updating its diagram in place.
+ *
+ * This is `insert_diagram` with a different promise about placement and about
+ * what survives a change:
+ *
+ * - **The diagram does not move unless the caller says so.** The default
+ *   origin is the corner the diagram already occupies, so editing a label and
+ *   re-applying changes that label and nothing else. `insert_diagram` places a
+ *   new diagram to the right of the board's content, which is right for a
+ *   first insert and wrong for an edit.
+ * - **Elements whose node still exists keep their ids.** That is
+ *   `reconcileDiagram`'s doing — it keys the existing elements by their
+ *   diagram tags and passes the ids through — so an arrow bound to a node
+ *   stays bound, and a selection in the editor survives the edit.
+ *
+ * Hand-drawn elements are passed through untouched, exactly as they are for
+ * `insert_diagram`, because the same engine does the reconciling.
+ */
+export const runApplyDsl = async (
+  db: Database,
+  owner: OwnerIdentity,
+  options: ServerOptions,
+  input: ApplyDslInput,
+): Promise<ElementWriteResult> => {
+  let rendered: ReturnType<typeof renderDiagramAt> | null = null;
+  let moved = false;
+
+  const result = await editScene(db, owner, options, {
+    boardId: input.boardId,
+    expectedSceneVersion: input.expectedSceneVersion,
+    action: `apply a ${input.type} diagram`,
+    apply: (scene: EditableScene) => {
+      // Where the diagram already is, so an edit does not move it. A board
+      // with no diagram yet falls back to the insert rule: to the right of
+      // whatever is drawn, or the origin on an empty board.
+      const current = currentDiagramCorner(scene.elements);
+      const fallback = current ?? defaultDiagramOrigin(scene.elements);
+
+      const corner = {
+        x: input.x ?? fallback.x,
+        y: input.y ?? fallback.y,
+      };
+
+      moved =
+        current === null || corner.x !== current.x || corner.y !== current.y;
+
+      rendered = renderDiagramAt(
+        scene.elements,
+        input.code,
+        input.type,
+        corner,
+      );
+      scene.elements = rendered.elements;
+      addFiles(scene, rendered.files);
+      return rendered.elementIds;
+    },
+  });
+
+  // `editScene` only returns after `apply` has run, so this is set.
+  const diagram = rendered as ReturnType<typeof renderDiagramAt> | null;
+  const count = diagram?.elementIds.length ?? 0;
+  const box = diagram?.bounds;
+
+  return {
+    ...result,
+    message: `${
+      `Applied a ${input.type} diagram to board ${result.board.id} ` +
+      `(${count} element${count === 1 ? "" : "s"}); it is now at ` +
+      `scene_version ${result.board.sceneVersion}.`
+    }${
+      box
+        ? ` It occupies (${box.x}, ${box.y}) to (${box.x + box.width}, ${
+            box.y + box.height
+          }).`
+        : ""
+    }${moved ? "" : " It stayed where it was."}`,
   };
 };

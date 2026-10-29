@@ -36,6 +36,7 @@ import { createDatabase } from "./db.js";
 import { describeOwner } from "./owner.js";
 import {
   addElementToolInput,
+  applyDslInput,
   createBoardInput,
   deleteElementInput,
   duplicateBoardInput,
@@ -45,10 +46,12 @@ import {
   listBoardsInput,
   moveElementInput,
   renameBoardInput,
+  sceneToDslInput,
   searchBoardsInput,
   updateElementInput,
 } from "./schemas.js";
 import { runExportBoard } from "./exportBoard.js";
+import { runSceneToDsl } from "./sceneToDsl.js";
 import {
   runGetBoard,
   runListBoards,
@@ -57,6 +60,7 @@ import {
 } from "./tools.js";
 import {
   runAddElement,
+  runApplyDsl,
   runCreateBoard,
   runDeleteElement,
   runDuplicateBoard,
@@ -215,12 +219,13 @@ export const createServer = (config: Config, db: Database): McpServer => {
 };
 
 /**
- * Registers `export_board`.
+ * Registers the tools that are neither a cheap read nor a write.
  *
- * Kept apart from both the read and the write block because it is neither: it
- * writes nothing, but it is not a cheap read either — it parses the whole
- * scene and renders it. The annotation says `readOnlyHint: true`, which is the
- * honest answer to "can this change my board?".
+ * `export_board` renders a picture of the board; `scene_to_dsl` reads the
+ * diagram back out of it as text. Both write nothing — their annotations say
+ * `readOnlyHint: true`, which is the honest answer to "can this change my
+ * board?" — but neither is a metadata query either: each parses the whole
+ * scene, and the export renders it.
  */
 export const registerExportTools = (
   server: McpServer,
@@ -252,6 +257,37 @@ export const registerExportTools = (
           config.owner,
           config.options,
           exportBoardInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "scene_to_dsl",
+    {
+      title: "Read a diagram as code",
+      description:
+        "Read a board's diagram back into the diagram pane's own language, " +
+        "so it can be edited as text and applied with apply_dsl. Returns the " +
+        "code, the diagram type it is written in, and a `skipped` list of " +
+        "everything on the board the language cannot express — hand-drawn " +
+        "elements, and diagram elements whose labels contain DSL syntax. " +
+        "Nothing is silently dropped.",
+      inputSchema: sceneToDslInput,
+      annotations: {
+        // Reads the scene and writes nothing.
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runSceneToDsl(
+          db,
+          config.owner,
+          config.options,
+          sceneToDslInput.parse(args).boardId,
         ),
       ),
   );
@@ -485,6 +521,39 @@ export const registerWriteTools = (
           config.owner,
           config.options,
           insertDiagramInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "apply_dsl",
+    {
+      title: "Apply diagram code",
+      description:
+        "Apply diagram code to a board, updating the diagram it already has " +
+        "in place: nodes whose label still exists keep their element ids, so " +
+        "their arrows stay attached and a selection survives. Hand-drawn " +
+        "elements are left untouched. The diagram stays where it is unless " +
+        "you pass x/y. Pair it with scene_to_dsl to edit a diagram as text.",
+      inputSchema: applyDslInput,
+      annotations: {
+        readOnlyHint: false,
+        // Nodes the code no longer mentions are removed, so it can destroy
+        // content even though hand-drawn work survives.
+        destructiveHint: true,
+        // Applying the same code twice leaves the same diagram in the same
+        // place — the ids are reused and the origin is the current corner.
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runApplyDsl(
+          db,
+          config.owner,
+          config.options,
+          applyDslInput.parse(args),
         ),
       ),
   );
