@@ -43,6 +43,7 @@ import {
   exportBoardInput,
   getBoardInput,
   insertDiagramInput,
+  insertTemplateInput,
   listBoardsInput,
   moveElementInput,
   renameBoardInput,
@@ -65,6 +66,7 @@ import {
   runDeleteElement,
   runDuplicateBoard,
   runInsertDiagram,
+  runInsertTemplate,
   runMoveElement,
   runRenameBoard,
   runUpdateElement,
@@ -554,6 +556,39 @@ export const registerWriteTools = (
           config.owner,
           config.options,
           applyDslInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "insert_template",
+    {
+      title: "Insert template",
+      description:
+        "Insert one of the built-in templates or diagram examples into a " +
+        'board, by id (e.g. "kanban-board") or by name (e.g. "Kanban ' +
+        'Board"). 32 board templates and 61 diagram examples are available. ' +
+        "The template is added beside what is already on the board; nothing " +
+        "is replaced.",
+      inputSchema: insertTemplateInput,
+      annotations: {
+        readOnlyHint: false,
+        // Nothing is removed, but adding a template to a board a person is
+        // looking at is a change they should be asked about.
+        destructiveHint: true,
+        // Inserting the same template twice adds it twice; that is a second
+        // change, not the same one.
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runInsertTemplate(
+          db,
+          config.owner,
+          config.options,
+          insertTemplateInput.parse(args),
         ),
       ),
   );

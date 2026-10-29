@@ -59,10 +59,16 @@ import {
 import {
   addFiles,
   buildElements,
+  ensureFreshIds,
   findElement,
   readScene,
   writeScene,
 } from "./sceneEdit.js";
+import {
+  buildTemplate,
+  defaultTemplateCorner,
+  placeTemplate,
+} from "./templates.js";
 import { ToolError } from "./tools.js";
 import {
   duplicateBoardRow,
@@ -83,11 +89,13 @@ import type {
   DeleteElementInput,
   DuplicateBoardInput,
   InsertDiagramInput,
+  InsertTemplateInput,
   MoveElementInput,
   RenameBoardInput,
   UpdateElementInput,
 } from "./schemas.js";
 import type { EditableScene } from "./sceneEdit.js";
+import type { PlacedTemplate } from "./templates.js";
 
 /** What `create_board` and `duplicate_board` return. */
 export type BoardWriteResult = {
@@ -1130,5 +1138,86 @@ export const runApplyDsl = async (
           }).`
         : ""
     }${moved ? "" : " It stayed where it was."}`,
+  };
+};
+
+/**
+ * Inserts one of the repo's built-in templates.
+ *
+ * The template is built by the gallery's own builder, so what lands on the
+ * board is the same set of elements the gallery inserts — the same labels,
+ * bindings and sticky-note fitting. Two things are added here:
+ *
+ * - **Placement.** The builder works in the template's own coordinates, which
+ *   start wherever its author drew them. The elements are shifted so the
+ *   template's content begins at the requested corner, or to the right of
+ *   whatever is already on the board.
+ * - **Fresh ids.** A template's elements carry ids the builder derived from
+ *   the template's specs, so inserting the same template twice would put two
+ *   elements with one id on the board. `ensureFreshIds` renumbers the group
+ *   and repairs the references inside it.
+ *
+ * The catalogue is loaded *before* the scene is opened, not inside the apply
+ * callback: `editScene` reads, changes and writes a scene synchronously
+ * between its version check and its `UPDATE`, and an `await` in the middle
+ * would widen that window for no reason. Loading a chunk from disk has
+ * nothing to do with the board, so it happens first.
+ *
+ * Nothing is replaced: a template is added beside what is there. The tool is
+ * annotated `destructiveHint: true` anyway, because adding elements to a board
+ * a person is looking at is a change they should be asked about.
+ */
+export const runInsertTemplate = async (
+  db: Database,
+  owner: OwnerIdentity,
+  options: ServerOptions,
+  input: InsertTemplateInput,
+): Promise<ElementWriteResult> => {
+  const built = await buildTemplate(input.template);
+
+  let placed: PlacedTemplate | null = null;
+
+  const result = await editScene(db, owner, options, {
+    boardId: input.boardId,
+    expectedSceneVersion: input.expectedSceneVersion,
+    action: `insert the "${built.entry.name}" template`,
+    apply: (scene: EditableScene) => {
+      // A caller may pin one axis and leave the other to the default, which
+      // is what makes "put it under everything else" expressible.
+      const fallback = defaultTemplateCorner(scene.elements);
+      const corner =
+        input.x === undefined && input.y === undefined
+          ? undefined
+          : { x: input.x ?? fallback.x, y: input.y ?? fallback.y };
+
+      const template = placeTemplate(built, scene.elements, corner);
+      const existingIds = new Set(scene.elements.map((element) => element.id));
+      const elements = ensureFreshIds(template.elements, existingIds);
+
+      scene.elements = [...scene.elements, ...elements];
+
+      placed = { ...template, elements };
+      return elements.map((element) => element.id);
+    },
+  });
+
+  // `editScene` only returns after `apply` has run, so this is set.
+  const template = placed as PlacedTemplate | null;
+  const count = template?.elements.length ?? 0;
+  const box = template?.bounds;
+
+  return {
+    ...result,
+    message: `${
+      `Inserted the "${built.entry.name}" template (${count} element` +
+      `${count === 1 ? "" : "s"}) on board ${result.board.id}; it is now at ` +
+      `scene_version ${result.board.sceneVersion}.`
+    }${
+      box
+        ? ` It occupies (${box.x}, ${box.y}) to (${box.x + box.width}, ${
+            box.y + box.height
+          }).`
+        : ""
+    }`,
   };
 };

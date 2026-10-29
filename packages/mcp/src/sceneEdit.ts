@@ -285,10 +285,16 @@ const styleOf = (input: StyleSpec) => {
  * exists makes the scene ambiguous — two elements, one identity — and the
  * editor keys everything by id. The rewrite is applied to the whole group at
  * once so the references *within* it stay correct: a sticky note's label points
- * at the note through `containerId`, and the note points back through
- * `boundElements`, so renumbering one without the other would orphan the label.
+ * at the note through `containerId`, the note points back through
+ * `boundElements`, a template's connectors name the shapes they join through
+ * `startBinding`/`endBinding`, and its elements name their frame through
+ * `frameId`. Renumbering one without the others would orphan them.
+ *
+ * The check is "does any id collide", not "renumber everything": a group that
+ * is already unique is returned untouched, so a caller's ids survive when they
+ * can.
  */
-const ensureFreshIds = (
+export const ensureFreshIds = (
   elements: ExcalidrawElement[],
   existingIds: ReadonlySet<string>,
 ): ExcalidrawElement[] => {
@@ -301,22 +307,44 @@ const ensureFreshIds = (
     remap.set(element.id, randomId());
   }
 
+  const id = (value: string) => remap.get(value) ?? value;
+
   return elements.map((element) => {
-    const id = remap.get(element.id) ?? element.id;
     const containerId =
       "containerId" in element && typeof element.containerId === "string"
-        ? remap.get(element.containerId) ?? element.containerId
+        ? id(element.containerId)
         : undefined;
+    const frameId =
+      typeof element.frameId === "string"
+        ? id(element.frameId)
+        : element.frameId;
 
     return {
       ...element,
-      id,
+      id: id(element.id),
+      frameId,
       ...(containerId !== undefined ? { containerId } : {}),
       boundElements:
         element.boundElements?.map((bound) => ({
           ...bound,
-          id: remap.get(bound.id) ?? bound.id,
+          id: id(bound.id),
         })) ?? element.boundElements,
+      ...(element.startBinding
+        ? {
+            startBinding: {
+              ...element.startBinding,
+              elementId: id(element.startBinding.elementId),
+            },
+          }
+        : {}),
+      ...(element.endBinding
+        ? {
+            endBinding: {
+              ...element.endBinding,
+              elementId: id(element.endBinding.elementId),
+            },
+          }
+        : {}),
     };
   });
 };
