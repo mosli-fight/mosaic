@@ -53,6 +53,7 @@ import {
   getDiagramTag,
 } from "@excalidraw/excalidraw/components/diagram/scene";
 import { ICON_FILE_ID_PREFIX } from "@excalidraw/excalidraw/components/icons/iconDrawing";
+import { findIconById } from "@excalidraw/excalidraw/components/icons/icons";
 
 import type { DiagramType } from "@excalidraw/excalidraw/components/diagram/types";
 
@@ -121,37 +122,6 @@ const fileIdOf = (element: ExcalidrawElement): string | null =>
     ? element.fileId
     : null;
 
-/** Whether an element names a library icon, which needs the catalogue to read. */
-const isLibraryIcon = (element: ExcalidrawElement): boolean => {
-  const fileId = fileIdOf(element);
-
-  return Boolean(fileId?.startsWith(ICON_FILE_ID_PREFIX));
-};
-
-/**
- * The ids in the icon library, loaded the first time a board needs them.
- *
- * The catalogue is 23 KB of tile definitions, and only a board that has a
- * library icon on it needs any of it — a glyph icon is read from
- * `ICON_GLYPHS`, which is already in the entry chunk. So the import is
- * dynamic: esbuild emits it as a chunk of its own, read from disk on the first
- * call that needs it rather than at startup. The set is cached for the life of
- * the process; a failed load is not, so one transient read error does not
- * poison every later call.
- */
-let iconLibrary: Set<string> | null = null;
-
-const loadIconLibrary = async (): Promise<Set<string>> => {
-  if (iconLibrary) {
-    return iconLibrary;
-  }
-
-  const module = await import("@excalidraw/excalidraw/components/icons/icons");
-  iconLibrary = new Set(module.ICONS.map((icon) => icon.id));
-
-  return iconLibrary;
-};
-
 /**
  * The `[icon: ...]` value for an icon element.
  *
@@ -160,14 +130,12 @@ const loadIconLibrary = async (): Promise<Set<string>> => {
  * and any of them re-renders identically. A library icon is named by its id,
  * which `findIconByName` resolves back to the same tile.
  *
- * @param known whether an icon id is in the library. Passed in rather than
- *   imported, because the catalogue is a chunk of its own — see
- *   {@link loadIconLibrary}.
+ * The icon catalogue is imported statically rather than lazily: the diagram
+ * engine's `scene.ts` already imports it, and that module is in the server's
+ * entry graph from `insert_diagram`, so a dynamic import here would only move
+ * the bytes into a chunk that is still loaded at startup.
  */
-const iconNameOf = (
-  element: ExcalidrawElement,
-  known: (id: string) => boolean,
-): string | null => {
+const iconNameOf = (element: ExcalidrawElement): string | null => {
   if (element.type === "text") {
     const glyph = element.originalText.trim();
 
@@ -188,7 +156,7 @@ const iconNameOf = (
 
   const id = fileId.slice(ICON_FILE_ID_PREFIX.length);
 
-  return known(id) ? id : null;
+  return findIconById(id) ? id : null;
 };
 
 /**
@@ -458,7 +426,6 @@ const parseEdgeKey = (
 const collect = (
   elements: readonly ExcalidrawElement[],
   type: DiagramType,
-  knownIcon: (id: string) => boolean,
 ): DiagramScene => {
   const labels = new Map<string, string>();
   const icons = new Map<string, string>();
@@ -484,7 +451,7 @@ const collect = (
         if (!tag.diagramNode) {
           break;
         }
-        const name = iconNameOf(element, knownIcon);
+        const name = iconNameOf(element);
         if (name) {
           icons.set(tag.diagramNode, name);
         }
@@ -837,18 +804,11 @@ export const runSceneToDsl = async (
   const scene = readScene(row.scene);
   const visible = scene.elements.filter((element) => !element.isDeleted);
 
-  // The icon catalogue is a chunk, so it is only read when the board actually
-  // has a library icon on it. `known` is still synchronous, because the
-  // collector is: the load happens here, before the scene is walked.
-  const icons = visible.some(isLibraryIcon) ? await loadIconLibrary() : null;
-  const knownIcon = (id: string) => icons?.has(id) ?? false;
-
   // The type has to be known before the nodes are read: an ERD's label is
   // split into a name and fields, and every other type's is not.
-  const firstPass = collect(visible, "architecture", knownIcon);
+  const firstPass = collect(visible, "architecture");
   const type = inferType(firstPass);
-  const diagram =
-    type === "architecture" ? firstPass : collect(visible, type, knownIcon);
+  const diagram = type === "architecture" ? firstPass : collect(visible, type);
 
   const skipped: SkippedElement[] = [];
 
