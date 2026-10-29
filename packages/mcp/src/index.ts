@@ -36,17 +36,23 @@ import { createDatabase } from "./db.js";
 import { describeOwner } from "./owner.js";
 import {
   addElementToolInput,
+  applyDslInput,
   createBoardInput,
   deleteElementInput,
   duplicateBoardInput,
+  exportBoardInput,
   getBoardInput,
   insertDiagramInput,
+  insertTemplateInput,
   listBoardsInput,
   moveElementInput,
   renameBoardInput,
+  sceneToDslInput,
   searchBoardsInput,
   updateElementInput,
 } from "./schemas.js";
+import { runExportBoard } from "./exportBoard.js";
+import { runSceneToDsl } from "./sceneToDsl.js";
 import {
   runGetBoard,
   runListBoards,
@@ -55,10 +61,12 @@ import {
 } from "./tools.js";
 import {
   runAddElement,
+  runApplyDsl,
   runCreateBoard,
   runDeleteElement,
   runDuplicateBoard,
   runInsertDiagram,
+  runInsertTemplate,
   runMoveElement,
   runRenameBoard,
   runUpdateElement,
@@ -206,9 +214,85 @@ export const createServer = (config: Config, db: Database): McpServer => {
   // Registered here rather than in `main` so a test that drives `createServer`
   // sees the same tool set a client does. `registerWriteTools` is defined below
   // and is initialised by the time this function is called.
+  registerExportTools(server, config, db);
   registerWriteTools(server, config, db);
 
   return server;
+};
+
+/**
+ * Registers the tools that are neither a cheap read nor a write.
+ *
+ * `export_board` renders a picture of the board; `scene_to_dsl` reads the
+ * diagram back out of it as text. Both write nothing — their annotations say
+ * `readOnlyHint: true`, which is the honest answer to "can this change my
+ * board?" — but neither is a metadata query either: each parses the whole
+ * scene, and the export renders it.
+ */
+export const registerExportTools = (
+  server: McpServer,
+  config: Config,
+  db: Database,
+) => {
+  server.registerTool(
+    "export_board",
+    {
+      title: "Export board",
+      description:
+        "Render a board to an image. Returns SVG text you can write to a " +
+        ".svg file. PNG is not available from this server — rasterising " +
+        "needs a canvas a stdio process does not have — so ask for SVG and " +
+        "convert it if you need a bitmap.",
+      inputSchema: exportBoardInput,
+      annotations: {
+        // Renders a picture of the board; changes nothing.
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runExportBoard(
+          db,
+          config.owner,
+          config.options,
+          exportBoardInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "scene_to_dsl",
+    {
+      title: "Read a diagram as code",
+      description:
+        "Read a board's diagram back into the diagram pane's own language, " +
+        "so it can be edited as text and applied with apply_dsl. Returns the " +
+        "code, the diagram type it is written in, and a `skipped` list of " +
+        "everything on the board the language cannot express — hand-drawn " +
+        "elements, and diagram elements whose labels contain DSL syntax. " +
+        "Nothing is silently dropped.",
+      inputSchema: sceneToDslInput,
+      annotations: {
+        // Reads the scene and writes nothing.
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runSceneToDsl(
+          db,
+          config.owner,
+          config.options,
+          sceneToDslInput.parse(args).boardId,
+        ),
+      ),
+  );
 };
 
 /**
@@ -439,6 +523,72 @@ export const registerWriteTools = (
           config.owner,
           config.options,
           insertDiagramInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "apply_dsl",
+    {
+      title: "Apply diagram code",
+      description:
+        "Apply diagram code to a board, updating the diagram it already has " +
+        "in place: nodes whose label still exists keep their element ids, so " +
+        "their arrows stay attached and a selection survives. Hand-drawn " +
+        "elements are left untouched. The diagram stays where it is unless " +
+        "you pass x/y. Pair it with scene_to_dsl to edit a diagram as text.",
+      inputSchema: applyDslInput,
+      annotations: {
+        readOnlyHint: false,
+        // Nodes the code no longer mentions are removed, so it can destroy
+        // content even though hand-drawn work survives.
+        destructiveHint: true,
+        // Applying the same code twice leaves the same diagram in the same
+        // place — the ids are reused and the origin is the current corner.
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runApplyDsl(
+          db,
+          config.owner,
+          config.options,
+          applyDslInput.parse(args),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "insert_template",
+    {
+      title: "Insert template",
+      description:
+        "Insert one of the built-in templates or diagram examples into a " +
+        'board, by id (e.g. "kanban-board") or by name (e.g. "Kanban ' +
+        'Board"). 32 board templates and 61 diagram examples are available. ' +
+        "The template is added beside what is already on the board; nothing " +
+        "is replaced.",
+      inputSchema: insertTemplateInput,
+      annotations: {
+        readOnlyHint: false,
+        // Nothing is removed, but adding a template to a board a person is
+        // looking at is a change they should be asked about.
+        destructiveHint: true,
+        // Inserting the same template twice adds it twice; that is a second
+        // change, not the same one.
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (args) =>
+      guard(() =>
+        runInsertTemplate(
+          db,
+          config.owner,
+          config.options,
+          insertTemplateInput.parse(args),
         ),
       ),
   );

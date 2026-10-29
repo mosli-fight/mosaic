@@ -24,6 +24,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",
     "@neondatabase/serverless": "1.2.0",
+    "jsdom": "22.1.0",
     "zod": "4.6.7"
   },
   "devDependencies": {

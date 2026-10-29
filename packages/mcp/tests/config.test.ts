@@ -109,11 +109,13 @@ describe("loadConfig", () => {
     env[ENV.maxTextLength] = "120";
     env[ENV.maxElements] = "7";
     env[ENV.maxSceneBytes] = "1024";
+    env[ENV.maxExportBytes] = "2048";
 
     expect(loadConfig(env).options).toEqual({
       maxTextLength: 120,
       maxElements: 7,
       maxSceneBytes: 1024,
+      maxExportBytes: 2048,
     });
   });
 
