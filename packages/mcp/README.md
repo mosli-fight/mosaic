@@ -1,6 +1,6 @@
 # `@mosaic/mcp`
 
-A [Model Context Protocol](https://modelcontextprotocol.io) server for Mosaic boards, over stdio, from Claude Desktop or any other MCP client. A model can list your boards, read a compact summary of what is on one, search across them, and — since Phase 2 — create boards and change what is on them.
+A [Model Context Protocol](https://modelcontextprotocol.io) server for Mosaic boards, over stdio, from Claude Desktop or any other MCP client. A model can list your boards, read a compact summary of what is on one, search across them, create boards and change what is on them, draw a diagram from code and read it back as code, insert one of the gallery's templates, and export a board as an image.
 
 ## Quick start
 
@@ -29,13 +29,15 @@ Restart the client. The server writes `[mosaic-mcp] ready — reading and writin
 
 ## Tools
 
-Eleven tools: three read, eight write.
+Fifteen tools: five read, ten write.
 
 | Tool              | Writes | Annotations              |
 | ----------------- | ------ | ------------------------ |
 | `list_boards`     | no     | `readOnlyHint: true`     |
 | `get_board`       | no     | `readOnlyHint: true`     |
 | `search_boards`   | no     | `readOnlyHint: true`     |
+| `export_board`    | no     | `readOnlyHint: true`     |
+| `scene_to_dsl`    | no     | `readOnlyHint: true`     |
 | `create_board`    | yes    | `destructiveHint: false` |
 | `rename_board`    | yes    | `destructiveHint: false` |
 | `duplicate_board` | yes    | `destructiveHint: false` |
@@ -44,8 +46,12 @@ Eleven tools: three read, eight write.
 | `move_element`    | yes    | `destructiveHint: true`  |
 | `delete_element`  | yes    | `destructiveHint: true`  |
 | `insert_diagram`  | yes    | `destructiveHint: true`  |
+| `apply_dsl`       | yes    | `destructiveHint: true`  |
+| `insert_template` | yes    | `destructiveHint: true`  |
 
 `destructiveHint` is not decoration: a client's confirmation UI is driven by it. Every write tool is `readOnlyHint: false`.
+
+`export_board` and `scene_to_dsl` are reads — neither writes a row — but they are not cheap metadata queries either: each parses the whole scene, and the export renders it. They are grouped with the reads because "can this change my board?" has one answer.
 
 ### Reading
 
@@ -96,6 +102,49 @@ Matches board **names** and the **text inside scenes**.
 Each match reports `matchedOn` (`name`, `content`, or both) and a short `excerpts` list around each content hit. Name matches sort first. The response also reports `boardsSearched` and `boardsSkipped` — a board whose scene is too large to parse is counted as skipped rather than silently reported as a non-match.
 
 Matching is case-insensitive and literal: `$5` matches the text `$5`, and `.*` matches nothing unless a board literally contains `.*`.
+
+### Reading a board as code or as an image
+
+Two reads that parse the whole scene rather than its metadata.
+
+#### `scene_to_dsl`
+
+Reads a board's diagram back out as the pane's own code.
+
+| Input     | Type | Notes     |
+| --------- | ---- | --------- |
+| `boardId` | uuid | Required. |
+
+The result carries:
+
+- **`code`** — the diagram as text, ready to edit and hand to `apply_dsl`.
+- **`type`** — the language it is written in, inferred from the elements: lifelines mean `sequence`, fields mean `erd`, a diamond (or a flowchart-implied ellipse) means `flowchart`, otherwise `architecture`.
+- **`counts`** — nodes, edges and groups written.
+- **`skipped`** — everything on the board the language cannot express, each with an `id`, `type` and `reason`. **Nothing is silently dropped.** Hand-drawn elements are listed here, and so is a diagram element the DSL cannot name — a node whose label contains `#`, braces, brackets or an arrow token, a node with no label, or a second node whose label folds to the same slug as another.
+- **`warnings`** — the one structural caveat: nodes inside a brace group have to be written together, so a diagram whose groups interleave in layout order comes back with its nodes in a different order, which can shift them within their column.
+
+The code is derived from the **elements**, not from whatever `appState.diagramCode` happens to hold, so a diagram edited by hand in the pane reads back as what is actually drawn.
+
+**Round trip.** `scene_to_dsl` then `apply_dsl` on a fresh board reproduces the diagram. To keep that true, the reader infers the type, emits only attributes that are not implied by the type (a decision is a diamond without saying so), and writes nodes in scene order. The tests assert the round trip by rendering the generated code again and comparing element signatures and labels.
+
+#### `export_board`
+
+Renders a board to an image.
+
+| Input | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `boardId` | uuid | — | Required. |
+| `format` | `svg` \| `png` | `svg` | See the PNG limitation below. |
+| `padding` | int 0–200 | `10` | Space around the content, in scene units. |
+| `background` | boolean | `true` | Paint the board's background colour; `false` is transparent. |
+
+Returns the SVG document as `content`, its size in `bytes`, and its `width`/`height` from the viewBox — so a caller can size the page it goes on. Write `content` to a `.svg` file as-is.
+
+It uses the app's own export pipeline (`exportToSvg` from `packages/excalidraw/scene/export`), not a second renderer, so the picture is the one the app would produce. Fonts are not inlined: the SVG references the same families the app uses, which is what keeps the document small and readable.
+
+**PNG is not available.** Rasterising needs a canvas, and a stdio process has none — the app does it in the browser. Asking for `format: "png"` is refused with an explanation rather than failing obscurely; export SVG and convert it if you need a bitmap. This is the one documented limitation of the tool.
+
+The rendered document is capped by `MOSAIC_MCP_MAX_EXPORT_BYTES`, and the scene is capped by `MOSAIC_MCP_MAX_SCENE_BYTES` before it is parsed — an export cannot be the way a board the server would refuse to read gets read anyway.
 
 ### Writing
 
@@ -224,8 +273,10 @@ The code is the same language the diagram pane in the app uses:
 ```
 api: API server
 db: Database
-api -> db: reads
+api > db: reads
 ```
+
+The arrow is `>` (and `<` for the reverse, `<>` for both ways); `->` is not an arrow token and would be read as part of the label. In `architecture` a colon is part of the label, so `api: API server` names one node called "API server"; in `erd` the colon splits the node's name from its fields.
 
 The layout is the existing engine — `parseDiagram`, `layoutDiagram` and `reconcileDiagram` from `packages/excalidraw/components/diagram` — not a second implementation, so a diagram made by a tool is the same diagram the pane would make.
 
@@ -237,6 +288,49 @@ Two things the scene layer handles for you:
 - **The diagram does not land on existing work.** With no origin given it is placed to the right of whatever is already on the board; `x`/`y` override that.
 
 Parse errors refuse the whole call rather than inserting what parsed, and the message carries the parser's line numbers.
+
+#### `apply_dsl`
+
+Applies diagram code to a board, updating the diagram it already has **in place**.
+
+| Input | Type | Notes |
+| --- | --- | --- |
+| `boardId` | uuid | Required. |
+| `expectedSceneVersion` | int ≥ 0 | Required. |
+| `type` | `flowchart` \| `architecture` \| `erd` \| `sequence` | Which language the code is in. |
+| `code` | string 1–20,000 | The diagram, one statement per line. |
+| `x`, `y` | number | Optional. Defaults to where the diagram already is. |
+
+The same engine as `insert_diagram` — `reconcileDiagram` is what does the work — with two differences that matter when you are _editing_ rather than creating:
+
+- **The diagram does not move unless you say so.** The default origin is the corner the diagram already occupies, so changing one label and re-applying changes that label and nothing else. `insert_diagram` places a new diagram to the right of the board's content, which is right for a first insert and wrong for an edit.
+- **Nodes that still exist keep their element ids.** `reconcileDiagram` keys the existing elements by their diagram tags and passes the ids through, so an arrow bound to a node stays bound and a selection in the editor survives. Nodes the new code no longer mentions are removed.
+
+Hand-drawn elements are untouched, exactly as they are for `insert_diagram`. Applying the same code twice leaves the same diagram in the same place, which is why the tool is `idempotentHint: true` — and why the round trip below works.
+
+#### `insert_template`
+
+Inserts one of the repo's built-in templates or diagram examples.
+
+| Input | Type | Notes |
+| --- | --- | --- |
+| `boardId` | uuid | Required. |
+| `expectedSceneVersion` | int ≥ 0 | Required. |
+| `template` | string 1–200 | An id (`kanban-board`) or a name (`Kanban Board`). |
+| `x`, `y` | number | Optional corner. Defaults to the right of existing content. |
+
+**32 board templates and 61 diagram examples** are available — the same catalogues the gallery uses (`templates/catalogue.ts` and `templates/diagrams/`), built by the same builder (`templates/builder.ts`). A template inserted by this tool is the same set of elements the gallery inserts: same labels, same bindings, same sticky-note fitting.
+
+The lookup tries the id exactly first, then the name case- and accent-insensitively. An unknown reference is refused with the closest names, and nothing is written.
+
+Two things the scene layer handles:
+
+- **Fresh ids.** A template's elements carry ids derived from its specs, so inserting the same template twice would put two elements with one id on the board. The inserted group is renumbered as a whole, and the references _inside_ it are repaired with it — `frameId`, `containerId`, `boundElements`, `startBinding`, `endBinding` — so a frame's children stay in their frame and a connector stays attached.
+- **Placement.** The template's own coordinates start wherever its author drew them, so the elements are shifted to the requested corner, or to the right of whatever is already on the board.
+
+Nothing is replaced: a template is added beside what is there. The tool is `destructiveHint: true` anyway, because adding elements to a board a person is looking at is a change they should be asked about.
+
+The catalogues are loaded lazily — `await import()` inside the call, cached for the life of the process — so a session that never inserts a template never reads them. esbuild only splits dynamic imports, which is what keeps them out of `dist/index.js` and in chunks of their own.
 
 ## The `scene_version` rule
 
@@ -262,6 +356,7 @@ The server holds a database credential, so it can reach every row that credentia
 - **A version guard on every scene write.** See above.
 - **A size cap before the write.** A scene above `MOSAIC_MCP_MAX_SCENE_BYTES` is refused, so the server cannot write a board it would then refuse to read. The check is on the serialised string and happens before the `UPDATE`.
 - **A scene that cannot be parsed is refused, not replaced.** Writing an empty scene over a corrupt one would turn "this board is broken" into "this board is empty", which is worse and irreversible.
+- **A size cap before every parse, too.** `export_board` and `scene_to_dsl` refuse a scene above `MOSAIC_MCP_MAX_SCENE_BYTES` before parsing it, and `export_board` caps the document it returns — a read cannot be the way an oversized board is loaded anyway.
 - **Everything not being changed is preserved verbatim.** The parsed document is spread back out on serialisation, so a top-level key this server has never heard of survives a write. The one exception is `appState.collaborators`, which is a live `Map` and must never be persisted.
 
 Anyone who can edit the client's `mcpServers` config can point the server at a different identity or a different database, and read or write what that credential allows. That is acceptable for a local, single-operator tool. If you need per-person isolation, run one server per person with a credential that can only reach that person's rows — do not try to fix it in this config.
@@ -278,6 +373,7 @@ All configuration is environment variables, because a stdio server is launched b
 | `MOSAIC_MCP_MAX_TEXT_LENGTH` | no | `500` | Longest single piece of text returned. |
 | `MOSAIC_MCP_MAX_ELEMENTS` | no | `50` | Most elements described when `includeElements` is set. |
 | `MOSAIC_MCP_MAX_SCENE_BYTES` | no | `8388608` | Largest scene the server will parse, and largest it will write. |
+| `MOSAIC_MCP_MAX_EXPORT_BYTES` | no | `16777216` | Largest SVG `export_board` will return. |
 
 Exactly one of `MOSAIC_USER_ID` / `MOSAIC_OWNER_UID` must be set. The server refuses to start otherwise: with no identity it could only return nothing, or — far worse — everything. Setting both is also an error, because the two scope different rows and silently preferring one would show the wrong boards.
 
@@ -320,6 +416,8 @@ Once configured, these are the kinds of things the tools are shaped for:
 - "Do I have any boards in the trash?"
 - "How big is my biggest board — how many elements and roughly what area?"
 - "Find every board with a code block in it."
+- "Export the Architecture Review board as an SVG and save it next to my notes."
+- "What does the diagram on the payments board actually say? Give me it as code."
 
 **Writing**
 
@@ -331,6 +429,10 @@ Once configured, these are the kinds of things the tools are shaped for:
 - "Make a flowchart for the refund process: request received → validate → approved or rejected → notify."
 - "Delete the arrow I added earlier — it's the second element from the top."
 - "Move that sticky note to the right of the diagram so it doesn't overlap."
+- "On the Q3 board, rename the 'Postgres' node to 'Postgres 16' in the diagram and leave everything else where it is."
+- "Read the diagram on the onboarding board as code, add a step for email verification, and apply it back."
+- "Start a new board from the Kanban Board template."
+- "Put the 'Blog Entity Relationship Diagram' example on the data-model board."
 
 ## Development
 
@@ -347,12 +449,16 @@ The tests need no database. They drive the tool bodies against a fake database, 
 | File | Responsibility |
 | --- | --- |
 | `src/index.ts` | MCP adapter: registers the tools, validates input, serialises output. |
-| `src/tools.ts` | The three read tool bodies, as plain functions over a database handle. |
+| `src/tools.ts` | The three metadata read tool bodies, as plain functions over a database handle. |
 | `src/writeTools.ts` | The write tool bodies, and the shared read-modify-write they go through. |
 | `src/db.ts` | Read queries, and the data-path decision in its module comment. |
 | `src/writes.ts` | Every `INSERT` / `UPDATE` / `DELETE`, kept in one file to review. |
 | `src/sceneEdit.ts` | Reading, changing and re-serialising a stored scene; element construction. |
 | `src/diagram.ts` | The adapter between the diagram engine and a stored scene. |
+| `src/sceneToDsl.ts` | Reading a stored scene back out as diagram code, and the skipped list. |
+| `src/exportBoard.ts` | Rendering a board to SVG through the app's export pipeline. |
+| `src/dom.ts` | The jsdom globals and canvas shim the export needs in a Node process. |
+| `src/templates.ts` | Lazy template catalogues, name-or-id lookup, and placement. |
 | `src/textMetrics.ts` | Text measurement for a process with no canvas. |
 | `src/scene.ts` | The scene summariser and its caps. |
 | `src/schemas.ts` | zod input schemas and the search helpers. |

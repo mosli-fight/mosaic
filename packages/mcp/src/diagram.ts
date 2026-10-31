@@ -32,7 +32,10 @@ import {
 } from "@excalidraw/excalidraw/components/diagram/scene";
 import { DIAGRAM_ORIGIN } from "@excalidraw/excalidraw/components/diagram/sync";
 
-import type { DiagramType } from "@excalidraw/excalidraw/components/diagram/types";
+import type {
+  DiagramModel,
+  DiagramType,
+} from "@excalidraw/excalidraw/components/diagram/types";
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 import { ToolError } from "./tools.js";
@@ -91,19 +94,41 @@ export const defaultDiagramOrigin = (
 };
 
 /**
- * Renders diagram code into elements for a board.
+ * The top-left corner of the diagram already on a board, or null when there
+ * is none.
  *
- * A parse error refuses the whole call rather than inserting what parsed: a
- * half-drawn diagram is worse than none, and the errors carry line numbers a
- * model can act on. The same is true of code that parses to nothing — that is
- * a mistake in the input, not a request to clear the board.
+ * `apply_dsl` uses it as the default placement: re-applying edited code should
+ * change the diagram, not move it. It is the bounds of the diagram elements
+ * rather than their layout origin, because a group's frame starts left of and
+ * above the origin — aligning to the origin would shift a grouped diagram by
+ * the group's padding on every pass.
  */
-export const renderDiagram = (
-  existing: readonly ExcalidrawElement[],
-  code: string,
-  type: DiagramType,
-  origin?: { x: number; y: number },
-): RenderedDiagram => {
+export const currentDiagramCorner = (
+  elements: readonly ExcalidrawElement[],
+): { x: number; y: number } | null => {
+  const diagram = elements.filter(
+    (element) => !element.isDeleted && isDiagramElement(element),
+  );
+
+  if (!diagram.length) {
+    return null;
+  }
+
+  const [minX, minY] = getCommonBounds(diagram);
+
+  return Number.isFinite(minX) && Number.isFinite(minY)
+    ? { x: minX, y: minY }
+    : null;
+};
+
+/**
+ * Parses diagram code, refusing the call rather than inserting what parsed.
+ *
+ * A half-drawn diagram is worse than none, and the errors carry line numbers
+ * a model can act on. The same is true of code that parses to nothing — that
+ * is a mistake in the input, not a request to clear the board.
+ */
+const parseOrRefuse = (code: string, type: DiagramType): DiagramModel => {
   const { model, errors } = parseDiagram(code, type);
 
   if (errors.length) {
@@ -127,11 +152,17 @@ export const renderDiagram = (
     );
   }
 
-  const layout = layoutDiagram(
-    model,
-    type,
-    origin ?? defaultDiagramOrigin(existing),
-  );
+  return model;
+};
+
+/** Lays a parsed model out, reconciles it with the board, and gathers files. */
+const build = (
+  existing: readonly ExcalidrawElement[],
+  model: DiagramModel,
+  type: DiagramType,
+  origin: { x: number; y: number },
+): RenderedDiagram => {
+  const layout = layoutDiagram(model, type, origin);
   const elements = reconcileDiagram(existing, model, layout, type);
 
   const files: Record<string, unknown> = {};
@@ -147,4 +178,44 @@ export const renderDiagram = (
       .map((element) => element.id),
     bounds: layout.bounds,
   };
+};
+
+/** Renders diagram code into elements for a board. */
+export const renderDiagram = (
+  existing: readonly ExcalidrawElement[],
+  code: string,
+  type: DiagramType,
+  origin?: { x: number; y: number },
+): RenderedDiagram =>
+  build(
+    existing,
+    parseOrRefuse(code, type),
+    type,
+    origin ?? defaultDiagramOrigin(existing),
+  );
+
+/**
+ * Renders diagram code so that its content's top-left corner lands on
+ * `corner`.
+ *
+ * The layout is a pure translation of its origin — column widths, gaps and
+ * group padding do not depend on where the diagram starts — so laying it out
+ * once at the origin and once more at the offset gives the exact placement.
+ * That is what makes `apply_dsl` idempotent: the same code applied twice
+ * leaves the diagram where it is, rather than nudging it by a group's padding
+ * each time.
+ */
+export const renderDiagramAt = (
+  existing: readonly ExcalidrawElement[],
+  code: string,
+  type: DiagramType,
+  corner: { x: number; y: number },
+): RenderedDiagram => {
+  const model = parseOrRefuse(code, type);
+  const probe = layoutDiagram(model, type, DIAGRAM_ORIGIN);
+
+  return build(existing, model, type, {
+    x: corner.x - probe.bounds.x,
+    y: corner.y - probe.bounds.y,
+  });
 };
