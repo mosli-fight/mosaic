@@ -41,6 +41,8 @@
 import { getFontSizeFromFontString } from "@excalidraw/common";
 import { JSDOM } from "jsdom";
 
+import type { FontString } from "@excalidraw/element/types";
+
 import { estimateLineWidth } from "./textMetrics.js";
 
 /** The fallback size when a font shorthand cannot be read. */
@@ -111,14 +113,19 @@ const define = (name: string, value: unknown): void => {
 
 /** A 2D context that can measure text, and nothing else. */
 const measuringContext = () => {
-  let font = `${FALLBACK_FONT_SIZE}px sans-serif`;
+  // `CanvasRenderingContext2D.font` is a plain `string` in the DOM lib, but the
+  // editor's measurement helpers take the branded `FontString` they produce
+  // from `getFontString`. The value a caller assigns here *is* a CSS font
+  // shorthand, so the cast is at the one boundary where an untyped string
+  // enters — the same place the editor itself brands the string it builds.
+  let font = `${FALLBACK_FONT_SIZE}px sans-serif` as FontString;
 
   return {
     get font() {
       return font;
     },
     set font(value: string) {
-      font = value;
+      font = value as FontString;
     },
     measureText: (text: string) => {
       const size = getFontSizeFromFontString(font);

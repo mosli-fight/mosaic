@@ -39,6 +39,7 @@ import {
 import {
   getStickyNoteLayout,
   isInvisiblySmallElement,
+  isLinearElement,
   newArrowElement,
   newElement,
   newElementWith,
@@ -319,6 +320,31 @@ export const ensureFreshIds = (
         ? id(element.frameId)
         : element.frameId;
 
+    // `startBinding`/`endBinding` exist only on linear elements (arrows and
+    // lines); on every other element the base type has no such fields. The
+    // editor's own `isLinearElement` guard is what narrows them, rather than
+    // reaching for the properties on the union and hoping they are there.
+    const bindings = isLinearElement(element)
+      ? {
+          ...(element.startBinding
+            ? {
+                startBinding: {
+                  ...element.startBinding,
+                  elementId: id(element.startBinding.elementId),
+                },
+              }
+            : {}),
+          ...(element.endBinding
+            ? {
+                endBinding: {
+                  ...element.endBinding,
+                  elementId: id(element.endBinding.elementId),
+                },
+              }
+            : {}),
+        }
+      : {};
+
     return {
       ...element,
       id: id(element.id),
@@ -329,22 +355,7 @@ export const ensureFreshIds = (
           ...bound,
           id: id(bound.id),
         })) ?? element.boundElements,
-      ...(element.startBinding
-        ? {
-            startBinding: {
-              ...element.startBinding,
-              elementId: id(element.startBinding.elementId),
-            },
-          }
-        : {}),
-      ...(element.endBinding
-        ? {
-            endBinding: {
-              ...element.endBinding,
-              elementId: id(element.endBinding.elementId),
-            },
-          }
-        : {}),
+      ...bindings,
     };
   });
 };
