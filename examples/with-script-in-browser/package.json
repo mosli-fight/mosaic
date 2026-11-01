@@ -5,7 +5,7 @@
   "dependencies": {
     "@excalidraw/excalidraw": "*",
     "browser-fs-access": "0.38.0",
-    "react": "19.3.0",
+    "react": "19.3.1",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
