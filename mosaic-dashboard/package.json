@@ -24,7 +24,7 @@
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
     "@mosaic/brand": "0.1.0",
-    "dexie": "4.4.6",
+    "dexie": "4.4.7",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-router-dom": "6.30.6",
