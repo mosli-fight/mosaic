@@ -66,8 +66,7 @@ const post = async (
   owner: OwnerIdentity,
   body: unknown,
   method = "POST",
-) =>
-  handleHttpRequest(config, db, { owner, method, body });
+) => handleHttpRequest(config, db, { owner, method, body });
 
 describe("handleHttpRequest", () => {
   it("answers an initialize request with a valid MCP response", async () => {
@@ -104,7 +103,10 @@ describe("handleHttpRequest", () => {
     expect(text).toContain("boards");
 
     // The call was scoped to the authenticated owner.
-    const expectedParam = user.kind === "user" ? user.userId : user.ownerUid;
+    const expectedParam =
+      user.kind === "user"
+        ? user.userId
+        : (user as { ownerUid: string }).ownerUid;
     expect(calls.some((call) => call.params.includes(expectedParam))).toBe(
       true,
     );
@@ -123,7 +125,10 @@ describe("handleHttpRequest", () => {
 
     const otherParam = otherUser.kind === "user" ? otherUser.userId : null;
     expect(
-      calls.some((call) => call.text.includes("b.user_id") && call.params.includes(otherParam)),
+      calls.some(
+        (call) =>
+          call.text.includes("b.user_id") && call.params.includes(otherParam),
+      ),
     ).toBe(true);
   });
 

@@ -187,10 +187,10 @@ export const createApiKey = async (
   const hash = hashApiKey(key);
 
   if (owner.kind === "user") {
-    await db.query(
-      `INSERT INTO api_keys (key_hash, user_id) VALUES ($1, $2)`,
-      [hash, owner.userId],
-    );
+    await db.query(`INSERT INTO api_keys (key_hash, user_id) VALUES ($1, $2)`, [
+      hash,
+      owner.userId,
+    ]);
   } else {
     await db.query(
       `INSERT INTO api_keys (key_hash, owner_uid) VALUES ($1, $2)`,

@@ -24,10 +24,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const state = {
   /** Key digest -> owner row, as the fake `query` will return. */
-  keys: new Map<
-    string,
-    { user_id: string | null; owner_uid: string | null }
-  >(),
+  keys: new Map<string, { user_id: string | null; owner_uid: string | null }>(),
   /** Whether `query` has been called, and with what. */
   calls: [] as { sql: string; params: unknown[] }[],
 };
@@ -80,22 +77,21 @@ const makeRes = () => {
   };
 };
 
-type Res = ReturnType<typeof makeRes>;
-
-const req = (opts: {
-  method?: string;
-  url?: string;
-  headers?: Record<string, string>;
-  body?: unknown;
-} = {}) => ({
+const req = (
+  opts: {
+    method?: string;
+    url?: string;
+    headers?: Record<string, string>;
+    body?: unknown;
+  } = {},
+) => ({
   method: opts.method ?? "POST",
   url: opts.url ?? "/api/mcp",
   headers: opts.headers ?? {},
   body: opts.body,
 });
 
-const digest = (key: string) =>
-  createHash("sha256").update(key).digest("hex");
+const digest = (key: string) => createHash("sha256").update(key).digest("hex");
 
 /* -------------------------------------------------------------------------- */
 /* Tests                                                                       */

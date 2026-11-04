@@ -97,7 +97,7 @@ export const runExportBoard = async (
   if (input.format === "png") {
     throw new ToolError(
       "PNG export is not available from this server. Rasterising a board " +
-        "needs a canvas implementation, which a stdio process does not have — " +
+        "needs a canvas implementation, which a server process does not have — " +
         "the export pipeline would need a headless browser. Nothing was " +
         'exported. Ask for format "svg" instead: it is the same picture, ' +
         "resolution-independent, and any image tool can convert it to PNG.",
