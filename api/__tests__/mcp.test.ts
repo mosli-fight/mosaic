@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
-
 import { describe, expect, it, vi } from "vitest";
+
+import { hashApiKey } from "../../packages/mcp/src/apiKeys.js";
 
 /**
  * Tests for the hosted MCP route (`api/mcp/index.ts`).
@@ -24,7 +24,10 @@ import { describe, expect, it, vi } from "vitest";
 
 const state = {
   /** Key digest -> owner row, as the fake `query` will return. */
-  keys: new Map<string, { user_id: string | null; owner_uid: string | null }>(),
+  keys: new Map<
+    string,
+    { key_hash: string; user_id: string | null; owner_uid: string | null }
+  >(),
   /** Whether `query` has been called, and with what. */
   calls: [] as { sql: string; params: unknown[] }[],
 };
@@ -35,10 +38,10 @@ vi.mock("../_db.js", async () => {
     ...actual,
     query: vi.fn(async (sql: string, params: unknown[] = []) => {
       state.calls.push({ sql, params });
-      const hash = params[0] as string;
-      const owner = state.keys.get(hash);
-      if (owner) {
-        return [owner] as never;
+      // The scrypt lookup selects live digests with no WHERE value and
+      // verifies the key against each one in `resolveApiKeyOwner`.
+      if (sql.startsWith("SELECT key_hash, user_id, owner_uid FROM api_keys")) {
+        return [...state.keys.values()] as never;
       }
       return [] as never;
     }),
@@ -91,7 +94,8 @@ const req = (
   body: opts.body,
 });
 
-const digest = (key: string) => createHash("sha256").update(key).digest("hex");
+/** Salted scrypt digest for a plaintext key, via the module under test. */
+const digest = (key: string) => hashApiKey(key);
 
 /* -------------------------------------------------------------------------- */
 /* Tests                                                                       */
@@ -149,7 +153,12 @@ describe("POST /api/mcp", () => {
   });
 
   it("rejects a key whose row carries neither owner", async () => {
-    state.keys.set(digest("msk_orphan"), { user_id: null, owner_uid: null });
+    const stored = digest("msk_orphan");
+    state.keys.set(stored, {
+      key_hash: stored,
+      user_id: null,
+      owner_uid: null,
+    });
     const res = makeRes();
 
     await handler(
@@ -158,11 +167,13 @@ describe("POST /api/mcp", () => {
     );
 
     expect(res.statusCode).toBe(401);
-    state.keys.delete(digest("msk_orphan"));
+    state.keys.delete(stored);
   });
 
   it("sends only the digest to the database", async () => {
-    state.keys.set(digest("msk_live"), {
+    const stored = digest("msk_live");
+    state.keys.set(stored, {
+      key_hash: stored,
       user_id: "user-123",
       owner_uid: null,
     });
@@ -180,11 +191,13 @@ describe("POST /api/mcp", () => {
     for (const call of state.calls) {
       expect(JSON.stringify(call.params)).not.toContain("msk_live");
     }
-    state.keys.delete(digest("msk_live"));
+    state.keys.delete(stored);
   });
 
   it("rejects a body that is not JSON", async () => {
-    state.keys.set(digest("msk_live2"), {
+    const stored = digest("msk_live2");
+    state.keys.set(stored, {
+      key_hash: stored,
       user_id: "user-123",
       owner_uid: null,
     });
@@ -199,6 +212,6 @@ describe("POST /api/mcp", () => {
     );
 
     expect(res.statusCode).toBe(400);
-    state.keys.delete(digest("msk_live2"));
+    state.keys.delete(stored);
   });
 });

@@ -12,6 +12,7 @@ import {
   listApiKeys,
   resolveApiKeyOwner,
   revokeApiKey,
+  verifyApiKey,
 } from "../src/apiKeys.js";
 
 import type { KeyDatabase } from "../src/apiKeys.js";
@@ -25,7 +26,11 @@ import type { KeyDatabase } from "../src/apiKeys.js";
  * - only the digest is ever sent to the database,
  * - a revoked or unknown key resolves to nothing,
  * - a key maps to exactly the owner it was created for, and no other,
- * - a malformed `Authorization` header is not a credential.
+ * - a malformed `Authorization` header is not a credential,
+ * - the stored digest is a salted scrypt derivation bound to the pepper:
+ *   different salts give different stored values for the same key, the same
+ *   stored digest verifies the key that produced it, and a wrong key does
+ *   not verify.
  */
 
 type Call = { text: string; params: unknown[] };
@@ -48,11 +53,15 @@ const fakeDatabase = () => {
   const db: KeyDatabase = {
     query: async (text, params = []) => {
       calls.push({ text, params });
-      if (text.startsWith("SELECT user_id, owner_uid FROM api_keys")) {
-        const hash = params[0] as string;
+      if (
+        text.startsWith("SELECT key_hash, user_id, owner_uid FROM api_keys")
+      ) {
+        // The scrypt lookup selects live digests with no WHERE value; the
+        // verification happens in `resolveApiKeyOwner`.
         return rows
-          .filter((row) => row.key_hash === hash && row.revoked_at === null)
+          .filter((row) => row.revoked_at === null)
           .map((row) => ({
+            key_hash: row.key_hash,
             user_id: row.user_id,
             owner_uid: row.owner_uid,
           }));
@@ -113,15 +122,47 @@ const fakeDatabase = () => {
 };
 
 describe("hashApiKey", () => {
-  it("is the SHA-256 hex digest of the key", () => {
+  it("is a salted scrypt digest, not a bare SHA-256 hex", () => {
     const key = "msk_example";
-    expect(hashApiKey(key)).toBe(
-      createHash("sha256").update(key).digest("hex"),
-    );
+    const stored = hashApiKey(key);
+    expect(stored.startsWith("scrypt$")).toBe(true);
+    expect(stored).toMatch(/^scrypt\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/);
+    // Not the fast unsalted digest the old scheme produced.
+    expect(stored).not.toBe(createHash("sha256").update(key).digest("hex"));
   });
 
   it("never contains the plaintext", () => {
     expect(hashApiKey("msk_secret")).not.toContain("secret");
+  });
+
+  it("gives different stored values for the same key (fresh salt each time)", () => {
+    const key = "msk_same_key_twice";
+    const first = hashApiKey(key);
+    const second = hashApiKey(key);
+    expect(first).not.toBe(second);
+  });
+
+  it("gives different stored values for different keys", () => {
+    expect(hashApiKey("msk_alpha")).not.toBe(hashApiKey("msk_beta"));
+  });
+});
+
+describe("verifyApiKey", () => {
+  it("verifies the key that produced the digest", () => {
+    const key = "msk_correct_horse";
+    const stored = hashApiKey(key);
+    expect(verifyApiKey(key, stored)).toBe(true);
+  });
+
+  it("does not verify a wrong key", () => {
+    const stored = hashApiKey("msk_correct_horse");
+    expect(verifyApiKey("msk_wrong_horse", stored)).toBe(false);
+  });
+
+  it("does not verify a malformed stored value", () => {
+    expect(verifyApiKey("msk_anything", "not-a-digest")).toBe(false);
+    expect(verifyApiKey("msk_anything", "scrypt$")).toBe(false);
+    expect(verifyApiKey("msk_anything", "")).toBe(false);
   });
 });
 
@@ -258,7 +299,8 @@ describe("createApiKey", () => {
     const { db, rows } = fakeDatabase();
     const key = await createApiKey(db, { kind: "user", userId: "user-123" });
 
-    expect(rows[0].key_hash).toBe(hashApiKey(key));
+    expect(rows[0].key_hash).toMatch(/^scrypt\$/);
+    expect(verifyApiKey(key, rows[0].key_hash)).toBe(true);
     expect(rows[0].key_hash).not.toBe(key);
     expect(JSON.stringify(rows)).not.toContain(key);
   });

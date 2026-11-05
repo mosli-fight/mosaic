@@ -9,8 +9,9 @@
  * ## Authentication
  *
  * Every request must carry `Authorization: Bearer <key>`. The key is
- * resolved to an owner by `packages/mcp/src/apiKeys.ts`, which looks up only
- * the SHA-256 digest in `api_keys` — the plaintext is never stored. A
+ * resolved to an owner by `packages/mcp/src/apiKeys.ts`, which verifies it
+ * against the salted scrypt digest stored in `api_keys` — the plaintext is
+ * never stored. A
  * missing, malformed, unknown or revoked key is answered 401 with a
  * `WWW-Authenticate: Bearer` header, and the response is the same for all
  * four so it cannot be used to probe which state a key is in.
