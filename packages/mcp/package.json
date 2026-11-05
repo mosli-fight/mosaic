@@ -2,10 +2,27 @@
   "name": "@mosaic/mcp",
   "version": "0.1.0",
   "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
-  "description": "Mosaic MCP server — read and write Mosaic boards over stdio",
+  "description": "Mosaic MCP server — read and write Mosaic boards, over stdio or hosted streamable HTTP",
   "license": "MIT",
   "author": "dramatic4678565",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mosli-fight/mosaic.git",
+    "directory": "packages/mcp"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "excalidraw",
+    "whiteboard"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "main": "./dist/index.js",
   "bin": {
     "mosaic-mcp": "./dist/index.js"
